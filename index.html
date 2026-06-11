@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Coupe du Monde 2026 – Calendrier</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    min-height:100vh;
+    background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#060c18 70%,#020408 100%);
+    font-family:'Segoe UI',system-ui,sans-serif;
+    color:#e2e8f0;
+    padding:16px 0 48px;
+  }
+  /* ── HEADER ── */
+  #header{text-align:center;margin-bottom:18px}
+  #header .eyebrow{font-size:10px;color:#0ea5e9;letter-spacing:4px;font-weight:700;margin-bottom:3px}
+  #header h1{
+    font-size:clamp(20px,4vw,32px);font-weight:900;letter-spacing:-1px;margin:0 0 3px;
+    background:linear-gradient(90deg,#fbbf24,#f97316,#ef4444);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  #header .sub{font-size:10px;color:#475569}
+  /* ── TABS ── */
+  #tabs{display:flex;justify-content:center;gap:8px;margin-top:14px}
+  .tab-btn{
+    background:transparent;
+    border:1.5px solid rgba(255,255,255,0.1);
+    color:#64748b;border-radius:20px;padding:5px 16px;font-size:11px;font-weight:700;
+    cursor:pointer;transition:all .2s;
+  }
+  .tab-btn.active{background:#0ea5e911;border-color:#0ea5e9;color:#0ea5e9}
+  /* ── MAIN ── */
+  #main{max-width:720px;margin:0 auto;padding:0 16px}
+  /* ── FILTER PILLS ── */
+  #grp-filters{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px;justify-content:center}
+  .grp-btn{
+    background:transparent;border:1px solid rgba(255,255,255,0.08);
+    color:#64748b;border-radius:14px;padding:3px 9px;font-size:9px;font-weight:700;
+    cursor:pointer;transition:all .15s;
+  }
+  /* ── INFO BAR ── */
+  .info-bar{
+    display:flex;gap:6px;margin-bottom:16px;
+    padding:8px 12px;background:#080f1e;
+    border:1px solid rgba(255,255,255,0.05);border-radius:8px;
+    font-size:10px;color:#475569;flex-wrap:wrap;
+  }
+  .info-bar b{color:#94a3b8}
+  .info-bar .sep{color:#1e3a5f}
+  /* ── PHASE LEGEND ── */
+  #ko-legend{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;justify-content:center}
+  .phase-badge{
+    border-radius:8px;padding:3px 8px;font-size:9px;font-weight:700;
+  }
+  /* ── TIMELINE ── */
+  .day-block{display:flex;gap:0;margin-bottom:0}
+  .timeline-col{display:flex;flex-direction:column;align-items:center;width:14px;flex-shrink:0;margin-right:10px}
+  .tl-dot{width:10px;height:10px;border-radius:50%;background:#1e3a5f;border:2px solid #1e40af;flex-shrink:0;margin-top:3px}
+  .tl-dot.today{background:#fbbf24;border-color:#fbbf24}
+  .tl-line{flex:1;width:2px;background:linear-gradient(180deg,#1e3a5f,transparent);min-height:20px}
+  .day-content{flex:1;padding-bottom:20px}
+  .day-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .day-label{font-size:11px;font-weight:800;color:#e2e8f0;letter-spacing:.3px}
+  .day-label.today{color:#fbbf24}
+  .match-count{font-size:9px;color:#334155;background:rgba(255,255,255,0.03);border-radius:10px;padding:1px 7px}
+  .today-tag{font-size:8px;background:#fbbf2422;color:#fbbf24;border-radius:8px;padding:2px 7px;font-weight:700}
+  /* ── MATCH LIST ── */
+  .match-list{background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden}
+  .match-row{
+    display:flex;align-items:center;gap:8px;padding:6px 10px;
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    cursor:pointer;transition:all .12s;
+  }
+  .match-row:last-child{border-bottom:none}
+  .match-row:hover{background:rgba(255,255,255,0.02)}
+  .match-row.selected{border-left:3px solid currentColor}
+  .grp-badge{
+    min-width:28px;height:20px;border-radius:5px;
+    font-size:9px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    letter-spacing:.5px;flex-shrink:0;
+  }
+  .match-id{font-size:9px;color:#475569;min-width:26px;flex-shrink:0}
+  .match-teams{flex:1;font-size:11px;color:#e2e8f0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .match-teams .vs{color:#334155;margin:0 5px}
+  .match-city{font-size:9px;color:#475569;white-space:nowrap;flex-shrink:0}
+  .tag{font-size:8px;border-radius:4px;padding:1px 4px;flex-shrink:0;font-weight:700}
+  .j3-tag{}
+  /* ── HIDDEN ── */
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="eyebrow">FIFA · USA · MEXIQUE · CANADA</div>
+  <h1>COUPE DU MONDE 2026</h1>
+  <div class="sub">11 Juin – 19 Juillet · 48 équipes · 104 matchs</div>
+  <div id="tabs">
+    <button class="tab-btn active" onclick="switchView('groups')">📋 Phase de Groupes</button>
+    <button class="tab-btn" onclick="switchView('knockout')">🏆 Élimination Directe</button>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- ── PHASE DE GROUPES ── -->
+  <div id="view-groups">
+    <div id="grp-filters"></div>
+    <div class="info-bar">
+      <span>📅 <b>17</b> journées</span>
+      <span class="sep">·</span>
+      <span>⚽ <b>72</b> matchs groupe</span>
+      <span class="sep">·</span>
+      <span>🏁 Dernière journée = matchs simultanés <b>J3</b></span>
+    </div>
+    <div id="groups-timeline"></div>
+  </div>
+
+  <!-- ── ÉLIMINATION DIRECTE ── -->
+  <div id="view-knockout" class="hidden">
+    <div id="ko-legend"></div>
+    <div id="knockout-timeline"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const GC = {
+  A:"#0ea5e9",B:"#06b6d4",C:"#10b981",D:"#f59e0b",
+  E:"#ef4444",F:"#f97316",G:"#8b5cf6",H:"#ec4899",
+  I:"#14b8a6",J:"#a855f7",K:"#22c55e",L:"#f43f5e"
+};
+
+const GROUP_MATCHES = [
+  {id:"M1",  day:"2026-06-11",date:"Mercredi 11 Juin", grp:"A",t1:"Mexique",       t2:"Afrique du Sud",city:"Mexico City",   last:false},
+  {id:"M2",  day:"2026-06-12",date:"Jeudi 12 Juin",    grp:"A",t1:"Corée du Sud",  t2:"Tchéquie",      city:"Guadalajara",   last:false},
+  {id:"M7",  day:"2026-06-12",date:"Jeudi 12 Juin",    grp:"B",t1:"Canada",        t2:"Bosnie-H.",     city:"Toronto",       last:false},
+  {id:"M13", day:"2026-06-12",date:"Jeudi 12 Juin",    grp:"C",t1:"Brésil",        t2:"Maroc",         city:"New York/NJ",   last:false},
+  {id:"M19", day:"2026-06-12",date:"Jeudi 12 Juin",    grp:"D",t1:"USA",           t2:"Paraguay",      city:"Los Angeles",   last:false},
+  {id:"M8",  day:"2026-06-13",date:"Vendredi 13 Juin", grp:"B",t1:"Qatar",         t2:"Suisse",        city:"San Francisco", last:false},
+  {id:"M14", day:"2026-06-13",date:"Vendredi 13 Juin", grp:"C",t1:"Écosse",        t2:"Haïti",         city:"Boston",        last:false},
+  {id:"M20", day:"2026-06-13",date:"Vendredi 13 Juin", grp:"D",t1:"Australie",     t2:"Turquie",       city:"Vancouver",     last:false},
+  {id:"M25", day:"2026-06-14",date:"Samedi 14 Juin",   grp:"E",t1:"Allemagne",     t2:"Curaçao",       city:"Houston",       last:false},
+  {id:"M26", day:"2026-06-14",date:"Samedi 14 Juin",   grp:"E",t1:"Côte d'Ivoire", t2:"Équateur",      city:"Philadelphie",  last:false},
+  {id:"M31", day:"2026-06-14",date:"Samedi 14 Juin",   grp:"F",t1:"Pays-Bas",      t2:"Japon",         city:"Dallas",        last:false},
+  {id:"M32", day:"2026-06-14",date:"Samedi 14 Juin",   grp:"F",t1:"Suède",         t2:"Tunisie",       city:"Monterrey",     last:false},
+  {id:"M37", day:"2026-06-15",date:"Dimanche 15 Juin", grp:"G",t1:"Belgique",      t2:"Égypte",        city:"Seattle",       last:false},
+  {id:"M38", day:"2026-06-15",date:"Dimanche 15 Juin", grp:"G",t1:"Iran",          t2:"Nv-Zélande",    city:"Los Angeles",   last:false},
+  {id:"M43", day:"2026-06-15",date:"Dimanche 15 Juin", grp:"H",t1:"Espagne",       t2:"Cap-Vert",      city:"Atlanta",       last:false},
+  {id:"M44", day:"2026-06-15",date:"Dimanche 15 Juin", grp:"H",t1:"Arabie S.",     t2:"Uruguay",       city:"Miami",         last:false},
+  {id:"M49", day:"2026-06-16",date:"Lundi 16 Juin",    grp:"I",t1:"France",        t2:"Sénégal",       city:"New York/NJ",   last:false},
+  {id:"M50", day:"2026-06-16",date:"Lundi 16 Juin",    grp:"I",t1:"Irak",          t2:"Norvège",       city:"Boston",        last:false},
+  {id:"M55", day:"2026-06-16",date:"Lundi 16 Juin",    grp:"J",t1:"Argentine",     t2:"Algérie",       city:"Kansas City",   last:false},
+  {id:"M56", day:"2026-06-16",date:"Lundi 16 Juin",    grp:"J",t1:"Autriche",      t2:"Jordanie",      city:"San Francisco", last:false},
+  {id:"M61", day:"2026-06-17",date:"Mardi 17 Juin",    grp:"K",t1:"Portugal",      t2:"Congo RD",      city:"Houston",       last:false},
+  {id:"M62", day:"2026-06-17",date:"Mardi 17 Juin",    grp:"K",t1:"Ouzbékistan",   t2:"Colombie",      city:"Mexico City",   last:false},
+  {id:"M67", day:"2026-06-17",date:"Mardi 17 Juin",    grp:"L",t1:"Angleterre",    t2:"Croatie",       city:"Dallas",        last:false},
+  {id:"M68", day:"2026-06-17",date:"Mardi 17 Juin",    grp:"L",t1:"Ghana",         t2:"Panama",        city:"Toronto",       last:false},
+  {id:"M3",  day:"2026-06-18",date:"Mercredi 18 Juin", grp:"A",t1:"Mexique",       t2:"Tchéquie",      city:"Guadalajara",   last:false},
+  {id:"M4",  day:"2026-06-18",date:"Mercredi 18 Juin", grp:"A",t1:"Corée du Sud",  t2:"Afrique du Sud",city:"Atlanta",       last:false},
+  {id:"M9",  day:"2026-06-18",date:"Mercredi 18 Juin", grp:"B",t1:"Canada",        t2:"Qatar",         city:"Vancouver",     last:false},
+  {id:"M10", day:"2026-06-18",date:"Mercredi 18 Juin", grp:"B",t1:"Suisse",        t2:"Bosnie-H.",     city:"Los Angeles",   last:false},
+  {id:"M15", day:"2026-06-19",date:"Jeudi 19 Juin",    grp:"C",t1:"Brésil",        t2:"Haïti",         city:"Los Angeles",   last:false},
+  {id:"M16", day:"2026-06-19",date:"Jeudi 19 Juin",    grp:"C",t1:"Maroc",         t2:"Écosse",        city:"Seattle",       last:false},
+  {id:"M21", day:"2026-06-19",date:"Jeudi 19 Juin",    grp:"D",t1:"USA",           t2:"Australie",     city:"Seattle",       last:false},
+  {id:"M22", day:"2026-06-19",date:"Jeudi 19 Juin",    grp:"D",t1:"Paraguay",      t2:"Turquie",       city:"Dallas",        last:false},
+  {id:"M27", day:"2026-06-20",date:"Vendredi 20 Juin", grp:"E",t1:"Allemagne",     t2:"Équateur",      city:"Dallas",        last:false},
+  {id:"M28", day:"2026-06-20",date:"Vendredi 20 Juin", grp:"E",t1:"Côte d'Ivoire", t2:"Curaçao",       city:"Miami",         last:false},
+  {id:"M33", day:"2026-06-20",date:"Vendredi 20 Juin", grp:"F",t1:"Pays-Bas",      t2:"Tunisie",       city:"Houston",       last:false},
+  {id:"M34", day:"2026-06-20",date:"Vendredi 20 Juin", grp:"F",t1:"Japon",         t2:"Suède",         city:"Kansas City",   last:false},
+  {id:"M39", day:"2026-06-21",date:"Samedi 21 Juin",   grp:"G",t1:"Belgique",      t2:"Nv-Zélande",    city:"Boston",        last:false},
+  {id:"M40", day:"2026-06-21",date:"Samedi 21 Juin",   grp:"G",t1:"Égypte",        t2:"Iran",          city:"Dallas",        last:false},
+  {id:"M45", day:"2026-06-21",date:"Samedi 21 Juin",   grp:"H",t1:"Espagne",       t2:"Uruguay",       city:"Kansas City",   last:false},
+  {id:"M46", day:"2026-06-21",date:"Samedi 21 Juin",   grp:"H",t1:"Arabie S.",     t2:"Cap-Vert",      city:"Houston",       last:false},
+  {id:"M51", day:"2026-06-22",date:"Dimanche 22 Juin", grp:"I",t1:"France",        t2:"Irak",          city:"Los Angeles",   last:false},
+  {id:"M52", day:"2026-06-22",date:"Dimanche 22 Juin", grp:"I",t1:"Sénégal",       t2:"Norvège",       city:"Vancouver",     last:false},
+  {id:"M57", day:"2026-06-22",date:"Dimanche 22 Juin", grp:"J",t1:"Argentine",     t2:"Jordanie",      city:"Miami",         last:false},
+  {id:"M58", day:"2026-06-22",date:"Dimanche 22 Juin", grp:"J",t1:"Algérie",       t2:"Autriche",      city:"New York/NJ",   last:false},
+  {id:"M23", day:"2026-06-23",date:"Lundi 23 Juin",    grp:"D",t1:"USA",           t2:"Turquie",       city:"Houston",       last:false},
+  {id:"M24", day:"2026-06-23",date:"Lundi 23 Juin",    grp:"D",t1:"Australie",     t2:"Paraguay",      city:"Kansas City",   last:false},
+  {id:"M63", day:"2026-06-23",date:"Lundi 23 Juin",    grp:"K",t1:"Portugal",      t2:"Colombie",      city:"Los Angeles",   last:false},
+  {id:"M64", day:"2026-06-23",date:"Lundi 23 Juin",    grp:"K",t1:"Congo RD",      t2:"Ouzbékistan",   city:"Monterrey",     last:false},
+  {id:"M69", day:"2026-06-24",date:"Mardi 24 Juin",    grp:"L",t1:"Angleterre",    t2:"Panama",        city:"Miami",         last:false},
+  {id:"M70", day:"2026-06-24",date:"Mardi 24 Juin",    grp:"L",t1:"Croatie",       t2:"Ghana",         city:"Atlanta",       last:false},
+  {id:"M29", day:"2026-06-24",date:"Mardi 24 Juin",    grp:"E",t1:"Allemagne",     t2:"Côte d'Ivoire", city:"Atlanta",       last:true},
+  {id:"M30", day:"2026-06-24",date:"Mardi 24 Juin",    grp:"E",t1:"Équateur",      t2:"Curaçao",       city:"Philadelphie",  last:true},
+  {id:"M11", day:"2026-06-25",date:"Mercredi 25 Juin", grp:"B",t1:"Canada",        t2:"Suisse",        city:"Toronto",       last:true},
+  {id:"M12", day:"2026-06-25",date:"Mercredi 25 Juin", grp:"B",t1:"Qatar",         t2:"Bosnie-H.",     city:"Vancouver",     last:true},
+  {id:"M35", day:"2026-06-25",date:"Mercredi 25 Juin", grp:"F",t1:"Pays-Bas",      t2:"Suède",         city:"Seattle",       last:true},
+  {id:"M36", day:"2026-06-25",date:"Mercredi 25 Juin", grp:"F",t1:"Japon",         t2:"Tunisie",       city:"Los Angeles",   last:true},
+  {id:"M41", day:"2026-06-26",date:"Jeudi 26 Juin",    grp:"G",t1:"Belgique",      t2:"Iran",          city:"San Francisco", last:true},
+  {id:"M42", day:"2026-06-26",date:"Jeudi 26 Juin",    grp:"G",t1:"Égypte",        t2:"Nv-Zélande",    city:"Seattle",       last:true},
+  {id:"M47", day:"2026-06-26",date:"Jeudi 26 Juin",    grp:"H",t1:"Espagne",       t2:"Arabie S.",     city:"Miami",         last:true},
+  {id:"M48", day:"2026-06-26",date:"Jeudi 26 Juin",    grp:"H",t1:"Uruguay",       t2:"Cap-Vert",      city:"Dallas",        last:true},
+  {id:"M5",  day:"2026-06-27",date:"Vendredi 27 Juin", grp:"A",t1:"Mexique",       t2:"Corée du Sud",  city:"Guadalajara",   last:true},
+  {id:"M6",  day:"2026-06-27",date:"Vendredi 27 Juin", grp:"A",t1:"Afrique du Sud",t2:"Tchéquie",      city:"Atlanta",       last:true},
+  {id:"M17", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"C",t1:"Brésil",        t2:"Écosse",        city:"Dallas",        last:true},
+  {id:"M18", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"C",t1:"Maroc",         t2:"Haïti",         city:"Houston",       last:true},
+  {id:"M53", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"I",t1:"France",        t2:"Norvège",       city:"Seattle",       last:true},
+  {id:"M54", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"I",t1:"Sénégal",       t2:"Irak",          city:"Miami",         last:true},
+  {id:"M59", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"J",t1:"Argentine",     t2:"Autriche",      city:"Dallas",        last:true},
+  {id:"M60", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"J",t1:"Algérie",       t2:"Jordanie",      city:"Houston",       last:true},
+  {id:"M65", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"K",t1:"Portugal",      t2:"Ouzbékistan",   city:"San Francisco", last:true},
+  {id:"M66", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"K",t1:"Colombie",      t2:"Congo RD",      city:"Houston",       last:true},
+  {id:"M71", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"L",t1:"Angleterre",    t2:"Ghana",         city:"Kansas City",   last:true},
+  {id:"M72", day:"2026-06-27",date:"Vendredi 27 Juin", grp:"L",t1:"Croatie",       t2:"Panama",        city:"Boston",        last:true},
+];
+
+const KNOCKOUT = [
+  {phase:"32es",color:"#8b5cf6",id:"M73",day:"2026-06-28",date:"Samedi 28 Juin",   t1:"2e Gr. A",     t2:"2e Gr. B",       city:"Los Angeles"},
+  {phase:"32es",color:"#8b5cf6",id:"M74",day:"2026-06-28",date:"Samedi 28 Juin",   t1:"1er Gr. C",    t2:"3e B/C/D",       city:"Philadelphie"},
+  {phase:"32es",color:"#8b5cf6",id:"M75",day:"2026-06-29",date:"Dimanche 29 Juin", t1:"1er Gr. A",    t2:"3e C/D/E",       city:"Kansas City"},
+  {phase:"32es",color:"#8b5cf6",id:"M76",day:"2026-06-29",date:"Dimanche 29 Juin", t1:"1er Gr. F",    t2:"3e A/B/C/D",     city:"New York/NJ"},
+  {phase:"32es",color:"#8b5cf6",id:"M77",day:"2026-06-30",date:"Lundi 30 Juin",    t1:"2e Gr. C",     t2:"2e Gr. D",       city:"Boston"},
+  {phase:"32es",color:"#8b5cf6",id:"M78",day:"2026-06-30",date:"Lundi 30 Juin",    t1:"1er Gr. E",    t2:"3e G/H/I",       city:"Atlanta"},
+  {phase:"32es",color:"#8b5cf6",id:"M79",day:"2026-06-30",date:"Lundi 30 Juin",    t1:"2e Gr. E",     t2:"2e Gr. F",       city:"Dallas"},
+  {phase:"32es",color:"#8b5cf6",id:"M80",day:"2026-07-01",date:"Mardi 1 Juillet",  t1:"1er Gr. L",    t2:"3e A/B/I/J/K",   city:"Mexico City"},
+  {phase:"32es",color:"#8b5cf6",id:"M81",day:"2026-07-01",date:"Mardi 1 Juillet",  t1:"1er Gr. D",    t2:"3e B/E/F/I/J",   city:"San Francisco"},
+  {phase:"32es",color:"#8b5cf6",id:"M82",day:"2026-07-01",date:"Mardi 1 Juillet",  t1:"1er Gr. G",    t2:"3e A/E/H/I/J",   city:"Seattle"},
+  {phase:"32es",color:"#8b5cf6",id:"M83",day:"2026-07-02",date:"Mercredi 2 Juillet",t1:"2e Gr. K",    t2:"2e Gr. L",       city:"Toronto"},
+  {phase:"32es",color:"#8b5cf6",id:"M84",day:"2026-07-02",date:"Mercredi 2 Juillet",t1:"1er Gr. H",   t2:"2e Gr. J",       city:"Los Angeles"},
+  {phase:"32es",color:"#8b5cf6",id:"M85",day:"2026-07-02",date:"Mercredi 2 Juillet",t1:"1er Gr. B",   t2:"3e E/F/G/I/J",   city:"Vancouver"},
+  {phase:"32es",color:"#8b5cf6",id:"M86",day:"2026-07-03",date:"Jeudi 3 Juillet",  t1:"1er Gr. J",    t2:"2e Gr. H",       city:"Miami"},
+  {phase:"32es",color:"#8b5cf6",id:"M87",day:"2026-07-03",date:"Jeudi 3 Juillet",  t1:"1er Gr. K",    t2:"3e D/E/I/J/L",   city:"Kansas City"},
+  {phase:"32es",color:"#8b5cf6",id:"M88",day:"2026-07-03",date:"Jeudi 3 Juillet",  t1:"2e Gr. D",     t2:"2e Gr. G",       city:"Dallas"},
+  {phase:"16es",color:"#f59e0b",id:"M89",day:"2026-07-04",date:"Samedi 4 Juillet", t1:"V M73",        t2:"V M75",          city:"Houston"},
+  {phase:"16es",color:"#f59e0b",id:"M90",day:"2026-07-04",date:"Samedi 4 Juillet", t1:"V M74",        t2:"V M76",          city:"Philadelphie"},
+  {phase:"16es",color:"#f59e0b",id:"M91",day:"2026-07-05",date:"Dimanche 5 Juillet",t1:"V M77",       t2:"V M79",          city:"Boston"},
+  {phase:"16es",color:"#f59e0b",id:"M92",day:"2026-07-05",date:"Dimanche 5 Juillet",t1:"V M78",       t2:"V M80",          city:"Miami"},
+  {phase:"16es",color:"#f59e0b",id:"M93",day:"2026-07-06",date:"Lundi 6 Juillet",  t1:"V M81",        t2:"V M83",          city:"Los Angeles"},
+  {phase:"16es",color:"#f59e0b",id:"M94",day:"2026-07-06",date:"Lundi 6 Juillet",  t1:"V M82",        t2:"V M84",          city:"Seattle"},
+  {phase:"16es",color:"#f59e0b",id:"M95",day:"2026-07-07",date:"Mardi 7 Juillet",  t1:"V M85",        t2:"V M87",          city:"Dallas"},
+  {phase:"16es",color:"#f59e0b",id:"M96",day:"2026-07-07",date:"Mardi 7 Juillet",  t1:"V M86",        t2:"V M88",          city:"Atlanta"},
+  {phase:"Quarts",color:"#ef4444",id:"QF1",day:"2026-07-09",date:"Jeudi 9 Juillet",   t1:"V M89",     t2:"V M91",          city:"Boston"},
+  {phase:"Quarts",color:"#ef4444",id:"QF2",day:"2026-07-10",date:"Vendredi 10 Juillet",t1:"V M90",    t2:"V M92",          city:"Los Angeles"},
+  {phase:"Quarts",color:"#ef4444",id:"QF3",day:"2026-07-11",date:"Samedi 11 Juillet",  t1:"V M93",    t2:"V M95",          city:"Dallas"},
+  {phase:"Quarts",color:"#ef4444",id:"QF4",day:"2026-07-11",date:"Samedi 11 Juillet",  t1:"V M94",    t2:"V M96",          city:"Miami"},
+  {phase:"Demis", color:"#f97316",id:"SF1",day:"2026-07-14",date:"Mardi 14 Juillet",   t1:"V QF1",    t2:"V QF2",          city:"Atlanta"},
+  {phase:"Demis", color:"#f97316",id:"SF2",day:"2026-07-15",date:"Mercredi 15 Juillet",t1:"V QF3",    t2:"V QF4",          city:"Los Angeles"},
+  {phase:"3e Place",color:"#64748b",id:"3PL",day:"2026-07-18",date:"Samedi 18 Juillet",t1:"Perdant SF1",t2:"Perdant SF2",  city:"Miami"},
+  {phase:"Finale",color:"#fbbf24",id:"FIN",day:"2026-07-19",date:"Dimanche 19 Juillet",t1:"Vainqueur SF1",t2:"Vainqueur SF2",city:"MetLife Stadium · NJ"},
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let selectedId = null;
+let activeFilter = "all";
+let activeView = "groups";
+const TODAY = "2026-06-11";
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function groupByDate(arr){
+  const map = new Map();
+  arr.forEach(m=>{
+    if(!map.has(m.date)) map.set(m.date,[]);
+    map.get(m.date).push(m);
+  });
+  return [...map.entries()];
+}
+
+function hex2rgba(hex,a){
+  const r=parseInt(hex.slice(1,3),16);
+  const g=parseInt(hex.slice(3,5),16);
+  const b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderMatchRow(m, color, badge){
+  const sel = selectedId === m.id;
+  const row = document.createElement('div');
+  row.className = 'match-row' + (sel?' selected':'');
+  if(sel){
+    row.style.background = hex2rgba(color,0.1);
+    row.style.borderLeft = `3px solid ${color}`;
+    row.style.paddingLeft = '7px';
+  }
+  row.style.color = color;
+
+  // badge
+  const bg = document.createElement('span');
+  bg.className = 'grp-badge';
+  bg.style.background = hex2rgba(color,0.15);
+  bg.style.color = color;
+  bg.textContent = badge;
+
+  // id
+  const mid = document.createElement('span');
+  mid.className = 'match-id';
+  mid.textContent = m.id;
+
+  // teams
+  const teams = document.createElement('span');
+  teams.className = 'match-teams';
+  teams.innerHTML = `${m.t1}<span class="vs">–</span>${m.t2}`;
+
+  // city
+  const city = document.createElement('span');
+  city.className = 'match-city';
+  city.textContent = '📍 ' + m.city;
+
+  row.appendChild(bg);
+  row.appendChild(mid);
+  row.appendChild(teams);
+  row.appendChild(city);
+
+  // tags
+  if(m.last){
+    const t = document.createElement('span');
+    t.className = 'tag j3-tag';
+    t.style.background = hex2rgba(color,0.2);
+    t.style.color = color;
+    t.textContent = 'J3';
+    row.appendChild(t);
+  }
+  if(m.phase){
+    const t = document.createElement('span');
+    t.className = 'tag';
+    t.style.background = hex2rgba(color,0.2);
+    t.style.color = color;
+    t.textContent = m.phase;
+    row.appendChild(t);
+  }
+
+  row.addEventListener('click',()=>{
+    selectedId = selectedId === m.id ? null : m.id;
+    renderAll();
+  });
+  return row;
+}
+
+function renderDayBlock(dateLabel, matches, container, isToday){
+  const block = document.createElement('div');
+  block.className = 'day-block';
+
+  // timeline col
+  const tlCol = document.createElement('div');
+  tlCol.className = 'timeline-col';
+  const dot = document.createElement('div');
+  dot.className = 'tl-dot' + (isToday?' today':'');
+  const line = document.createElement('div');
+  line.className = 'tl-line';
+  tlCol.appendChild(dot);
+  tlCol.appendChild(line);
+
+  // content
+  const content = document.createElement('div');
+  content.className = 'day-content';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'day-header';
+  const lbl = document.createElement('span');
+  lbl.className = 'day-label' + (isToday?' today':'');
+  lbl.textContent = dateLabel;
+  const cnt = document.createElement('span');
+  cnt.className = 'match-count';
+  cnt.textContent = matches.length + ' match' + (matches.length>1?'s':'');
+  hdr.appendChild(lbl);
+  hdr.appendChild(cnt);
+  if(isToday){
+    const tod = document.createElement('span');
+    tod.className = 'today-tag';
+    tod.textContent = "AUJOURD'HUI";
+    hdr.appendChild(tod);
+  }
+
+  const list = document.createElement('div');
+  list.className = 'match-list';
+  matches.forEach(m => {
+    const color = m.grp ? GC[m.grp] : (m.color||'#94a3b8');
+    const badge = m.grp ? 'Gr.'+m.grp : (m.phase||'');
+    list.appendChild(renderMatchRow(m, color, badge));
+  });
+
+  content.appendChild(hdr);
+  content.appendChild(list);
+  block.appendChild(tlCol);
+  block.appendChild(content);
+  container.appendChild(block);
+}
+
+function renderGroupFilters(){
+  const c = document.getElementById('grp-filters');
+  c.innerHTML='';
+  // All
+  const all = document.createElement('button');
+  all.className = 'grp-btn';
+  all.textContent = 'Tous';
+  if(activeFilter==='all'){
+    all.style.background='#0ea5e922';
+    all.style.borderColor='#0ea5e9';
+    all.style.color='#0ea5e9';
+  }
+  all.addEventListener('click',()=>{ activeFilter='all'; renderAll(); });
+  c.appendChild(all);
+
+  Object.entries(GC).forEach(([g,col])=>{
+    const btn = document.createElement('button');
+    btn.className='grp-btn';
+    btn.textContent='Gr.'+g;
+    if(activeFilter===g){
+      btn.style.background=hex2rgba(col,0.13);
+      btn.style.borderColor=col;
+      btn.style.color=col;
+    }
+    btn.addEventListener('click',()=>{ activeFilter=g; renderAll(); });
+    c.appendChild(btn);
+  });
+}
+
+function renderKOLegend(){
+  const c = document.getElementById('ko-legend');
+  c.innerHTML='';
+  [
+    {label:"32es de finale",color:"#8b5cf6",date:"28 Juin – 3 Juil."},
+    {label:"16es de finale",color:"#f59e0b",date:"4 – 7 Juil."},
+    {label:"Quarts",        color:"#ef4444",date:"9 – 11 Juil."},
+    {label:"Demis",         color:"#f97316",date:"14 – 15 Juil."},
+    {label:"Finale",        color:"#fbbf24",date:"19 Juil."},
+  ].forEach(p=>{
+    const s = document.createElement('span');
+    s.className='phase-badge';
+    s.style.background=hex2rgba(p.color,0.1);
+    s.style.border=`1px solid ${hex2rgba(p.color,0.3)}`;
+    s.style.color=p.color;
+    s.innerHTML=`${p.label} · <span style="opacity:.7">${p.date}</span>`;
+    c.appendChild(s);
+  });
+}
+
+function renderGroupsTimeline(){
+  const c = document.getElementById('groups-timeline');
+  c.innerHTML='';
+  const filtered = activeFilter==='all'
+    ? GROUP_MATCHES
+    : GROUP_MATCHES.filter(m=>m.grp===activeFilter);
+  groupByDate(filtered).forEach(([dateLabel, matches])=>{
+    const isToday = matches[0].day===TODAY;
+    renderDayBlock(dateLabel, matches, c, isToday);
+  });
+}
+
+function renderKnockoutTimeline(){
+  const c = document.getElementById('knockout-timeline');
+  c.innerHTML='';
+  groupByDate(KNOCKOUT).forEach(([dateLabel, matches])=>{
+    renderDayBlock(dateLabel, matches, c, false);
+  });
+}
+
+function renderAll(){
+  renderGroupFilters();
+  renderGroupsTimeline();
+  renderKOLegend();
+  renderKnockoutTimeline();
+}
+
+function switchView(v){
+  activeView = v;
+  document.getElementById('view-groups').classList.toggle('hidden', v!=='groups');
+  document.getElementById('view-knockout').classList.toggle('hidden', v!=='knockout');
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',(i===0&&v==='groups')||(i===1&&v==='knockout'));
+  });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
