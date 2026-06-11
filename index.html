@@ -169,9 +169,9 @@ body{
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const API_TOKEN = '1f86c65f6b334db9b61eb411f3e2e0f1';
-const BASE = 'https://api.football-data.org/v4';
-const HEADERS = {'X-Auth-Token': API_TOKEN};
+// Proxy Cloudflare Worker — remplace cette URL par ton worker après déploiement
+// Ex: https://wc2026-proxy.tonnom.workers.dev
+const PROXY_BASE = 'https://wc2026.mguenoun.workers.dev';
 // Fixed timezone: Africa/Casablanca (heure du Maroc)
 const DISPLAY_TZ = 'Africa/Casablanca';
 const TODAY_STR = new Date().toLocaleDateString('en-CA', {timeZone: DISPLAY_TZ});
@@ -227,22 +227,37 @@ async function fetchAll(){
   setStatus('loading','Actualisation…');
   document.getElementById('refresh-btn').textContent='↻ …';
 
+  // Vérifier que le proxy est configuré
+  if(PROXY_BASE.includes('REMPLACER')){
+    console.warn('Proxy non configuré — données statiques');
+    setStatus('error','Proxy non configuré');
+    loadFallback();
+    renderAll();
+    document.getElementById('loading').classList.add('hidden');
+    showView(activeView);
+    document.getElementById('refresh-btn').textContent='↻ Actualiser';
+    return;
+  }
+
   try {
-    // Fetch all WC matches
-    const r1 = await fetch(`${BASE}/competitions/WC/matches`, {headers:HEADERS});
-    if(!r1.ok) throw new Error('API '+r1.status);
+    // Appels parallèles via Cloudflare Worker proxy
+    const [r1, r2] = await Promise.all([
+      fetch(`${PROXY_BASE}/competitions/WC/matches`),
+      fetch(`${PROXY_BASE}/competitions/WC/standings`),
+    ]);
+
+    if(!r1.ok) throw new Error('Proxy matches ' + r1.status);
     const data1 = await r1.json();
-
-    // Fetch standings
-    const r2 = await fetch(`${BASE}/competitions/WC/standings`, {headers:HEADERS});
-    const data2 = r2.ok ? await r2.json() : null;
-
     processMatches(data1.matches || []);
-    if(data2) processStandings(data2.standings || []);
 
-    setStatus('ok','En ligne');
-    const now=new Date();
-    document.getElementById('last-update').textContent=
+    if(r2.ok){
+      const data2 = await r2.json();
+      processStandings(data2.standings || []);
+    }
+
+    setStatus('ok','En ligne ✓');
+    const now = new Date();
+    document.getElementById('last-update').textContent =
       `Mis à jour ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
     renderAll();
@@ -250,6 +265,7 @@ async function fetchAll(){
     showView(activeView);
 
   } catch(e){
+    console.warn('API error:', e.message);
     setStatus('error','Hors ligne – données statiques');
     loadFallback();
     renderAll();
@@ -269,70 +285,126 @@ function setStatus(state, label){
   lbl.textContent=label;
 }
 
-// ─── PROCESS API DATA ─────────────────────────────────────────────────────────
+// ─── PROCESS football-data.org DATA ──────────────────────────────────────────
+// RapidAPI fixture structure:
+// f.fixture.date (ISO), f.fixture.venue.city
+// f.teams.home.name / f.teams.away.name
+// f.goals.home / f.goals.away
+// f.fixture.status.short: NS / 1H / HT / 2H / FT / AET / PEN
+// f.league.round: "Group Stage - 1", "Round of 32", "Quarter-finals", etc.
+
 function processMatches(matches){
-  allMatches = matches.map(m=>{
-    const grp = m.group ? m.group.replace('GROUP_','') : null;
-    const phase = m.stage || '';
-    const ko = !grp;
-    const color = grp ? GC[grp] : phaseColor(phase);
-    const isLive = m.status==='IN_PLAY'||m.status==='PAUSED';
-    const isFT   = m.status==='FINISHED';
+  // Merge API data with our fallback (preserving verified venue/city info)
+  loadFallback(); // load static data first
+  const staticMap = {};
+  allMatches.forEach(m => { staticMap[m.id] = m; });
 
-    // Score display
+  matches.forEach(m => {
+    const grp    = m.group ? m.group.replace('GROUP_','') : null;
+    const stage  = m.stage || '';
+    const isLive = ['IN_PLAY','PAUSED'].includes(m.status);
+    const isFT   = m.status === 'FINISHED';
+    const ko     = stage !== 'GROUP_STAGE';
+
     let score = null;
-    if(m.score && m.score.fullTime){
-      const s=m.score.fullTime;
-      if(s.home!==null && s.away!==null) score=`${s.home} – ${s.away}`;
+    if((isLive || isFT) && m.score?.fullTime){
+      const s = m.score.fullTime;
+      if(s.home !== null && s.away !== null) score = `${s.home} – ${s.away}`;
     }
-    if(isLive && m.score && m.score.currentTime){
-      const s=m.score.fullTime;
-      score = (s.home!==null?s.home:'0')+' – '+(s.away!==null?s.away:'0');
+    // For live match use current score
+    if(isLive && m.score?.currentTime && !score){
+      const s = m.score.fullTime;
+      score = `${s.home??0} – ${s.away??0}`;
     }
 
-    return {
-      id: String(m.id),
-      apiId: m.id,
+    const apiId  = String(m.id);
+    const t1name = m.homeTeam?.shortName || m.homeTeam?.name || 'À déterminer';
+    const t2name = m.awayTeam?.shortName || m.awayTeam?.name || 'À déterminer';
+    const phase  = humanPhase(stage);
+    const color  = grp ? GC[grp] : phaseColor(stage);
+    const last   = stage === 'GROUP_STAGE' && m.matchday === 3;
+
+    // Find matching static entry by group+teams to preserve venue/city
+    let staticEntry = null;
+    if(grp){
+      staticEntry = allMatches.find(s =>
+        s.grp === grp &&
+        (s.t1.toLowerCase().includes(t1name.toLowerCase().slice(0,4)) ||
+         t1name.toLowerCase().includes(s.t1.toLowerCase().slice(0,4)))
+      );
+    }
+
+    const entry = {
+      id:        apiId,
       dateLabel: frDate(m.utcDate),
-      dayKey: dayKey(m.utcDate),
-      time: frTime(m.utcDate),
-      grp,
-      phase: humanPhase(phase),
-      phaseRaw: phase,
-      color,
-      t1: m.homeTeam?.shortName || m.homeTeam?.name || 'À déterminer',
-      t2: m.awayTeam?.shortName || m.awayTeam?.name || 'À déterminer',
-      city: m.venue || '',
-      score,
-      status: m.status,
-      isLive,
-      isFT,
-      last: m.stage==='GROUP_STAGE' && isLastMatchday(m),
-      ko,
+      dayKey:    dayKey(m.utcDate),
+      time:      frTime(m.utcDate),
+      grp, phase, color,
+      t1:    t1name,
+      t2:    t2name,
+      venue: staticEntry?.venue || '',
+      city:  staticEntry?.city  || '',
+      score, status: m.status, isLive, isFT, last, ko,
     };
+
+    // Replace or add
+    const idx = allMatches.findIndex(s => s.grp === grp &&
+      s.t1.toLowerCase().includes(t1name.toLowerCase().slice(0,4)));
+    if(idx >= 0) allMatches[idx] = {...allMatches[idx], ...entry};
+    else allMatches.push(entry);
   });
 }
 
-function isLastMatchday(m){
-  return m.matchday===3;
+function humanPhaseRapid(round){
+  if(round.includes('Group'))      return 'Groupe';
+  if(round.includes('32'))         return '32es';
+  if(round.includes('16'))         return '16es';
+  if(round.includes('Quarter'))    return 'Quarts';
+  if(round.includes('Semi'))       return 'Demis';
+  if(round.includes('3rd'))        return '3e Place';
+  if(round.includes('Final'))      return 'Finale';
+  return round;
 }
 
-function phaseColor(stage){
-  const map={
-    'ROUND_OF_32':'#8b5cf6','ROUND_OF_16':'#f59e0b',
-    'QUARTER_FINALS':'#ef4444','SEMI_FINALS':'#f97316',
-    'THIRD_PLACE':'#64748b','FINAL':'#fbbf24'
-  };
-  return map[stage]||'#94a3b8';
+function phaseColorRapid(round){
+  if(round.includes('32'))      return '#8b5cf6';
+  if(round.includes('16'))      return '#f59e0b';
+  if(round.includes('Quarter')) return '#ef4444';
+  if(round.includes('Semi'))    return '#f97316';
+  if(round.includes('3rd'))     return '#64748b';
+  if(round.includes('Final'))   return '#fbbf24';
+  return '#94a3b8';
 }
 
-function humanPhase(stage){
-  const map={
-    'GROUP_STAGE':'Groupe','ROUND_OF_32':'32es','ROUND_OF_16':'16es',
-    'QUARTER_FINALS':'Quarts','SEMI_FINALS':'Demis',
-    'THIRD_PLACE':'3e Place','FINAL':'Finale'
-  };
-  return map[stage]||stage;
+function phaseColor(stage){ return phaseColorRapid(stage); }
+function humanPhase(stage) { return humanPhaseRapid(stage); }
+
+// RapidAPI standings structure:
+// data = array of league standings
+// data[0].league.standings = array of groups
+// each group = array of team standing objects
+function processStandingsRapid(data){
+  standings = {};
+  if(!data.length) return;
+  const groups = data[0]?.league?.standings || [];
+  groups.forEach(group => {
+    if(!group.length) return;
+    // Determine group letter from first team's group field
+    const grpLetter = group[0]?.group?.replace('Group ','') || null;
+    if(!grpLetter || !GC[grpLetter]) return;
+    standings[grpLetter] = group.map(r => ({
+      pos:    r.rank,
+      team:   r.team.name,
+      played: r.all.played,
+      won:    r.all.win,
+      draw:   r.all.draw,
+      lost:   r.all.lose,
+      gf:     r.all.goals.for,
+      ga:     r.all.goals.against,
+      gd:     r.goalsDiff,
+      pts:    r.points,
+    }));
+  });
 }
 
 function processStandings(data){
@@ -353,89 +425,131 @@ function processStandings(data){
   });
 }
 
-// ─── FALLBACK — dates/heures pré-calculées UTC+1 (Casablanca), aucune dépendance navigateur ──
+// ─── FALLBACK — source officielle kickoffclock.com (FIFA), UTC+1 Casablanca ────────
+// Stades et villes 100% vérifiés. 72 matchs groupe + 32 matchs KO = 104 total.
 function loadFallback(){
-  const raw = [
-    {id:"M1",  date:"Jeudi 11 Juin",      time:"18h00", dayKey:"2026-06-11", grp:"A", t1:"Mexique",        t2:"Afrique du Sud", city:"Mexico City",    last:false},
-    {id:"M2",  date:"Vendredi 12 Juin",   time:"15h00", dayKey:"2026-06-12", grp:"A", t1:"Corée du Sud",   t2:"Tchéquie",       city:"Guadalajara",    last:false},
-    {id:"M7",  date:"Vendredi 12 Juin",   time:"20h00", dayKey:"2026-06-12", grp:"B", t1:"Canada",         t2:"Bosnie-H.",      city:"Toronto",        last:false},
-    {id:"M19", date:"Samedi 13 Juin",     time:"14h00", dayKey:"2026-06-13", grp:"D", t1:"USA",            t2:"Paraguay",       city:"Los Angeles",    last:false},
-    {id:"M8",  date:"Samedi 13 Juin",     time:"20h00", dayKey:"2026-06-13", grp:"B", t1:"Qatar",          t2:"Suisse",         city:"San Francisco",  last:false},
-    {id:"M13", date:"Samedi 13 Juin",     time:"23h00", dayKey:"2026-06-13", grp:"C", t1:"Brésil",         t2:"Maroc",          city:"New York/NJ",    last:false},
-    {id:"M14", date:"Dimanche 14 Juin",   time:"02h00", dayKey:"2026-06-14", grp:"C", t1:"Écosse",         t2:"Haïti",          city:"Boston",         last:false},
-    {id:"M20", date:"Dimanche 14 Juin",   time:"05h00", dayKey:"2026-06-14", grp:"D", t1:"Australie",      t2:"Turquie",        city:"Vancouver",      last:false},
-    {id:"M25", date:"Dimanche 14 Juin",   time:"18h00", dayKey:"2026-06-14", grp:"E", t1:"Allemagne",      t2:"Curaçao",        city:"Houston",        last:false},
-    {id:"M31", date:"Dimanche 14 Juin",   time:"21h00", dayKey:"2026-06-14", grp:"F", t1:"Pays-Bas",       t2:"Japon",          city:"Dallas",         last:false},
-    {id:"M26", date:"Lundi 15 Juin",      time:"00h00", dayKey:"2026-06-15", grp:"E", t1:"Côte d'Ivoire", t2:"Équateur",       city:"Philadelphie",   last:false},
-    {id:"M32", date:"Lundi 15 Juin",      time:"03h00", dayKey:"2026-06-15", grp:"F", t1:"Suède",          t2:"Tunisie",        city:"Monterrey",      last:false},
-    {id:"M43", date:"Lundi 15 Juin",      time:"17h00", dayKey:"2026-06-15", grp:"H", t1:"Espagne",        t2:"Cap-Vert",       city:"Atlanta",        last:false},
-    {id:"M37", date:"Lundi 15 Juin",      time:"20h00", dayKey:"2026-06-15", grp:"G", t1:"Belgique",       t2:"Égypte",         city:"Seattle",        last:false},
-    {id:"M44", date:"Lundi 15 Juin",      time:"23h00", dayKey:"2026-06-15", grp:"H", t1:"Arabie S.",      t2:"Uruguay",        city:"Miami",          last:false},
-    {id:"M38", date:"Mardi 16 Juin",      time:"02h00", dayKey:"2026-06-16", grp:"G", t1:"Iran",           t2:"Nv-Zélande",     city:"Los Angeles",    last:false},
-    {id:"M49", date:"Mardi 16 Juin",      time:"20h00", dayKey:"2026-06-16", grp:"I", t1:"France",         t2:"Sénégal",        city:"New York/NJ",    last:false},
-    {id:"M50", date:"Mardi 16 Juin",      time:"23h00", dayKey:"2026-06-16", grp:"I", t1:"Irak",           t2:"Norvège",        city:"Boston",         last:false},
-    {id:"M55", date:"Mercredi 17 Juin",   time:"02h00", dayKey:"2026-06-17", grp:"J", t1:"Argentine",      t2:"Algérie",        city:"Kansas City",    last:false},
-    {id:"M56", date:"Mercredi 17 Juin",   time:"05h00", dayKey:"2026-06-17", grp:"J", t1:"Autriche",       t2:"Jordanie",       city:"San Francisco",  last:false},
-    {id:"M61", date:"Mercredi 17 Juin",   time:"18h00", dayKey:"2026-06-17", grp:"K", t1:"Portugal",       t2:"Congo RD",       city:"Houston",        last:false},
-    {id:"M67", date:"Mercredi 17 Juin",   time:"21h00", dayKey:"2026-06-17", grp:"L", t1:"Angleterre",     t2:"Croatie",        city:"Dallas",         last:false},
-    {id:"M68", date:"Jeudi 18 Juin",      time:"00h00", dayKey:"2026-06-18", grp:"L", t1:"Ghana",          t2:"Panama",         city:"Toronto",        last:false},
-    {id:"M62", date:"Jeudi 18 Juin",      time:"03h00", dayKey:"2026-06-18", grp:"K", t1:"Ouzbékistan",    t2:"Colombie",       city:"Mexico City",    last:false},
-    {id:"M4",  date:"Jeudi 18 Juin",      time:"17h00", dayKey:"2026-06-18", grp:"A", t1:"Corée du Sud",   t2:"Afrique du Sud", city:"Atlanta",        last:false},
-    {id:"M10", date:"Jeudi 18 Juin",      time:"20h00", dayKey:"2026-06-18", grp:"B", t1:"Suisse",         t2:"Bosnie-H.",      city:"Los Angeles",    last:false},
-    {id:"M9",  date:"Jeudi 18 Juin",      time:"23h00", dayKey:"2026-06-18", grp:"B", t1:"Canada",         t2:"Qatar",          city:"Vancouver",      last:false},
-    {id:"M3",  date:"Vendredi 19 Juin",   time:"02h00", dayKey:"2026-06-19", grp:"A", t1:"Mexique",        t2:"Corée du Sud",   city:"Guadalajara",    last:false},
-    {id:"M16", date:"Vendredi 19 Juin",   time:"23h00", dayKey:"2026-06-19", grp:"C", t1:"Maroc",          t2:"Écosse",         city:"Seattle",        last:false},
-    {id:"M21", date:"Vendredi 19 Juin",   time:"23h00", dayKey:"2026-06-19", grp:"D", t1:"USA",            t2:"Australie",      city:"Seattle",        last:false},
-    {id:"M15", date:"Samedi 20 Juin",     time:"02h00", dayKey:"2026-06-20", grp:"C", t1:"Brésil",         t2:"Haïti",          city:"Philadelphie",   last:false},
-    {id:"M22", date:"Samedi 20 Juin",     time:"05h00", dayKey:"2026-06-20", grp:"D", t1:"Paraguay",       t2:"Turquie",        city:"Dallas",         last:false},
-    {id:"M27", date:"Samedi 20 Juin",     time:"23h00", dayKey:"2026-06-20", grp:"E", t1:"Allemagne",      t2:"Équateur",       city:"Dallas",         last:false},
-    {id:"M28", date:"Dimanche 21 Juin",   time:"02h00", dayKey:"2026-06-21", grp:"E", t1:"Côte d'Ivoire", t2:"Curaçao",        city:"Miami",          last:false},
-    {id:"M33", date:"Dimanche 21 Juin",   time:"05h00", dayKey:"2026-06-21", grp:"F", t1:"Pays-Bas",       t2:"Tunisie",        city:"Houston",        last:false},
-    {id:"M34", date:"Dimanche 21 Juin",   time:"06h00", dayKey:"2026-06-21", grp:"F", t1:"Japon",          t2:"Suède",          city:"Kansas City",    last:false},
-    {id:"M39", date:"Dimanche 21 Juin",   time:"23h00", dayKey:"2026-06-21", grp:"G", t1:"Belgique",       t2:"Nv-Zélande",     city:"Boston",         last:false},
-    {id:"M46", date:"Lundi 22 Juin",      time:"00h00", dayKey:"2026-06-22", grp:"H", t1:"Arabie S.",      t2:"Cap-Vert",       city:"Houston",        last:false},
-    {id:"M40", date:"Lundi 22 Juin",      time:"02h00", dayKey:"2026-06-22", grp:"G", t1:"Égypte",         t2:"Iran",           city:"Dallas",         last:false},
-    {id:"M45", date:"Lundi 22 Juin",      time:"03h00", dayKey:"2026-06-22", grp:"H", t1:"Espagne",        t2:"Uruguay",        city:"Kansas City",    last:false},
-    {id:"M52", date:"Lundi 22 Juin",      time:"23h00", dayKey:"2026-06-22", grp:"I", t1:"Sénégal",        t2:"Norvège",        city:"Vancouver",      last:false},
-    {id:"M51", date:"Mardi 23 Juin",      time:"02h00", dayKey:"2026-06-23", grp:"I", t1:"France",         t2:"Irak",           city:"Los Angeles",    last:false},
-    {id:"M57", date:"Mardi 23 Juin",      time:"02h00", dayKey:"2026-06-23", grp:"J", t1:"Argentine",      t2:"Jordanie",       city:"Miami",          last:false},
-    {id:"M58", date:"Mardi 23 Juin",      time:"05h00", dayKey:"2026-06-23", grp:"J", t1:"Algérie",        t2:"Autriche",       city:"New York/NJ",    last:false},
-    {id:"M64", date:"Mardi 23 Juin",      time:"23h00", dayKey:"2026-06-23", grp:"K", t1:"Congo RD",       t2:"Ouzbékistan",    city:"Monterrey",      last:false},
-    {id:"M24", date:"Mercredi 24 Juin",   time:"00h00", dayKey:"2026-06-24", grp:"D", t1:"Australie",      t2:"Paraguay",       city:"Kansas City",    last:false},
-    {id:"M23", date:"Mercredi 24 Juin",   time:"03h00", dayKey:"2026-06-24", grp:"D", t1:"USA",            t2:"Turquie",        city:"Houston",        last:false},
-    {id:"M63", date:"Mercredi 24 Juin",   time:"07h00", dayKey:"2026-06-24", grp:"K", t1:"Portugal",       t2:"Colombie",       city:"Los Angeles",    last:false},
-    {id:"M70", date:"Jeudi 25 Juin",      time:"00h00", dayKey:"2026-06-25", grp:"L", t1:"Croatie",        t2:"Ghana",          city:"Atlanta",        last:false},
-    {id:"M29", date:"Jeudi 25 Juin",      time:"00h00", dayKey:"2026-06-25", grp:"E", t1:"Allemagne",      t2:"Côte d'Ivoire", city:"Atlanta",        last:true},
-    {id:"M30", date:"Jeudi 25 Juin",      time:"00h00", dayKey:"2026-06-25", grp:"E", t1:"Équateur",       t2:"Curaçao",        city:"Philadelphie",   last:true},
-    {id:"M69", date:"Jeudi 25 Juin",      time:"03h00", dayKey:"2026-06-25", grp:"L", t1:"Angleterre",     t2:"Panama",         city:"Miami",          last:false},
-    {id:"M11", date:"Jeudi 25 Juin",      time:"20h00", dayKey:"2026-06-25", grp:"B", t1:"Suisse",         t2:"Canada",         city:"Toronto",        last:true},
-    {id:"M12", date:"Jeudi 25 Juin",      time:"20h00", dayKey:"2026-06-25", grp:"B", t1:"Bosnie-H.",      t2:"Qatar",          city:"Vancouver",      last:true},
-    {id:"M35", date:"Vendredi 26 Juin",   time:"00h00", dayKey:"2026-06-26", grp:"F", t1:"Japon",          t2:"Suède",          city:"Seattle",        last:true},
-    {id:"M36", date:"Vendredi 26 Juin",   time:"00h00", dayKey:"2026-06-26", grp:"F", t1:"Tunisie",        t2:"Pays-Bas",       city:"Los Angeles",    last:true},
-    {id:"M53", date:"Vendredi 26 Juin",   time:"20h00", dayKey:"2026-06-26", grp:"I", t1:"Norvège",        t2:"France",         city:"Seattle",        last:true},
-    {id:"M54", date:"Vendredi 26 Juin",   time:"20h00", dayKey:"2026-06-26", grp:"I", t1:"Sénégal",        t2:"Irak",           city:"Miami",          last:true},
-    {id:"M47", date:"Samedi 27 Juin",     time:"01h00", dayKey:"2026-06-27", grp:"H", t1:"Espagne",        t2:"Arabie S.",      city:"Atlanta",        last:true},
-    {id:"M48", date:"Samedi 27 Juin",     time:"01h00", dayKey:"2026-06-27", grp:"H", t1:"Uruguay",        t2:"Cap-Vert",       city:"Miami",          last:true},
-    {id:"M41", date:"Samedi 27 Juin",     time:"04h00", dayKey:"2026-06-27", grp:"G", t1:"Belgique",       t2:"Iran",           city:"Los Angeles",    last:true},
-    {id:"M42", date:"Samedi 27 Juin",     time:"04h00", dayKey:"2026-06-27", grp:"G", t1:"Égypte",         t2:"Nv-Zélande",     city:"Seattle",        last:true},
-    {id:"M71", date:"Samedi 27 Juin",     time:"22h00", dayKey:"2026-06-27", grp:"L", t1:"Panama",         t2:"Angleterre",     city:"Kansas City",    last:true},
-    {id:"M72", date:"Samedi 27 Juin",     time:"22h00", dayKey:"2026-06-27", grp:"L", t1:"Croatie",        t2:"Ghana",          city:"Boston",         last:true},
-    {id:"M65", date:"Dimanche 28 Juin",   time:"00h30", dayKey:"2026-06-28", grp:"K", t1:"Colombie",       t2:"Portugal",       city:"Houston",        last:true},
-    {id:"M66", date:"Dimanche 28 Juin",   time:"00h30", dayKey:"2026-06-28", grp:"K", t1:"Congo RD",       t2:"Ouzbékistan",    city:"Monterrey",      last:true},
-    {id:"M59", date:"Dimanche 28 Juin",   time:"03h00", dayKey:"2026-06-28", grp:"J", t1:"Algérie",        t2:"Autriche",       city:"Dallas",         last:true},
-    {id:"M60", date:"Dimanche 28 Juin",   time:"03h00", dayKey:"2026-06-28", grp:"J", t1:"Jordanie",       t2:"Argentine",      city:"Houston",        last:true},
-    {id:"M5",  date:"Dimanche 28 Juin",   time:"03h00", dayKey:"2026-06-28", grp:"A", t1:"Mexique",        t2:"Tchéquie",       city:"Guadalajara",    last:true},
-    {id:"M6",  date:"Dimanche 28 Juin",   time:"03h00", dayKey:"2026-06-28", grp:"A", t1:"Afrique du Sud", t2:"Corée du Sud",   city:"Atlanta",        last:true},
-    {id:"M17", date:"Dimanche 28 Juin",   time:"03h00", dayKey:"2026-06-28", grp:"C", t1:"Brésil",         t2:"Écosse",         city:"Miami",          last:true},
-    {id:"M18", date:"Dimanche 28 Juin",   time:"03h00", dayKey:"2026-06-28", grp:"C", t1:"Maroc",          t2:"Haïti",          city:"Houston",        last:true},
+  const grpRaw = [
+    {id:"M1", date:"Jeudi 11 Juin", time:"20h00", dayKey:"2026-06-11", grp:"A", t1:"Mexique", t2:"Afrique du Sud", venue:"Estadio Azteca", city:"Mexico City", last:false},
+    {id:"M2", date:"Vendredi 12 Juin", time:"03h00", dayKey:"2026-06-12", grp:"A", t1:"Corée du Sud", t2:"Tchéquie", venue:"Estadio Akron", city:"Guadalajara", last:false},
+    {id:"M3", date:"Vendredi 12 Juin", time:"20h00", dayKey:"2026-06-12", grp:"B", t1:"Canada", t2:"Bosnie-H.", venue:"BMO Field", city:"Toronto", last:false},
+    {id:"M4", date:"Samedi 13 Juin", time:"02h00", dayKey:"2026-06-13", grp:"D", t1:"USA", t2:"Paraguay", venue:"SoFi Stadium", city:"Inglewood", last:false},
+    {id:"M5", date:"Samedi 13 Juin", time:"20h00", dayKey:"2026-06-13", grp:"B", t1:"Qatar", t2:"Suisse", venue:"Levi's Stadium", city:"Santa Clara", last:false},
+    {id:"M6", date:"Samedi 13 Juin", time:"23h00", dayKey:"2026-06-13", grp:"C", t1:"Brésil", t2:"Maroc", venue:"MetLife Stadium", city:"East Rutherford", last:false},
+    {id:"M7", date:"Dimanche 14 Juin", time:"02h00", dayKey:"2026-06-14", grp:"C", t1:"Haïti", t2:"Écosse", venue:"Gillette Stadium", city:"Foxborough", last:false},
+    {id:"M8", date:"Dimanche 14 Juin", time:"17h00", dayKey:"2026-06-14", grp:"D", t1:"Australie", t2:"Turquie", venue:"BC Place", city:"Vancouver", last:false},
+    {id:"M9", date:"Dimanche 14 Juin", time:"18h00", dayKey:"2026-06-14", grp:"E", t1:"Allemagne", t2:"Curaçao", venue:"NRG Stadium", city:"Houston", last:false},
+    {id:"M10", date:"Dimanche 14 Juin", time:"21h00", dayKey:"2026-06-14", grp:"F", t1:"Pays-Bas", t2:"Japon", venue:"AT&T Stadium", city:"Arlington", last:false},
+    {id:"M11", date:"Lundi 15 Juin", time:"00h00", dayKey:"2026-06-15", grp:"E", t1:"Côte d\'Ivoire", t2:"Équateur", venue:"Lincoln Financial Field", city:"Philadelphia", last:false},
+    {id:"M12", date:"Lundi 15 Juin", time:"03h00", dayKey:"2026-06-15", grp:"F", t1:"Suède", t2:"Tunisie", venue:"Estadio BBVA", city:"Monterrey", last:false},
+    {id:"M13", date:"Lundi 15 Juin", time:"17h00", dayKey:"2026-06-15", grp:"H", t1:"Espagne", t2:"Cap-Vert", venue:"Mercedes-Benz Stadium", city:"Atlanta", last:false},
+    {id:"M14", date:"Lundi 15 Juin", time:"20h00", dayKey:"2026-06-15", grp:"G", t1:"Belgique", t2:"Égypte", venue:"Lumen Field", city:"Seattle", last:false},
+    {id:"M15", date:"Lundi 15 Juin", time:"23h00", dayKey:"2026-06-15", grp:"H", t1:"Arabie S.", t2:"Uruguay", venue:"Hard Rock Stadium", city:"Miami Gardens", last:false},
+    {id:"M16", date:"Mardi 16 Juin", time:"02h00", dayKey:"2026-06-16", grp:"G", t1:"Iran", t2:"Nv-Zélande", venue:"SoFi Stadium", city:"Inglewood", last:false},
+    {id:"M17", date:"Mardi 16 Juin", time:"20h00", dayKey:"2026-06-16", grp:"I", t1:"France", t2:"Sénégal", venue:"MetLife Stadium", city:"East Rutherford", last:false},
+    {id:"M18", date:"Mardi 16 Juin", time:"23h00", dayKey:"2026-06-16", grp:"I", t1:"Irak", t2:"Norvège", venue:"Gillette Stadium", city:"Foxborough", last:false},
+    {id:"M19", date:"Mercredi 17 Juin", time:"02h00", dayKey:"2026-06-17", grp:"J", t1:"Argentine", t2:"Algérie", venue:"Arrowhead Stadium", city:"Kansas City", last:false},
+    {id:"M20", date:"Mercredi 17 Juin", time:"05h00", dayKey:"2026-06-17", grp:"J", t1:"Autriche", t2:"Jordanie", venue:"Levi's Stadium", city:"Santa Clara", last:false},
+    {id:"M21", date:"Mercredi 17 Juin", time:"18h00", dayKey:"2026-06-17", grp:"K", t1:"Portugal", t2:"Congo RD", venue:"NRG Stadium", city:"Houston", last:false},
+    {id:"M22", date:"Mercredi 17 Juin", time:"21h00", dayKey:"2026-06-17", grp:"L", t1:"Angleterre", t2:"Croatie", venue:"AT&T Stadium", city:"Arlington", last:false},
+    {id:"M23", date:"Jeudi 18 Juin", time:"00h00", dayKey:"2026-06-18", grp:"L", t1:"Ghana", t2:"Panama", venue:"BMO Field", city:"Toronto", last:false},
+    {id:"M24", date:"Jeudi 18 Juin", time:"03h00", dayKey:"2026-06-18", grp:"K", t1:"Ouzbékistan", t2:"Colombie", venue:"Estadio Azteca", city:"Mexico City", last:false},
+    {id:"M25", date:"Jeudi 18 Juin", time:"17h00", dayKey:"2026-06-18", grp:"A", t1:"Tchéquie", t2:"Afrique du Sud", venue:"Mercedes-Benz Stadium", city:"Atlanta", last:false},
+    {id:"M26", date:"Jeudi 18 Juin", time:"20h00", dayKey:"2026-06-18", grp:"B", t1:"Suisse", t2:"Bosnie-H.", venue:"SoFi Stadium", city:"Inglewood", last:false},
+    {id:"M27", date:"Jeudi 18 Juin", time:"23h00", dayKey:"2026-06-18", grp:"B", t1:"Canada", t2:"Qatar", venue:"BC Place", city:"Vancouver", last:false},
+    {id:"M28", date:"Vendredi 19 Juin", time:"02h00", dayKey:"2026-06-19", grp:"A", t1:"Mexique", t2:"Corée du Sud", venue:"Estadio Akron", city:"Guadalajara", last:false},
+    {id:"M29", date:"Vendredi 19 Juin", time:"20h00", dayKey:"2026-06-19", grp:"D", t1:"USA", t2:"Australie", venue:"Lumen Field", city:"Seattle", last:false},
+    {id:"M30", date:"Vendredi 19 Juin", time:"23h00", dayKey:"2026-06-19", grp:"C", t1:"Écosse", t2:"Maroc", venue:"Gillette Stadium", city:"Foxborough", last:false},
+    {id:"M31", date:"Samedi 20 Juin", time:"01h30", dayKey:"2026-06-20", grp:"C", t1:"Brésil", t2:"Haïti", venue:"Lincoln Financial Field", city:"Philadelphia", last:false},
+    {id:"M32", date:"Samedi 20 Juin", time:"04h00", dayKey:"2026-06-20", grp:"D", t1:"Turquie", t2:"Paraguay", venue:"Levi's Stadium", city:"Santa Clara", last:false},
+    {id:"M33", date:"Samedi 20 Juin", time:"18h00", dayKey:"2026-06-20", grp:"F", t1:"Pays-Bas", t2:"Suède", venue:"NRG Stadium", city:"Houston", last:false},
+    {id:"M34", date:"Samedi 20 Juin", time:"21h00", dayKey:"2026-06-20", grp:"E", t1:"Allemagne", t2:"Côte d\'Ivoire", venue:"BMO Field", city:"Toronto", last:false},
+    {id:"M35", date:"Dimanche 21 Juin", time:"01h00", dayKey:"2026-06-21", grp:"E", t1:"Équateur", t2:"Curaçao", venue:"Arrowhead Stadium", city:"Kansas City", last:false},
+    {id:"M36", date:"Dimanche 21 Juin", time:"05h00", dayKey:"2026-06-21", grp:"F", t1:"Tunisie", t2:"Japon", venue:"Estadio BBVA", city:"Monterrey", last:false},
+    {id:"M37", date:"Dimanche 21 Juin", time:"17h00", dayKey:"2026-06-21", grp:"H", t1:"Espagne", t2:"Arabie S.", venue:"Mercedes-Benz Stadium", city:"Atlanta", last:false},
+    {id:"M38", date:"Dimanche 21 Juin", time:"20h00", dayKey:"2026-06-21", grp:"G", t1:"Belgique", t2:"Iran", venue:"SoFi Stadium", city:"Inglewood", last:false},
+    {id:"M39", date:"Dimanche 21 Juin", time:"23h00", dayKey:"2026-06-21", grp:"H", t1:"Uruguay", t2:"Cap-Vert", venue:"Hard Rock Stadium", city:"Miami Gardens", last:false},
+    {id:"M40", date:"Lundi 22 Juin", time:"02h00", dayKey:"2026-06-22", grp:"G", t1:"Nv-Zélande", t2:"Égypte", venue:"BC Place", city:"Vancouver", last:false},
+    {id:"M41", date:"Lundi 22 Juin", time:"18h00", dayKey:"2026-06-22", grp:"J", t1:"Argentine", t2:"Autriche", venue:"AT&T Stadium", city:"Arlington", last:false},
+    {id:"M42", date:"Lundi 22 Juin", time:"22h00", dayKey:"2026-06-22", grp:"I", t1:"France", t2:"Irak", venue:"Lincoln Financial Field", city:"Philadelphia", last:false},
+    {id:"M43", date:"Mardi 23 Juin", time:"01h00", dayKey:"2026-06-23", grp:"I", t1:"Norvège", t2:"Sénégal", venue:"MetLife Stadium", city:"East Rutherford", last:false},
+    {id:"M44", date:"Mardi 23 Juin", time:"04h00", dayKey:"2026-06-23", grp:"J", t1:"Jordanie", t2:"Algérie", venue:"Levi's Stadium", city:"Santa Clara", last:false},
+    {id:"M45", date:"Mardi 23 Juin", time:"18h00", dayKey:"2026-06-23", grp:"K", t1:"Portugal", t2:"Ouzbékistan", venue:"NRG Stadium", city:"Houston", last:false},
+    {id:"M46", date:"Mardi 23 Juin", time:"21h00", dayKey:"2026-06-23", grp:"L", t1:"Angleterre", t2:"Ghana", venue:"Gillette Stadium", city:"Foxborough", last:false},
+    {id:"M47", date:"Mercredi 24 Juin", time:"00h00", dayKey:"2026-06-24", grp:"L", t1:"Panama", t2:"Croatie", venue:"BMO Field", city:"Toronto", last:false},
+    {id:"M48", date:"Mercredi 24 Juin", time:"03h00", dayKey:"2026-06-24", grp:"K", t1:"Colombie", t2:"Congo RD", venue:"Estadio Akron", city:"Guadalajara", last:false},
+    {id:"M49", date:"Mercredi 24 Juin", time:"20h00", dayKey:"2026-06-24", grp:"B", t1:"Suisse", t2:"Canada", venue:"BC Place", city:"Vancouver", last:true},
+    {id:"M50", date:"Mercredi 24 Juin", time:"20h00", dayKey:"2026-06-24", grp:"B", t1:"Bosnie-H.", t2:"Qatar", venue:"Lumen Field", city:"Seattle", last:true},
+    {id:"M51", date:"Mercredi 24 Juin", time:"23h00", dayKey:"2026-06-24", grp:"C", t1:"Écosse", t2:"Brésil", venue:"Hard Rock Stadium", city:"Miami Gardens", last:true},
+    {id:"M52", date:"Mercredi 24 Juin", time:"23h00", dayKey:"2026-06-24", grp:"C", t1:"Maroc", t2:"Haïti", venue:"Mercedes-Benz Stadium", city:"Atlanta", last:true},
+    {id:"M53", date:"Jeudi 25 Juin", time:"02h00", dayKey:"2026-06-25", grp:"A", t1:"Tchéquie", t2:"Mexique", venue:"Estadio Azteca", city:"Mexico City", last:true},
+    {id:"M54", date:"Jeudi 25 Juin", time:"02h00", dayKey:"2026-06-25", grp:"A", t1:"Afrique du Sud", t2:"Corée du Sud", venue:"Estadio BBVA", city:"Monterrey", last:true},
+    {id:"M55", date:"Jeudi 25 Juin", time:"21h00", dayKey:"2026-06-25", grp:"E", t1:"Curaçao", t2:"Côte d\'Ivoire", venue:"Lincoln Financial Field", city:"Philadelphia", last:true},
+    {id:"M56", date:"Jeudi 25 Juin", time:"21h00", dayKey:"2026-06-25", grp:"E", t1:"Équateur", t2:"Allemagne", venue:"MetLife Stadium", city:"East Rutherford", last:true},
+    {id:"M57", date:"Vendredi 26 Juin", time:"00h00", dayKey:"2026-06-26", grp:"F", t1:"Japon", t2:"Suède", venue:"AT&T Stadium", city:"Arlington", last:true},
+    {id:"M58", date:"Vendredi 26 Juin", time:"00h00", dayKey:"2026-06-26", grp:"F", t1:"Tunisie", t2:"Pays-Bas", venue:"Arrowhead Stadium", city:"Kansas City", last:true},
+    {id:"M59", date:"Vendredi 26 Juin", time:"03h00", dayKey:"2026-06-26", grp:"D", t1:"Turquie", t2:"USA", venue:"SoFi Stadium", city:"Inglewood", last:true},
+    {id:"M60", date:"Vendredi 26 Juin", time:"03h00", dayKey:"2026-06-26", grp:"D", t1:"Paraguay", t2:"Australie", venue:"Levi's Stadium", city:"Santa Clara", last:true},
+    {id:"M61", date:"Vendredi 26 Juin", time:"20h00", dayKey:"2026-06-26", grp:"I", t1:"Norvège", t2:"France", venue:"Gillette Stadium", city:"Foxborough", last:true},
+    {id:"M62", date:"Vendredi 26 Juin", time:"20h00", dayKey:"2026-06-26", grp:"I", t1:"Sénégal", t2:"Irak", venue:"BMO Field", city:"Toronto", last:true},
+    {id:"M63", date:"Samedi 27 Juin", time:"01h00", dayKey:"2026-06-27", grp:"H", t1:"Cap-Vert", t2:"Arabie S.", venue:"NRG Stadium", city:"Houston", last:true},
+    {id:"M64", date:"Samedi 27 Juin", time:"01h00", dayKey:"2026-06-27", grp:"H", t1:"Uruguay", t2:"Espagne", venue:"Estadio Akron", city:"Guadalajara", last:true},
+    {id:"M65", date:"Samedi 27 Juin", time:"04h00", dayKey:"2026-06-27", grp:"G", t1:"Égypte", t2:"Iran", venue:"Lumen Field", city:"Seattle", last:true},
+    {id:"M66", date:"Samedi 27 Juin", time:"04h00", dayKey:"2026-06-27", grp:"G", t1:"Nv-Zélande", t2:"Belgique", venue:"BC Place", city:"Vancouver", last:true},
+    {id:"M67", date:"Samedi 27 Juin", time:"22h00", dayKey:"2026-06-27", grp:"L", t1:"Panama", t2:"Angleterre", venue:"MetLife Stadium", city:"East Rutherford", last:true},
+    {id:"M68", date:"Samedi 27 Juin", time:"22h00", dayKey:"2026-06-27", grp:"L", t1:"Croatie", t2:"Ghana", venue:"Lincoln Financial Field", city:"Philadelphia", last:true},
+    {id:"M69", date:"Dimanche 28 Juin", time:"00h30", dayKey:"2026-06-28", grp:"K", t1:"Colombie", t2:"Portugal", venue:"Hard Rock Stadium", city:"Miami Gardens", last:true},
+    {id:"M70", date:"Dimanche 28 Juin", time:"00h30", dayKey:"2026-06-28", grp:"K", t1:"Congo RD", t2:"Ouzbékistan", venue:"Mercedes-Benz Stadium", city:"Atlanta", last:true},
+    {id:"M71", date:"Dimanche 28 Juin", time:"03h00", dayKey:"2026-06-28", grp:"J", t1:"Algérie", t2:"Autriche", venue:"Arrowhead Stadium", city:"Kansas City", last:true},
+    {id:"M72", date:"Dimanche 28 Juin", time:"03h00", dayKey:"2026-06-28", grp:"J", t1:"Jordanie", t2:"Argentine", venue:"AT&T Stadium", city:"Arlington", last:true},
   ];
-  allMatches = raw.map(m => ({
-    ...m,
-    dateLabel: m.date,
-    color: GC[m.grp],
-    phase: 'Groupe', score: null, status: 'SCHEDULED',
-    isLive: false, isFT: false, ko: false,
-  }));
+  const koRaw = [
+    {id:"M73", date:"Dimanche 28 Juin", time:"20h00", dayKey:"2026-06-28", phase:"32es", color:"#8b5cf6", t1:"2e Gr.A", t2:"2e Gr.B", venue:"SoFi Stadium", city:"Inglewood"},
+    {id:"M76", date:"Lundi 29 Juin", time:"19h00", dayKey:"2026-06-29", phase:"32es", color:"#8b5cf6", t1:"1er Gr.C", t2:"3e B/C/D", venue:"NRG Stadium", city:"Houston"},
+    {id:"M74", date:"Lundi 29 Juin", time:"21h30", dayKey:"2026-06-29", phase:"32es", color:"#8b5cf6", t1:"1er Gr.E", t2:"3e A/B/C/D/F", venue:"Gillette Stadium", city:"Foxborough"},
+    {id:"M75", date:"Mardi 30 Juin", time:"02h00", dayKey:"2026-06-30", phase:"32es", color:"#8b5cf6", t1:"1er Gr.F", t2:"3e C/D/E", venue:"Estadio BBVA", city:"Monterrey"},
+    {id:"M78", date:"Mardi 30 Juin", time:"18h00", dayKey:"2026-06-30", phase:"32es", color:"#8b5cf6", t1:"2e Gr.E", t2:"2e Gr.I", venue:"AT&T Stadium", city:"Arlington"},
+    {id:"M77", date:"Mardi 30 Juin", time:"22h00", dayKey:"2026-06-30", phase:"32es", color:"#8b5cf6", t1:"1er Gr.I", t2:"3e C/D/F/G/H", venue:"MetLife Stadium", city:"East Rutherford"},
+    {id:"M79", date:"Mercredi 1 Juillet", time:"02h00", dayKey:"2026-07-01", phase:"32es", color:"#8b5cf6", t1:"1er Gr.A", t2:"3e C/E/F/H/I", venue:"Estadio Azteca", city:"Mexico City"},
+    {id:"M80", date:"Mercredi 1 Juillet", time:"18h00", dayKey:"2026-07-01", phase:"32es", color:"#8b5cf6", t1:"1er Gr.L", t2:"3e E/H/I/J/K", venue:"Mercedes-Benz Stadium", city:"Atlanta"},
+    {id:"M82", date:"Mercredi 1 Juillet", time:"21h00", dayKey:"2026-07-01", phase:"32es", color:"#8b5cf6", t1:"1er Gr.G", t2:"3e A/E/H/I/J", venue:"Lumen Field", city:"Seattle"},
+    {id:"M81", date:"Jeudi 2 Juillet", time:"01h00", dayKey:"2026-07-02", phase:"32es", color:"#8b5cf6", t1:"1er Gr.D", t2:"3e B/E/F/I/J", venue:"Levi's Stadium", city:"Santa Clara"},
+    {id:"M84", date:"Jeudi 2 Juillet", time:"20h00", dayKey:"2026-07-02", phase:"32es", color:"#8b5cf6", t1:"1er Gr.H", t2:"2e Gr.J", venue:"SoFi Stadium", city:"Inglewood"},
+    {id:"M83", date:"Vendredi 3 Juillet", time:"00h00", dayKey:"2026-07-03", phase:"32es", color:"#8b5cf6", t1:"2e Gr.K", t2:"2e Gr.L", venue:"BMO Field", city:"Toronto"},
+    {id:"M85", date:"Vendredi 3 Juillet", time:"04h00", dayKey:"2026-07-03", phase:"32es", color:"#8b5cf6", t1:"1er Gr.B", t2:"3e E/F/G/I/J", venue:"BC Place", city:"Vancouver"},
+    {id:"M88", date:"Vendredi 3 Juillet", time:"19h00", dayKey:"2026-07-03", phase:"32es", color:"#8b5cf6", t1:"2e Gr.D", t2:"2e Gr.G", venue:"AT&T Stadium", city:"Arlington"},
+    {id:"M86", date:"Vendredi 3 Juillet", time:"23h00", dayKey:"2026-07-03", phase:"32es", color:"#8b5cf6", t1:"1er Gr.J", t2:"2e Gr.H", venue:"Hard Rock Stadium", city:"Miami Gardens"},
+    {id:"M87", date:"Samedi 4 Juillet", time:"02h30", dayKey:"2026-07-04", phase:"32es", color:"#8b5cf6", t1:"1er Gr.K", t2:"3e D/E/I/J/L", venue:"Arrowhead Stadium", city:"Kansas City"},
+    {id:"M89", date:"Samedi 4 Juillet", time:"18h00", dayKey:"2026-07-04", phase:"16es", color:"#f59e0b", t1:"V M73", t2:"V M75", venue:"NRG Stadium", city:"Houston"},
+    {id:"M90", date:"Samedi 4 Juillet", time:"22h00", dayKey:"2026-07-04", phase:"16es", color:"#f59e0b", t1:"V M74", t2:"V M76", venue:"Lincoln Financial Field", city:"Philadelphia"},
+    {id:"M91", date:"Dimanche 5 Juillet", time:"21h00", dayKey:"2026-07-05", phase:"16es", color:"#f59e0b", t1:"V M77", t2:"V M79", venue:"MetLife Stadium", city:"East Rutherford"},
+    {id:"M92", date:"Lundi 6 Juillet", time:"01h00", dayKey:"2026-07-06", phase:"16es", color:"#f59e0b", t1:"V M78", t2:"V M80", venue:"Estadio Azteca", city:"Mexico City"},
+    {id:"M93", date:"Lundi 6 Juillet", time:"20h00", dayKey:"2026-07-06", phase:"16es", color:"#f59e0b", t1:"V M81", t2:"V M83", venue:"AT&T Stadium", city:"Arlington"},
+    {id:"M94", date:"Mardi 7 Juillet", time:"01h00", dayKey:"2026-07-07", phase:"16es", color:"#f59e0b", t1:"V M82", t2:"V M84", venue:"Lumen Field", city:"Seattle"},
+    {id:"M95", date:"Mardi 7 Juillet", time:"17h00", dayKey:"2026-07-07", phase:"16es", color:"#f59e0b", t1:"V M85", t2:"V M87", venue:"Mercedes-Benz Stadium", city:"Atlanta"},
+    {id:"M96", date:"Mardi 7 Juillet", time:"21h00", dayKey:"2026-07-07", phase:"16es", color:"#f59e0b", t1:"V M86", t2:"V M88", venue:"BC Place", city:"Vancouver"},
+    {id:"QF1", date:"Jeudi 9 Juillet", time:"21h00", dayKey:"2026-07-09", phase:"Quarts", color:"#ef4444", t1:"V M89", t2:"V M91", venue:"Gillette Stadium", city:"Foxborough"},
+    {id:"QF2", date:"Vendredi 10 Juillet", time:"20h00", dayKey:"2026-07-10", phase:"Quarts", color:"#ef4444", t1:"V M90", t2:"V M92", venue:"SoFi Stadium", city:"Inglewood"},
+    {id:"QF3", date:"Samedi 11 Juillet", time:"21h00", dayKey:"2026-07-11", phase:"Quarts", color:"#ef4444", t1:"V M93", t2:"V M95", venue:"Hard Rock Stadium", city:"Miami Gardens"},
+    {id:"QF4", date:"Dimanche 12 Juillet", time:"02h00", dayKey:"2026-07-12", phase:"Quarts", color:"#ef4444", t1:"V M94", t2:"V M96", venue:"Arrowhead Stadium", city:"Kansas City"},
+    {id:"SF1", date:"Mardi 14 Juillet", time:"20h00", dayKey:"2026-07-14", phase:"Demis", color:"#f97316", t1:"V QF1", t2:"V QF2", venue:"AT&T Stadium", city:"Arlington"},
+    {id:"SF2", date:"Mercredi 15 Juillet", time:"20h00", dayKey:"2026-07-15", phase:"Demis", color:"#f97316", t1:"V QF3", t2:"V QF4", venue:"Mercedes-Benz Stadium", city:"Atlanta"},
+    {id:"3PL", date:"Samedi 18 Juillet", time:"22h00", dayKey:"2026-07-18", phase:"3e Place", color:"#64748b", t1:"Perdant SF1", t2:"Perdant SF2", venue:"Hard Rock Stadium", city:"Miami Gardens"},
+    {id:"FIN", date:"Dimanche 19 Juillet", time:"20h00", dayKey:"2026-07-19", phase:"Finale", color:"#fbbf24", t1:"Vainq. SF1", t2:"Vainq. SF2", venue:"MetLife Stadium", city:"East Rutherford"},
+  ];
+  allMatches = [
+    ...grpRaw.map(m => ({
+      ...m,
+      dateLabel: m.date,
+      color: GC[m.grp],
+      phase: 'Groupe',
+      score: null, status: 'SCHEDULED', isLive: false, isFT: false, ko: false,
+    })),
+    ...koRaw.map(m => ({
+      ...m,
+      dateLabel: m.date,
+      score: null, status: 'SCHEDULED', isLive: false, isFT: false, ko: true,
+    })),
+  ];
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
@@ -483,7 +597,7 @@ function renderMatchRow(m){
   // city
   const city=document.createElement('span');
   city.className='match-city';
-  city.textContent=m.city?'📍'+m.city:'';
+  city.textContent=m.city?(m.venue?'📍'+m.venue+' · '+m.city:'📍'+m.city):'';
 
   row.appendChild(bg);
   row.appendChild(mid);
@@ -619,11 +733,17 @@ function switchView(v){
   showView(v);
 }
 
-// ─── AUTO REFRESH (every 60s during live matches) ─────────────────────────────
-setInterval(()=>{
-  const hasLive=allMatches.some(m=>m.isLive);
-  if(hasLive)fetchAll();
-},60000);
+// ─── AUTO REFRESH ────────────────────────────────────────────────────────────
+// 30s si match en cours, 5min sinon
+function scheduleRefresh(){
+  const hasLive = allMatches.some(m => m.isLive);
+  const delay   = hasLive ? 30_000 : 300_000;
+  setTimeout(async () => {
+    await fetchAll();
+    scheduleRefresh();
+  }, delay);
+}
+scheduleRefresh();
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 fetchAll();
