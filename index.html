@@ -69,6 +69,9 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 #loading{text-align:center;padding:40px;color:#475569;font-size:12px}
 .spinner{display:inline-block;width:20px;height:20px;border:2px solid #1e3a5f;border-top-color:#0ea5e9;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px}
 .hidden{display:none!important}
+.modal-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px;}
+.modal-tab{flex:1;padding:8px;font-size:10px;font-weight:700;text-align:center;cursor:pointer;color:#475569;border:none;background:transparent;border-bottom:2px solid transparent;transition:all .15s;}
+.modal-tab.active{color:#0ea5e9;border-bottom-color:#0ea5e9;}
 .match-actions{display:flex;gap:4px;flex-shrink:0;}
 .action-btn{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px;font-size:11px;cursor:pointer;padding:2px 5px;transition:all .15s;color:#64748b;}
 .action-btn:hover{background:rgba(255,255,255,0.1);color:#e2e8f0;}
@@ -485,7 +488,14 @@ function openLineupESPN(espnId){
 function openMap(m){
   var c=VENUE_COORDS[m.venue];
   if(!c)return;
-  window.open('https://www.google.com/maps/search/?api=1&query='+c.q,'_blank');
+  openModal(m.venue+' · '+m.city,
+    '<div style="border-radius:8px;overflow:hidden;margin-bottom:10px">'+
+    '<iframe width="100%" height="280" frameborder="0" style="border:0;border-radius:8px" '+
+    'src="https://www.google.com/maps/embed/v1/place?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&q='+c.q+'" allowfullscreen></iframe></div>'+
+    '<a href="https://www.google.com/maps/search/?api=1&query='+c.q+'" target="_blank" '+
+    'style="display:block;text-align:center;font-size:10px;color:#0ea5e9;text-decoration:none;padding:6px">'+
+    'Ouvrir dans Google Maps ↗</a>'
+  );
 }
 
 
@@ -520,9 +530,16 @@ function renderMatchRow(m){
   actions.onclick=function(e){e.stopPropagation();};
 
   if(m.isLive||m.isFT){
-    var btnInfo=document.createElement('button');btnInfo.className='action-btn';btnInfo.title='Infos match';btnInfo.textContent='\ud83d\udccb';btnInfo.style.color=m.color;
+    // Stats button
+    var btnInfo=document.createElement('button');btnInfo.className='action-btn';btnInfo.title='Stats du match';btnInfo.textContent='\ud83d\udcca';btnInfo.style.color=m.color;
     btnInfo.onclick=function(){openMatchInfo(m);};
     actions.appendChild(btnInfo);
+    // Lineup button (only if ESPN ID exists)
+    if(ESPN_ID_MAP[m.id]){
+      var btnLineup=document.createElement('button');btnLineup.className='action-btn';btnLineup.title='Compositions';btnLineup.textContent='\ud83d\udc55';btnLineup.style.color=m.color;
+      btnLineup.onclick=function(){_currentMatch=m;openLineupESPN(ESPN_ID_MAP[m.id]);};
+      actions.appendChild(btnLineup);
+    }
   }
   if(m.venue&&VENUE_COORDS[m.venue]){
     var btnMap=document.createElement('button');btnMap.className='action-btn';btnMap.title='Voir le stade';btnMap.textContent='\ud83d\uddfa\ufe0f';
