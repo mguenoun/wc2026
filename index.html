@@ -457,7 +457,6 @@ function openMatchInfoFD(m){
 
 function openLineupESPN(espnId){
   var m=_currentMatch;
-  console.log('[LINEUP] openLineupESPN called, espnId='+espnId+' _currentMatch='+JSON.stringify(m&&m.id));
   // If modal not open, open it first
   document.getElementById('modal-overlay').className='open';
   document.getElementById('modal-title').textContent='Compositions';
@@ -561,7 +560,6 @@ function renderMatchRow(m){
       btnLineup.addEventListener('click',function(e){
         e.stopPropagation();
         _currentMatch=_m;
-        console.log('[LINEUP] click id='+_m.id+' eid='+_eid);
         openLineupESPN(_eid);
       });
       actions.appendChild(btnLineup);
