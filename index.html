@@ -78,9 +78,8 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 .scorer-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;}
 .scorer-row:last-child{border-bottom:none}
 .scorer-rank{font-size:10px;font-weight:800;min-width:20px;}
-.scorer-name{flex:1;color:#e2e8f0;font-weight:600;}
-.scorer-team{font-size:9px;color:#64748b;}
-.scorer-goals{font-size:14px;font-weight:900;}
+.scorer-name{flex:1;color:#e2e8f0;font-weight:600;display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;}
+.scorer-goals{font-size:13px;font-weight:900;}
 #modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;padding:16px;}
 #modal-overlay.open{display:flex;}
 #modal-box{background:#0f1729;border:1px solid rgba(255,255,255,0.1);border-radius:12px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;position:relative;}
@@ -549,11 +548,18 @@ function renderMatchRow(m){
     actions.appendChild(btnInfo);
     // Lineup button (only if ESPN ID exists)
     if(ESPN_ID_MAP[m.id]){
-      (function(match){
-        var btnLineup=document.createElement('button');btnLineup.className='action-btn';btnLineup.title='Compositions';btnLineup.textContent='\ud83d\udc55';btnLineup.style.color=match.color;
-        btnLineup.addEventListener('click',function(){_currentMatch=match;openLineupESPN(ESPN_ID_MAP[match.id]);});
-        actions.appendChild(btnLineup);
-      })(m);
+      var _m=m, _eid=ESPN_ID_MAP[m.id];
+      var btnLineup=document.createElement('button');
+      btnLineup.className='action-btn';
+      btnLineup.title='Compositions';
+      btnLineup.textContent='\ud83d\udc55';
+      btnLineup.style.color=_m.color;
+      btnLineup.addEventListener('click',function(e){
+        e.stopPropagation();
+        _currentMatch=_m;
+        openLineupESPN(_eid);
+      });
+      actions.appendChild(btnLineup);
     }
   }
   if(m.venue&&VENUE_COORDS[m.venue]){
@@ -650,8 +656,9 @@ function renderScorers(){
     var rank=i+1;var rankColor=rank===1?'#fbbf24':rank===2?'#94a3b8':rank===3?'#cd7f32':'#475569';
     html+='<div class="scorer-row">'+
       '<span class="scorer-rank" style="color:'+rankColor+'">'+rank+'</span>'+
-      '<span class="scorer-name">'+(player.name||'?')+'</span>'+
-      '<span class="scorer-team">'+normTeam(team.shortName||team.name||'')+'</span>'+
+      '<span class="scorer-name">'+(player.name||'?')+
+        '<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">('+normTeam(team.shortName||team.name||'')+')' +
+        '</span></span>'+
       '<span class="scorer-goals" style="color:#22c55e">\u26bd '+goals+'</span>'+
       (assists?'<span style="font-size:9px;color:#64748b;margin-left:4px">+'+assists+' passes</span>':'')+
       (penalties?'<span style="font-size:8px;color:#f59e0b;margin-left:4px">('+penalties+' pen.)</span>':'')+
