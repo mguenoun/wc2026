@@ -404,12 +404,17 @@ function renderESPNStats(m,d,espnId){
     html+='<div style="background:#080f1e;border-radius:6px;padding:6px 10px;margin-bottom:10px">';
     goals.forEach(function(g){
       var teamName=g.team&&g.team.displayName?normTeam(g.team.displayName):'';
-      var isHome=comps.find(function(c){return c.homeAway==='home'&&c.team&&c.team.id===g.team.id;});
       var gColor=teamName===m.t1?m.color:'#94a3b8';
+      var rawText=g.shortText||g.text||'';
+      // Insert team name in parentheses after player name
+      // shortText format: "Player Name Goal" → "Player Name (Team) Goal"
+      var displayText=rawText;
+      if(teamName&&g.shortText){
+        displayText=g.shortText.replace(/^([^!]+)/,function(match){return match+' <span style="color:'+gColor+';font-size:8px">('+teamName+')</span>';});
+      }
       html+='<div style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
         '<span style="color:#64748b;min-width:28px;font-size:9px">'+(g.clock&&g.clock.displayValue||'')+'</span>'+
-        '<span style="font-size:8px;background:'+gColor+'22;color:'+gColor+';border-radius:3px;padding:1px 4px;min-width:28px;text-align:center;font-weight:700">'+teamName+'</span>'+
-        '<span style="flex:1;color:#e2e8f0">'+(g.shortText||g.text||'')+'</span></div>';
+        '<span style="flex:1;color:#e2e8f0">'+displayText+'</span></div>';
     });
     html+='</div>';
   }
@@ -425,10 +430,10 @@ function renderESPNStats(m,d,espnId){
     html+='</div>';
   }
   html+=infoBlock('Stade',(m.venue||'')+' · '+(m.city||''),'#0ea5e9');
-  html+='<button onclick="openLineupESPN(\"'+espnId+'\")" style="width:100%;margin-top:10px;background:#10b98122;border:1px solid #10b981;color:#10b981;border-radius:6px;padding:9px;font-size:11px;font-weight:700;cursor:pointer">Compositions des équipes</button>';
+  html+='<button id="btn-lineup-open" style="width:100%;margin-top:10px;background:#10b98122;border:1px solid #10b981;color:#10b981;border-radius:6px;padding:9px;font-size:11px;font-weight:700;cursor:pointer">Compositions des équipes</button>';
+  window._pendingLineupId = espnId;
   document.getElementById('modal-body').innerHTML=html;
-  var lineupBtn=document.getElementById('btn-lineup-open');
-  if(lineupBtn){lineupBtn.addEventListener('click',function(){openLineupESPN(window._pendingLineupId);});}
+  document.getElementById('btn-lineup-open').addEventListener('click',function(){openLineupESPN(window._pendingLineupId);});
 }
 
 function openMatchInfoFD(m){
