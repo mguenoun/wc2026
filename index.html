@@ -426,10 +426,28 @@ function fetchESPNLiveScores(){
         var newScore=(home.score||'0')+' – '+(away.score||'0');
         var isLive=status==='in';
         var isFT=status==='post';
-        if(m.score!==newScore||m.isLive!==isLive||m.isFT!==isFT){
+        // Get official clock from ESPN — displayClock already contains e.g. "34:00", "45'+2'"
+        var clock=e.status&&e.status.displayClock||'';
+        var period=e.status&&e.status.period||0;
+        var clockDisplay='';
+        if(isLive&&clock){
+          // displayClock can be "34:00" (mm:ss) or "45'+2'" (already formatted)
+          if(clock.indexOf("'")>=0){
+            // Already formatted with apostrophe e.g. "90'+2'" — use as-is
+            clockDisplay=clock;
+          } else {
+            // Format mm:ss → extract minutes only
+            var mins=parseInt(clock.split(':')[0])||0;
+            if(period===1) clockDisplay=mins+"'";
+            else if(period===2) clockDisplay=mins+"'";
+            else if(period>=3) clockDisplay='Prolong. '+mins+"'";
+          }
+        }
+        if(m.score!==newScore||m.isLive!==isLive||m.isFT!==isFT||m.clockDisplay!==clockDisplay){
           m.score=newScore;
           m.isLive=isLive;
           m.isFT=isFT;
+          m.clockDisplay=clockDisplay;
           if(isFT)m.status='FINISHED';
           if(isLive)m.status='IN_PLAY';
           updated=true;
@@ -523,9 +541,9 @@ function renderESPNStats(m,d,espnId){
   var home=comps.find(function(c){return c.homeAway==='home';})||{};
   var away=comps.find(function(c){return c.homeAway==='away';})||{};
   document.getElementById('modal-title').textContent=m.t1+' – '+m.t2;
-  var liveMin = liveMinute(m);
+  var liveMin = m.clockDisplay!==undefined ? m.clockDisplay : liveMinute(m);
   var statusStr = status&&status.description||'';
-  if(m.isLive && liveMin && liveMin !== 'Mi-temps' && liveMin !== 'Prolongations'){
+  if(m.isLive && liveMin){
     statusStr = statusStr ? statusStr + ' · ' + liveMin : liveMin;
   }
   var html='<div style="text-align:center;padding:10px 0 8px">'+
