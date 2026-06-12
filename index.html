@@ -457,6 +457,10 @@ function openMatchInfoFD(m){
 
 function openLineupESPN(espnId){
   var m=_currentMatch;
+  console.log('[LINEUP] openLineupESPN called, espnId='+espnId+' _currentMatch='+JSON.stringify(m&&m.id));
+  // If modal not open, open it first
+  document.getElementById('modal-overlay').className='open';
+  document.getElementById('modal-title').textContent='Compositions';
   document.getElementById('modal-body').innerHTML='<div style="text-align:center;padding:20px;color:#475569">⏳ Chargement des compositions…</div>';
   fetch(ESPN_BASE+'/summary?event='+espnId)
     .then(function(r){return r.json();})
