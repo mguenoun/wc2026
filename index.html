@@ -194,12 +194,17 @@ const TEAM_MAP = {
 function normTeam(n){ return TEAM_MAP[n] || n; }
 
 const POS_MAP = {
-  'GK':'GB','G':'GB',
-  'CB':'DC','LB':'DG','RB':'DD','LWB':'PDG','RWB':'PDD',
-  'CDM':'MDC','CM':'MC','CAM':'MOC','DM':'MDC',
-  'LM':'MG','RM':'MD','LW':'AG','RW':'AD',
-  'CF':'AC','ST':'ATT','F':'ATT','MF':'MIL','D':'DEF',
-  'DF':'DEF','FW':'ATT','MID':'MIL',
+  'GK':'Gardien','G':'Gardien',
+  'CB':'D. Central','LB':'D. Gauche','RB':'D. Droit',
+  'LWB':'P. D. Gauche','RWB':'P. D. Droit',
+  'CDM':'Mil. Défensif','DM':'Mil. Défensif',
+  'CM':'Milieu','MF':'Milieu','MID':'Milieu',
+  'CAM':'Mil. Offensif',
+  'LM':'Mil. Gauche','RM':'Mil. Droit',
+  'LW':'Ailier Gauche','RW':'Ailier Droit',
+  'CF':'Avant-Centre','ST':'Attaquant',
+  'F':'Attaquant','FW':'Attaquant',
+  'D':'Défenseur','DF':'Défenseur',
 };
 function normPos(p){ return POS_MAP[p] || p; }
 
