@@ -64,7 +64,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 .match-score{font-size:12px;font-weight:900;min-width:36px;text-align:center;flex-shrink:0}
 .match-city{font-size:9px;color:#475569;white-space:nowrap;flex-shrink:0;max-width:140px;overflow:hidden;text-overflow:ellipsis}
 .tag{font-size:8px;border-radius:4px;padding:1px 4px;flex-shrink:0;font-weight:700}
-.status-live{font-size:8px;background:#22c55e22;color:#22c55e;border-radius:4px;padding:1px 5px;font-weight:700;animation:pulse 1.5s infinite;display:inline-flex;align-items:center;gap:3px}
+.status-live{font-size:8px;background:#22c55e22;color:#22c55e;border-radius:4px;padding:1px 5px;font-weight:700;animation:pulse 1.5s infinite}
 .status-ns{font-size:8px;color:#334155}
 #loading{text-align:center;padding:40px;color:#475569;font-size:12px}
 .spinner{display:inline-block;width:20px;height:20px;border:2px solid #1e3a5f;border-top-color:#0ea5e9;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px}
@@ -270,11 +270,12 @@ async function fetchAll(){
   document.getElementById('refresh-btn').textContent='\u8635 \u2026';
   if(PROXY_BASE.includes('REMPLACER')){setStatus('error','Proxy non configur\u00e9');loadFallback();renderAll();document.getElementById('loading').classList.add('hidden');showView(activeView);document.getElementById('refresh-btn').textContent='\u8635 Actualiser';return;}
   try{
-    // FD uniquement pour classements officiels et buteurs
-    var r2=await fetch(PROXY_BASE+'/fd/competitions/WC/standings');
+    var wcResults=await Promise.all([fetch(PROXY_BASE+'/fd/competitions/WC/matches'),fetch(PROXY_BASE+'/fd/competitions/WC/standings')]);
+    var r1=wcResults[0],r2=wcResults[1];
+    if(!r1.ok)throw new Error('Proxy '+r1.status);
+    var data1=await r1.json();
     loadFallback();
-    // ESPN pour scores et statuts en direct
-    await fetchESPNLiveScores();
+    processMatches(data1.matches||[]);
     if(r2.ok){var data2=await r2.json();processStandings(data2.standings||[]);}
     else{console.warn('[WC2026] standings failed:',r2.status);}
     if(!Object.keys(standings).length)computeStandingsFromMatches();
@@ -287,7 +288,7 @@ async function fetchAll(){
   }catch(e){
     console.warn('API error:',e.message);
     setStatus('error','Hors ligne \u2013 donn\u00e9es statiques');
-    loadFallback();computeStandingsFromMatches();renderAll();
+    loadFallback();renderAll();
     document.getElementById('loading').classList.add('hidden');
     showView(activeView);
   }
@@ -709,7 +710,7 @@ function renderMatchRow(m){
   teams.innerHTML=m.t1+'<span class="vs">\u2013</span>'+m.t2;
 
   var sc=document.createElement('span');sc.className='match-score';sc.style.color=m.color;
-  if(m.isLive){sc.innerHTML='<span class="status-live">\u26a1 <span style="font-size:12px;font-weight:900">'+(m.score||'0\u20130')+'</span>'+(m.clockDisplay?'<span style="font-size:8px"> '+m.clockDisplay+'</span>':'')+'</span>';}
+  if(m.isLive){sc.innerHTML='<span class="status-live">\u26a1 '+(m.score||'0\u20130')+(m.clockDisplay?' '+m.clockDisplay:'')+'</span>';}
   else if(m.isFT&&m.score){sc.textContent=m.score;sc.style.color='#e2e8f0';}
   else sc.innerHTML='<span class="status-ns">\u2013</span>';
 
