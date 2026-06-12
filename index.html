@@ -197,10 +197,16 @@ function hex2rgba(hex,a){
 }
 
 function groupByDate(arr){
-  const map=new Map();
-  arr.forEach(m=>{
-    const k=m.dateLabel;
-    if(!map.has(k))map.set(k,[]);
+  const map = new Map();
+  // Trier par dayKey (YYYY-MM-DD) puis time pour garantir l'ordre chronologique
+  const sorted = [...arr].sort((a,b) => {
+    const dk = a.dayKey.localeCompare(b.dayKey);
+    if(dk !== 0) return dk;
+    return (a.time || '').localeCompare(b.time || '');
+  });
+  sorted.forEach(m => {
+    const k = m.dateLabel;
+    if(!map.has(k)) map.set(k, []);
     map.get(k).push(m);
   });
   return [...map.entries()];
@@ -248,11 +254,20 @@ async function fetchAll(){
 
     if(!r1.ok) throw new Error('Proxy matches ' + r1.status);
     const data1 = await r1.json();
+    // Charger le fallback d'abord (base de vérité), puis enrichir avec l'API
+    loadFallback();
     processMatches(data1.matches || []);
 
     if(r2.ok){
       const data2 = await r2.json();
+      const stKeys = Object.keys(data2);
       processStandings(data2.standings || []);
+    } else {
+      console.warn('[WC2026] standings API failed:', r2.status);
+    }
+    // Si l'API ne retourne pas de classements, les calculer depuis les scores
+    if(!Object.keys(standings).length){
+      computeStandingsFromMatches();
     }
 
     setStatus('ok','En ligne ✓');
@@ -294,135 +309,182 @@ function setStatus(state, label){
 // f.league.round: "Group Stage - 1", "Round of 32", "Quarter-finals", etc.
 
 function processMatches(matches){
-  // Merge API data with our fallback (preserving verified venue/city info)
-  loadFallback(); // load static data first
-  const staticMap = {};
-  allMatches.forEach(m => { staticMap[m.id] = m; });
+  // Stratégie : le fallback statique est la source de vérité pour l'ordre,
+  // les dates, heures, stades et noms FR. L'API enrichit uniquement
+  // score, status, isLive, isFT, et les noms d'équipes KO.
 
+  // Construire une map API par utcDate+homeTeam pour matching robuste
+  const apiByKey = {};
   matches.forEach(m => {
-    const grp    = m.group ? m.group.replace('GROUP_','') : null;
-    const stage  = m.stage || '';
-    const isLive = ['IN_PLAY','PAUSED'].includes(m.status);
-    const isFT   = m.status === 'FINISHED';
-    const ko     = stage !== 'GROUP_STAGE';
+    // Clé = date UTC (YYYY-MM-DD) + initiales équipe domicile
+    const d    = m.utcDate ? m.utcDate.slice(0,10) : '';
+    const home = (m.homeTeam?.name || '').toLowerCase().slice(0,5);
+    const away = (m.awayTeam?.name || '').toLowerCase().slice(0,5);
+    apiByKey[`${d}|${home}`] = m;
+    apiByKey[`${d}|${away}`] = m; // aussi par away au cas où
+  });
+
+  // Enrichir chaque match statique
+  allMatches = allMatches.map(sm => {
+    // Chercher le match API correspondant
+    const keys = [
+      `${sm.dayKey}|${sm.t1.toLowerCase().slice(0,5)}`,
+      `${sm.dayKey}|${sm.t2.toLowerCase().slice(0,5)}`,
+      // noms anglais courants
+      `${sm.dayKey}|mexic`, `${sm.dayKey}|franc`, `${sm.dayKey}|brazi`,
+    ];
+
+    let apiM = null;
+    for(const k of keys){
+      if(apiByKey[k]){ apiM = apiByKey[k]; break; }
+    }
+
+    // Aussi chercher par correspondance partielle sur le dayKey
+    if(!apiM){
+      apiM = matches.find(m => {
+        const mDate = m.utcDate ? m.utcDate.slice(0,10) : '';
+        if(mDate !== sm.dayKey) return false;
+        const h = (m.homeTeam?.name||'').toLowerCase();
+        const a = (m.awayTeam?.name||'').toLowerCase();
+        const t1 = sm.t1.toLowerCase();
+        const t2 = sm.t2.toLowerCase();
+        // Correspondance sur les 4 premiers caractères
+        return (h.slice(0,4) === t1.slice(0,4) || a.slice(0,4) === t2.slice(0,4) ||
+                h.slice(0,4) === t2.slice(0,4) || a.slice(0,4) === t1.slice(0,4));
+      });
+    }
+
+    if(!apiM) return sm; // pas de données API → garder statique intact
+
+    const isLive = ['IN_PLAY','PAUSED'].includes(apiM.status);
+    const isFT   = apiM.status === 'FINISHED';
 
     let score = null;
-    if((isLive || isFT) && m.score?.fullTime){
-      const s = m.score.fullTime;
+    if(isFT && apiM.score?.fullTime){
+      const s = apiM.score.fullTime;
       if(s.home !== null && s.away !== null) score = `${s.home} – ${s.away}`;
     }
-    // For live match use current score
-    if(isLive && m.score?.currentTime && !score){
-      const s = m.score.fullTime;
-      score = `${s.home??0} – ${s.away??0}`;
+    if(isLive){
+      const s = apiM.score?.fullTime;
+      score = `${s?.home ?? 0} – ${s?.away ?? 0}`;
     }
 
-    const apiId  = String(m.id);
-    const t1name = m.homeTeam?.shortName || m.homeTeam?.name || 'À déterminer';
-    const t2name = m.awayTeam?.shortName || m.awayTeam?.name || 'À déterminer';
-    const phase  = humanPhase(stage);
-    const color  = grp ? GC[grp] : phaseColor(stage);
-    const last   = stage === 'GROUP_STAGE' && m.matchday === 3;
+    // Pour les phases KO, utiliser les vrais noms d'équipes
+    const t1upd = sm.ko ? (apiM.homeTeam?.shortName || apiM.homeTeam?.name || sm.t1) : sm.t1;
+    const t2upd = sm.ko ? (apiM.awayTeam?.shortName || apiM.awayTeam?.name || sm.t2) : sm.t2;
 
-    // Find matching static entry by group+teams to preserve venue/city
-    let staticEntry = null;
-    if(grp){
-      staticEntry = allMatches.find(s =>
-        s.grp === grp &&
-        (s.t1.toLowerCase().includes(t1name.toLowerCase().slice(0,4)) ||
-         t1name.toLowerCase().includes(s.t1.toLowerCase().slice(0,4)))
-      );
-    }
-
-    const entry = {
-      id:        apiId,
-      dateLabel: frDate(m.utcDate),
-      dayKey:    dayKey(m.utcDate),
-      time:      frTime(m.utcDate),
-      grp, phase, color,
-      t1:    t1name,
-      t2:    t2name,
-      venue: staticEntry?.venue || '',
-      city:  staticEntry?.city  || '',
-      score, status: m.status, isLive, isFT, last, ko,
-    };
-
-    // Replace or add
-    const idx = allMatches.findIndex(s => s.grp === grp &&
-      s.t1.toLowerCase().includes(t1name.toLowerCase().slice(0,4)));
-    if(idx >= 0) allMatches[idx] = {...allMatches[idx], ...entry};
-    else allMatches.push(entry);
+    return { ...sm, t1: t1upd, t2: t2upd, score, status: apiM.status, isLive, isFT };
   });
 }
 
-function humanPhaseRapid(round){
-  if(round.includes('Group'))      return 'Groupe';
-  if(round.includes('32'))         return '32es';
-  if(round.includes('16'))         return '16es';
-  if(round.includes('Quarter'))    return 'Quarts';
-  if(round.includes('Semi'))       return 'Demis';
-  if(round.includes('3rd'))        return '3e Place';
-  if(round.includes('Final'))      return 'Finale';
-  return round;
+function humanPhase(stage){
+  const map = {
+    'GROUP_STAGE':'Groupe','ROUND_OF_32':'32es','ROUND_OF_16':'16es',
+    'QUARTER_FINALS':'Quarts','SEMI_FINALS':'Demis',
+    'THIRD_PLACE':'3e Place','FINAL':'Finale'
+  };
+  return map[stage] || stage;
 }
 
-function phaseColorRapid(round){
-  if(round.includes('32'))      return '#8b5cf6';
-  if(round.includes('16'))      return '#f59e0b';
-  if(round.includes('Quarter')) return '#ef4444';
-  if(round.includes('Semi'))    return '#f97316';
-  if(round.includes('3rd'))     return '#64748b';
-  if(round.includes('Final'))   return '#fbbf24';
-  return '#94a3b8';
+function phaseColor(stage){
+  const map = {
+    'ROUND_OF_32':'#8b5cf6','ROUND_OF_16':'#f59e0b',
+    'QUARTER_FINALS':'#ef4444','SEMI_FINALS':'#f97316',
+    'THIRD_PLACE':'#64748b','FINAL':'#fbbf24'
+  };
+  return map[stage] || '#94a3b8';
 }
 
-function phaseColor(stage){ return phaseColorRapid(stage); }
-function humanPhase(stage) { return humanPhaseRapid(stage); }
-
-// RapidAPI standings structure:
-// data = array of league standings
-// data[0].league.standings = array of groups
-// each group = array of team standing objects
-function processStandingsRapid(data){
-  standings = {};
-  if(!data.length) return;
-  const groups = data[0]?.league?.standings || [];
-  groups.forEach(group => {
-    if(!group.length) return;
-    // Determine group letter from first team's group field
-    const grpLetter = group[0]?.group?.replace('Group ','') || null;
-    if(!grpLetter || !GC[grpLetter]) return;
-    standings[grpLetter] = group.map(r => ({
-      pos:    r.rank,
-      team:   r.team.name,
-      played: r.all.played,
-      won:    r.all.win,
-      draw:   r.all.draw,
-      lost:   r.all.lose,
-      gf:     r.all.goals.for,
-      ga:     r.all.goals.against,
-      gd:     r.goalsDiff,
-      pts:    r.points,
-    }));
-  });
-}
-
+// football-data.org standings format
 function processStandings(data){
-  standings={};
-  data.forEach(s=>{
-    if(s.type==='TOTAL' && s.group){
-      const grp=s.group.replace('GROUP_','');
-      standings[grp]=s.table.map(r=>({
-        pos:r.position,
-        team:r.team.shortName||r.team.name,
-        played:r.playedGames,
-        won:r.won,draw:r.draw,lost:r.lost,
-        gf:r.goalsFor,ga:r.goalsAgainst,
-        gd:r.goalDifference,
-        pts:r.points,
+  standings = {};
+  data.forEach(s => {
+    if(s.type === 'TOTAL' && s.group && s.table?.length){
+      // football-data.org retourne "Group A", "Group B"... → extraire la lettre
+      const grp = s.group.replace('GROUP_','').replace('Group ','').trim();
+      if(!GC[grp]) return; // ignorer si pas un groupe valide A-L
+      standings[grp] = s.table.map(r => ({
+        pos:    r.position,
+        team:   r.team.shortName || r.team.name,
+        played: r.playedGames,
+        won:    r.won,
+        draw:   r.draw,
+        lost:   r.lost,
+        gf:     r.goalsFor,
+        ga:     r.goalsAgainst,
+        gd:     r.goalDifference,
+        pts:    r.points,
       }));
     }
   });
+}
+
+
+// ─── CLASSEMENTS CALCULÉS DEPUIS LES SCORES ──────────────────────────────────
+// Utilisé quand l'API standings ne retourne rien (début de tournoi)
+function computeStandingsFromMatches(){
+  standings = {};
+  const groups = 'ABCDEFGHIJKL'.split('');
+
+  // Initialiser tous les groupes avec toutes les équipes à 0
+  const teamsByGroup = {};
+  allMatches.filter(m => !m.ko).forEach(m => {
+    if(!teamsByGroup[m.grp]) teamsByGroup[m.grp] = new Set();
+    teamsByGroup[m.grp].add(m.t1);
+    teamsByGroup[m.grp].add(m.t2);
+  });
+
+  // Initialiser les stats à 0
+  const stats = {}; // stats[grp][team] = {played,won,draw,lost,gf,ga,pts}
+  Object.entries(teamsByGroup).forEach(([grp, teams]) => {
+    stats[grp] = {};
+    teams.forEach(t => {
+      stats[grp][t] = {played:0,won:0,draw:0,lost:0,gf:0,ga:0,pts:0};
+    });
+  });
+
+  // Calculer depuis les matchs terminés
+  allMatches.filter(m => !m.ko && m.isFT && m.score).forEach(m => {
+    const parts = m.score.split(' – ');
+    if(parts.length !== 2) return;
+    const g1 = parseInt(parts[0]), g2 = parseInt(parts[1]);
+    if(isNaN(g1) || isNaN(g2)) return;
+    const g = m.grp;
+    if(!stats[g]?.[m.t1] || !stats[g]?.[m.t2]) return;
+
+    // Équipe 1
+    stats[g][m.t1].played++;
+    stats[g][m.t1].gf += g1;
+    stats[g][m.t1].ga += g2;
+    // Équipe 2
+    stats[g][m.t2].played++;
+    stats[g][m.t2].gf += g2;
+    stats[g][m.t2].ga += g1;
+
+    if(g1 > g2){
+      stats[g][m.t1].won++; stats[g][m.t1].pts += 3;
+      stats[g][m.t2].lost++;
+    } else if(g1 < g2){
+      stats[g][m.t2].won++; stats[g][m.t2].pts += 3;
+      stats[g][m.t1].lost++;
+    } else {
+      stats[g][m.t1].draw++; stats[g][m.t1].pts++;
+      stats[g][m.t2].draw++; stats[g][m.t2].pts++;
+    }
+  });
+
+  // Convertir en tableau trié (pts desc, diff buts desc, buts marqués desc)
+  Object.entries(stats).forEach(([grp, teams]) => {
+    const table = Object.entries(teams).map(([team, s]) => ({
+      team, ...s, gd: s.gf - s.ga
+    }));
+    table.sort((a,b) =>
+      (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf)
+    );
+    table.forEach((r,i) => r.pos = i+1);
+    standings[grp] = table;
+  });
+
 }
 
 // ─── FALLBACK — source officielle kickoffclock.com (FIFA), UTC+1 Casablanca ────────
@@ -693,13 +755,18 @@ function renderStandings(){
     const hdr=document.createElement('div');hdr.className='standing-card-header';
     hdr.style.background=hex2rgba(col,.15);hdr.style.color=col;
     hdr.textContent='GROUPE '+g;card.appendChild(hdr);
+    // N'appliquer le style "qualifié" que si au moins un match du groupe a été joué
+    const grpPlayed = standings[g].some(r => r.played > 0);
     standings[g].forEach((r,i)=>{
+      const qualified = grpPlayed && i < 2;
       const row=document.createElement('div');row.className='standing-row';
       const dot=document.createElement('div');dot.className='qualified-dot';
-      dot.style.background=i<2?col:i===2?hex2rgba(col,.4):'#1e3a5f';
-      const pos=document.createElement('span');pos.className='standing-pos';pos.style.color=i<2?col:'#475569';pos.textContent=r.pos+'.';
+      dot.style.background=qualified?col:i===2&&grpPlayed?hex2rgba(col,.4):'#1e3a5f';
+      const pos=document.createElement('span');pos.className='standing-pos';
+      pos.style.color=qualified?col:'#475569';pos.textContent=r.pos+'.';
       const team=document.createElement('span');team.className='standing-team';team.textContent=r.team;
-      const pts=document.createElement('span');pts.className='standing-pts';pts.style.color=i<2?col:'#64748b';pts.textContent=r.pts;
+      const pts=document.createElement('span');pts.className='standing-pts';
+      pts.style.color=qualified?col:'#64748b';pts.textContent=r.pts;
       const stats=document.createElement('span');stats.className='standing-stats';
       stats.textContent=`${r.played}J ${r.gd>0?'+':''}${r.gd}`;
       row.appendChild(dot);row.appendChild(pos);row.appendChild(team);row.appendChild(pts);row.appendChild(stats);
