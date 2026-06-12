@@ -247,10 +247,12 @@ async function fetchAll(){
 
   try {
     // Appels parallèles via Cloudflare Worker proxy
-    const [r1, r2] = await Promise.all([
-      fetch(`${PROXY_BASE}/competitions/WC/matches`),
-      fetch(`${PROXY_BASE}/competitions/WC/standings`),
+    const wcResults = await Promise.all([
+      fetch(PROXY_BASE + '/competitions/WC/matches'),
+      fetch(PROXY_BASE + '/competitions/WC/standings'),
     ]);
+    const r1 = wcResults[0];
+    const r2 = wcResults[1];
 
     if(!r1.ok) throw new Error('Proxy matches ' + r1.status);
     const data1 = await r1.json();
@@ -308,51 +310,66 @@ function setStatus(state, label){
 // f.fixture.status.short: NS / 1H / HT / 2H / FT / AET / PEN
 // f.league.round: "Group Stage - 1", "Round of 32", "Quarter-finals", etc.
 
-function processMatches(matches){
-  // Stratégie : le fallback statique est la source de vérité pour l'ordre,
-  // les dates, heures, stades et noms FR. L'API enrichit uniquement
-  // score, status, isLive, isFT, et les noms d'équipes KO.
+// Table de correspondance exhaustive noms API (EN) → noms fallback (FR)
+// Couvre toutes les équipes des 48 participants WC 2026
+const TEAM_MAP = {
+  // Groupe A
+  'Mexico':'Mexique', 'South Africa':'Afrique du Sud',
+  'Korea Republic':'Corée du Sud', 'South Korea':'Corée du Sud', 'Czechia':'Tchéquie', 'Czech Republic':'Tchéquie',
+  // Groupe B
+  'Canada':'Canada', 'Bosnia and Herzegovina':'Bosnie-H.', 'Bosnia & Herzegovina':'Bosnie-H.',
+  'Qatar':'Qatar', 'Switzerland':'Suisse',
+  // Groupe C
+  'Brazil':'Brésil', 'Morocco':'Maroc', 'Haiti':'Haïti', 'Scotland':'Écosse',
+  // Groupe D
+  'United States':'USA', 'USA':'USA', 'Paraguay':'Paraguay',
+  'Australia':'Australie', 'Türkiye':'Turquie', 'Turkey':'Turquie', 'Turkiye':'Turquie',
+  // Groupe E
+  'Germany':'Allemagne', 'Curacao':'Curaçao', 'Curaçao':'Curaçao',
+  "Côte d’Ivoire":'Côte d’Ivoire', 'Ivory Coast':'Côte d’Ivoire',
+  'Ecuador':'Équateur',
+  // Groupe F
+  'Netherlands':'Pays-Bas', 'Japan':'Japon', 'Sweden':'Suède', 'Tunisia':'Tunisie',
+  // Groupe G
+  'Belgium':'Belgique', 'Egypt':'Égypte', 'Iran':'Iran', 'New Zealand':'Nv-Zélande',
+  // Groupe H
+  'Spain':'Espagne', 'Cape Verde':'Cap-Vert', 'Saudi Arabia':'Arabie S.', 'Uruguay':'Uruguay',
+  // Groupe I
+  'France':'France', 'Senegal':'Sénégal', 'Iraq':'Irak', 'Norway':'Norvège',
+  // Groupe J
+  'Argentina':'Argentine', 'Algeria':'Algérie', 'Austria':'Autriche', 'Jordan':'Jordanie',
+  // Groupe K
+  'Portugal':'Portugal', 'DR Congo':'Congo RD', 'Congo DR':'Congo RD',
+  'Uzbekistan':'Ouzbékistan', 'Colombia':'Colombie',
+  // Groupe L
+  'England':'Angleterre', 'Croatia':'Croatie', 'Ghana':'Ghana', 'Panama':'Panama',
+};
 
-  // Construire une map API par utcDate+homeTeam pour matching robuste
+// Normalise un nom API vers son équivalent FR
+function normTeam(apiName){
+  return TEAM_MAP[apiName] || apiName;
+}
+
+function processMatches(matches){
+  // Stratégie : fallback statique = source de vérité (ordre, dates, stades, noms FR)
+  // L'API enrichit uniquement score/status/isLive/isFT
+
+  // Construire une map API indexée par date UTC + nom FR normalisé
+  // → clé : "YYYY-MM-DD|NomFR" pour home ET away
   const apiByKey = {};
   matches.forEach(m => {
-    // Clé = date UTC (YYYY-MM-DD) + initiales équipe domicile
     const d    = m.utcDate ? m.utcDate.slice(0,10) : '';
-    const home = (m.homeTeam?.name || '').toLowerCase().slice(0,5);
-    const away = (m.awayTeam?.name || '').toLowerCase().slice(0,5);
+    const home = normTeam((m.homeTeam && m.homeTeam.name) || '');
+    const away = normTeam((m.awayTeam && m.awayTeam.name) || '');
     apiByKey[`${d}|${home}`] = m;
-    apiByKey[`${d}|${away}`] = m; // aussi par away au cas où
+    apiByKey[`${d}|${away}`] = m;
   });
 
-  // Enrichir chaque match statique
   allMatches = allMatches.map(sm => {
-    // Chercher le match API correspondant
-    const keys = [
-      `${sm.dayKey}|${sm.t1.toLowerCase().slice(0,5)}`,
-      `${sm.dayKey}|${sm.t2.toLowerCase().slice(0,5)}`,
-      // noms anglais courants
-      `${sm.dayKey}|mexic`, `${sm.dayKey}|franc`, `${sm.dayKey}|brazi`,
-    ];
-
-    let apiM = null;
-    for(const k of keys){
-      if(apiByKey[k]){ apiM = apiByKey[k]; break; }
-    }
-
-    // Aussi chercher par correspondance partielle sur le dayKey
-    if(!apiM){
-      apiM = matches.find(m => {
-        const mDate = m.utcDate ? m.utcDate.slice(0,10) : '';
-        if(mDate !== sm.dayKey) return false;
-        const h = (m.homeTeam?.name||'').toLowerCase();
-        const a = (m.awayTeam?.name||'').toLowerCase();
-        const t1 = sm.t1.toLowerCase();
-        const t2 = sm.t2.toLowerCase();
-        // Correspondance sur les 4 premiers caractères
-        return (h.slice(0,4) === t1.slice(0,4) || a.slice(0,4) === t2.slice(0,4) ||
-                h.slice(0,4) === t2.slice(0,4) || a.slice(0,4) === t1.slice(0,4));
-      });
-    }
+    // Chercher par date + nom FR exact (fonctionne pour tous les 48 pays)
+    const k1 = `${sm.dayKey}|${sm.t1}`;
+    const k2 = `${sm.dayKey}|${sm.t2}`;
+    const apiM = apiByKey[k1] || apiByKey[k2];
 
     if(!apiM) return sm; // pas de données API → garder statique intact
 
@@ -360,18 +377,18 @@ function processMatches(matches){
     const isFT   = apiM.status === 'FINISHED';
 
     let score = null;
-    if(isFT && apiM.score?.fullTime){
+    if(isFT && (apiM.score && apiM.score.fullTime)){
       const s = apiM.score.fullTime;
       if(s.home !== null && s.away !== null) score = `${s.home} – ${s.away}`;
     }
     if(isLive){
-      const s = apiM.score?.fullTime;
-      score = `${s?.home ?? 0} – ${s?.away ?? 0}`;
+      const s = (apiM.score && apiM.score.fullTime);
+      score = (s && s.home != null ? s.home : 0) + ' – ' + (s && s.away != null ? s.away : 0);
     }
 
-    // Pour les phases KO, utiliser les vrais noms d'équipes
-    const t1upd = sm.ko ? (apiM.homeTeam?.shortName || apiM.homeTeam?.name || sm.t1) : sm.t1;
-    const t2upd = sm.ko ? (apiM.awayTeam?.shortName || apiM.awayTeam?.name || sm.t2) : sm.t2;
+    // Pour les phases KO, mettre à jour les noms des équipes qualifiées
+    const t1upd = sm.ko ? normTeam((apiM.homeTeam && (apiM.homeTeam.shortName || apiM.homeTeam.name)) || sm.t1) : sm.t1;
+    const t2upd = sm.ko ? normTeam((apiM.awayTeam && (apiM.awayTeam.shortName || apiM.awayTeam.name)) || sm.t2) : sm.t2;
 
     return { ...sm, t1: t1upd, t2: t2upd, score, status: apiM.status, isLive, isFT };
   });
@@ -399,7 +416,7 @@ function phaseColor(stage){
 function processStandings(data){
   standings = {};
   data.forEach(s => {
-    if(s.type === 'TOTAL' && s.group && s.table?.length){
+    if(s.type === 'TOTAL' && s.group && s.table && s.table.length){
       // football-data.org retourne "Group A", "Group B"... → extraire la lettre
       const grp = s.group.replace('GROUP_','').replace('Group ','').trim();
       if(!GC[grp]) return; // ignorer si pas un groupe valide A-L
@@ -450,7 +467,7 @@ function computeStandingsFromMatches(){
     const g1 = parseInt(parts[0]), g2 = parseInt(parts[1]);
     if(isNaN(g1) || isNaN(g2)) return;
     const g = m.grp;
-    if(!stats[g]?.[m.t1] || !stats[g]?.[m.t2]) return;
+    if(!stats[g] && stats[g][m.t1] || !stats[g] && stats[g][m.t2]) return;
 
     // Équipe 1
     stats[g][m.t1].played++;
@@ -680,7 +697,7 @@ function renderMatchRow(m){
 }
 
 function renderDayBlock(dateLabel, matches, container){
-  const isToday = matches[0]?.dayKey===TODAY_STR;
+  const isToday = matches[0] && matches[0].dayKey===TODAY_STR;
   const block=document.createElement('div');block.className='day-block';
   const tlCol=document.createElement('div');tlCol.className='timeline-col';
   const dot=document.createElement('div');dot.className='tl-dot'+(isToday?' today':'');
@@ -804,7 +821,7 @@ function switchView(v){
 // 30s si match en cours, 5min sinon
 function scheduleRefresh(){
   const hasLive = allMatches.some(m => m.isLive);
-  const delay   = hasLive ? 30_000 : 300_000;
+  const delay   = hasLive ? 30000 : 300000;
   setTimeout(async () => {
     await fetchAll();
     scheduleRefresh();
