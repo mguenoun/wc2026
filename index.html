@@ -78,7 +78,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 .scorer-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;}
 .scorer-row:last-child{border-bottom:none}
 .scorer-rank{font-size:10px;font-weight:800;min-width:20px;}
-.scorer-name{flex:1;color:#e2e8f0;font-weight:600;display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;}
+.scorer-name{flex:1;color:#e2e8f0;font-weight:600;}
 .scorer-goals{font-size:13px;font-weight:900;}
 #modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;padding:16px;}
 #modal-overlay.open{display:flex;}
@@ -557,6 +557,7 @@ function renderMatchRow(m){
       btnLineup.addEventListener('click',function(e){
         e.stopPropagation();
         _currentMatch=_m;
+        console.log('[LINEUP] click id='+_m.id+' eid='+_eid);
         openLineupESPN(_eid);
       });
       actions.appendChild(btnLineup);
