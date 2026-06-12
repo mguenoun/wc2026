@@ -541,10 +541,9 @@ function renderESPNStats(m,d,espnId){
   var home=comps.find(function(c){return c.homeAway==='home';})||{};
   var away=comps.find(function(c){return c.homeAway==='away';})||{};
   document.getElementById('modal-title').textContent=m.t1+' – '+m.t2;
-  var liveMin = m.clockDisplay!==undefined ? m.clockDisplay : liveMinute(m);
   var statusStr = status&&status.description||'';
-  if(m.isLive && liveMin){
-    statusStr = statusStr ? statusStr + ' · ' + liveMin : liveMin;
+  if(m.isLive && m.clockDisplay){
+    statusStr = statusStr ? statusStr + ' · ' + m.clockDisplay : m.clockDisplay;
   }
   var html='<div style="text-align:center;padding:10px 0 8px">'+
     '<div style="font-size:34px;font-weight:900;color:#e2e8f0;letter-spacing:-1px">'+(home.score||'0')+' – '+(away.score||'0')+'</div>'+
@@ -711,7 +710,7 @@ function renderMatchRow(m){
   teams.innerHTML=m.t1+'<span class="vs">\u2013</span>'+m.t2;
 
   var sc=document.createElement('span');sc.className='match-score';sc.style.color=m.color;
-  if(m.isLive){var lm=liveMinute(m);sc.innerHTML='<span class="status-live">\u26a1 '+(m.score||'0\u20130')+(lm?' '+lm:'')+'</span>';}
+  if(m.isLive){sc.innerHTML='<span class="status-live">\u26a1 '+(m.score||'0\u20130')+(m.clockDisplay?' '+m.clockDisplay:'')+'</span>';}
   else if(m.isFT&&m.score){sc.textContent=m.score;sc.style.color='#e2e8f0';}
   else sc.innerHTML='<span class="status-ns">\u2013</span>';
 
