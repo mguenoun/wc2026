@@ -282,7 +282,7 @@ async function fetchAll(){
     setStatus('ok','En ligne \u2713');
     var now=new Date();
     document.getElementById('last-update').textContent='Mis \u00e0 jour '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    renderAll();fetchScorers();
+    renderAll();fetchScorers();fetchESPNIds();
     document.getElementById('loading').classList.add('hidden');
     showView(activeView);
   }catch(e){
@@ -363,6 +363,39 @@ function computeStandingsFromMatches(){
     table.sort(function(a,b){return(b.pts-a.pts)||(b.gd-a.gd)||(b.gf-a.gf);});
     table.forEach(function(r,i){r.pos=i+1;});
     standings[grp]=table;
+  });
+}
+
+// Auto-découverte des IDs ESPN pour les matchs non encore mappés
+function fetchESPNIds(){
+  var today = new Date();
+  var dates = [];
+  for(var i=-1; i<=2; i++){
+    var d = new Date(today);
+    d.setDate(d.getDate()+i);
+    var y=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
+    dates.push(''+y+mo+dy);
+  }
+  dates.forEach(function(dateStr){
+    fetch(ESPN_BASE+'/scoreboard?dates='+dateStr)
+      .then(function(r){return r.json();})
+      .then(function(data){
+        data.events&&data.events.forEach(function(e){
+          // Chercher le match correspondant par date + équipes
+          var eDate = dateStr.slice(0,4)+'-'+dateStr.slice(4,6)+'-'+dateStr.slice(6,8);
+          var match = allMatches.find(function(m){
+            if(m.dayKey!==eDate) return false;
+            var eName=e.name.toLowerCase();
+            return eName.includes(m.t1.toLowerCase().slice(0,4))||
+                   eName.includes(m.t2.toLowerCase().slice(0,4));
+          });
+          if(match&&!ESPN_ID_MAP[match.id]){
+            ESPN_ID_MAP[match.id]=e.id;
+            console.log('[ESPN] mapped',match.id,'->',e.id,e.name);
+          }
+        });
+      })
+      .catch(function(){});
   });
 }
 
