@@ -399,6 +399,54 @@ function fetchESPNIds(){
   });
 }
 
+// Mise à jour des scores en direct via ESPN (plus rapide que football-data.org)
+function fetchESPNLiveScores(){
+  var today = new Date();
+  var y=today.getFullYear(),mo=String(today.getMonth()+1).padStart(2,'0'),dy=String(today.getDate()).padStart(2,'0');
+  var dateStr=''+y+mo+dy;
+  fetch(ESPN_BASE+'/scoreboard?dates='+dateStr)
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.events||!data.events.length)return;
+      var updated=false;
+      data.events.forEach(function(e){
+        var status=e.status&&e.status.type&&e.status.type.state; // 'pre','in','post'
+        if(status!=='in'&&status!=='post')return;
+        // Find matching match in allMatches by ESPN ID
+        var matchId=null;
+        Object.entries(ESPN_ID_MAP).forEach(function(entry){
+          if(entry[1]===e.id)matchId=entry[0];
+        });
+        if(!matchId)return;
+        var m=allMatches.find(function(m){return m.id===matchId;});
+        if(!m)return;
+        var comps=e.competitions&&e.competitions[0]&&e.competitions[0].competitors||[];
+        var home=comps.find(function(c){return c.homeAway==='home';})||{};
+        var away=comps.find(function(c){return c.homeAway==='away';})||{};
+        var newScore=(home.score||'0')+' – '+(away.score||'0');
+        var isLive=status==='in';
+        var isFT=status==='post';
+        if(m.score!==newScore||m.isLive!==isLive||m.isFT!==isFT){
+          m.score=newScore;
+          m.isLive=isLive;
+          m.isFT=isFT;
+          if(isFT)m.status='FINISHED';
+          if(isLive)m.status='IN_PLAY';
+          updated=true;
+        }
+      });
+      if(updated){
+        renderGroupsTimeline();
+        renderKOTimeline();
+        renderStandings();
+        // Recompute standings from ESPN scores if FD standings not available
+        computeStandingsFromMatches();
+        renderStandings();
+      }
+    })
+    .catch(function(){});
+}
+
 function fetchScorers(){
   fetch(PROXY_BASE+'/fd/competitions/WC/scorers?limit=20')
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
@@ -779,7 +827,24 @@ function switchView(v){activeView=v;showView(v);if(v==='scorers')renderScorers()
 function scheduleRefresh(){
   var hasLive=allMatches.some(function(m){return m.isLive;});
   var delay=hasLive?30000:300000;
-  setTimeout(async function(){await fetchAll();scheduleRefresh();},delay);
+  setTimeout(async function(){
+    // ESPN refresh rapide pour les scores en direct
+    fetchESPNLiveScores();
+    // football-data.org refresh complet (moins fréquent si pas de match en direct)
+    if(!hasLive || Math.random() < 0.2){ // toutes les ~5 refreshes ESPN
+      await fetchAll();
+    }
+    scheduleRefresh();
+  },delay);
+}
+
+// Refresh ESPN toutes les 30s quand match en cours
+function startESPNLiveRefresh(){
+  setInterval(function(){
+    if(allMatches.some(function(m){return m.isLive;})){
+      fetchESPNLiveScores();
+    }
+  },30000);
 }
 
 
@@ -900,6 +965,7 @@ function loadFallback(){
 
 fetchAll();
 scheduleRefresh();
+startESPNLiveRefresh();
 </script>
 </body>
 </html>
