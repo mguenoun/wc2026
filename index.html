@@ -435,11 +435,12 @@ function fetchESPNLiveScores(){
           updated=true;
         }
       });
-      if(updated){
+      // Always re-render timeline to update minute counter
+      if(allMatches.some(function(m){return m.isLive;})){
         renderGroupsTimeline();
         renderKOTimeline();
-        renderStandings();
-        // Recompute standings from ESPN scores if FD standings not available
+      }
+      if(updated){
         computeStandingsFromMatches();
         renderStandings();
       }
@@ -456,14 +457,29 @@ function fetchScorers(){
 
 
 // ─── MODAL ────────────────────────────────────────────────────────────────────
-function openModal(title,html){
+var _modalRefreshTimer = null;
+var _modalRefreshFn   = null;
+
+function openModal(title,html,refreshFn){
   document.getElementById('modal-title').textContent=title;
   document.getElementById('modal-body').innerHTML=html;
   document.getElementById('modal-overlay').className='open';
+  // Clear previous timer
+  if(_modalRefreshTimer){ clearInterval(_modalRefreshTimer); _modalRefreshTimer=null; }
+  // Start auto-refresh if match is live and a refresh function is provided
+  if(refreshFn){
+    _modalRefreshFn = refreshFn;
+    _modalRefreshTimer = setInterval(function(){
+      if(_currentMatch&&_currentMatch.isLive) refreshFn();
+      else { clearInterval(_modalRefreshTimer); _modalRefreshTimer=null; }
+    }, 30000);
+  }
 }
 function closeModal(e){
-  if(!e||e.target===document.getElementById('modal-overlay'))
+  if(!e||e.target===document.getElementById('modal-overlay')){
     document.getElementById('modal-overlay').className='';
+    if(_modalRefreshTimer){ clearInterval(_modalRefreshTimer); _modalRefreshTimer=null; }
+  }
 }
 
 function infoBlock(label,value,color){
@@ -486,10 +502,15 @@ function openMatchInfo(m){
   var espnId = ESPN_ID_MAP[m.id] || null;
   openModal('Chargement…','<div style="text-align:center;padding:20px;color:#475569">⏳</div>');
   if(espnId){
-    fetch(ESPN_BASE+'/summary?event='+espnId)
-      .then(function(r){ return r.json(); })
-      .then(function(d){ renderESPNStats(m,d,espnId); })
-      .catch(function(){ openMatchInfoFD(m); });
+    var doFetch = function(){
+      fetch(ESPN_BASE+'/summary?event='+espnId)
+        .then(function(r){ return r.json(); })
+        .then(function(d){ renderESPNStats(m,d,espnId); })
+        .catch(function(){ openMatchInfoFD(m); });
+    };
+    // Pass doFetch as refresh fn so modal auto-refreshes every 30s if live
+    openModal('Chargement…','<div style="text-align:center;padding:20px;color:#475569">⏳</div>', m.isLive ? doFetch : null);
+    doFetch();
   } else {
     openMatchInfoFD(m);
   }
@@ -966,6 +987,14 @@ function loadFallback(){
 fetchAll();
 scheduleRefresh();
 startESPNLiveRefresh();
+
+// Refresh du minuteur sur la liste toutes les 60s
+setInterval(function(){
+  if(allMatches.some(function(m){return m.isLive;})){
+    renderGroupsTimeline();
+    renderKOTimeline();
+  }
+}, 30000);
 </script>
 </body>
 </html>
