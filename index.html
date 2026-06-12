@@ -136,6 +136,23 @@ const PROXY_BASE = 'https://wc2026.mguenoun.workers.dev';
 const DISPLAY_TZ = 'Africa/Casablanca';
 const TODAY_STR  = new Date().toLocaleDateString('en-CA', {timeZone: DISPLAY_TZ});
 
+const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world';
+
+const ESPN_ID_MAP = {
+  'M1':'760415','M2':'760414','M3':'760441','M4':'760438',
+  'M7':'760416','M8':'760420','M9':'760440','M10':'760439',
+  'M13':'760419','M14':'760418','M15':'760444','M16':'760442',
+  'M19':'760417','M20':'760421','M21':'760445','M22':'760443',
+  'M25':'760422','M26':'760423','M27':'760448','M30':'760446',
+  'M31':'760425','M32':'760424','M33':'760447',
+  'M37':'760426','M38':'760427',
+  'M43':'760428','M44':'760429',
+  'M49':'760432','M50':'760430',
+  'M55':'760433','M56':'760431',
+  'M61':'760435','M62':'760436',
+  'M67':'760437','M68':'760434',
+};
+
 const VENUE_COORDS = {
   'Estadio Azteca':          {q:'Estadio+Azteca+Mexico+City'},
   'Estadio Akron':           {q:'Estadio+Akron+Guadalajara+Mexico'},
