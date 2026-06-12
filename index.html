@@ -157,22 +157,22 @@ const ESPN_ID_MAP = {
 };
 
 const VENUE_COORDS = {
-  'Estadio Azteca':          {q:'Estadio+Azteca+Mexico+City'},
-  'Estadio Akron':           {q:'Estadio+Akron+Guadalajara+Mexico'},
-  'Estadio BBVA':            {q:'Estadio+BBVA+Monterrey+Mexico'},
-  'BMO Field':               {q:'BMO+Field+Toronto+Canada'},
-  'BC Place':                {q:'BC+Place+Vancouver+Canada'},
-  'MetLife Stadium':         {q:'MetLife+Stadium+East+Rutherford+NJ'},
-  'Gillette Stadium':        {q:'Gillette+Stadium+Foxborough+MA'},
-  'NRG Stadium':             {q:'NRG+Stadium+Houston+TX'},
-  'AT&T Stadium':            {q:'ATT+Stadium+Arlington+TX'},
-  'Lincoln Financial Field': {q:'Lincoln+Financial+Field+Philadelphia+PA'},
-  'Mercedes-Benz Stadium':   {q:'Mercedes-Benz+Stadium+Atlanta+GA'},
-  'Hard Rock Stadium':       {q:'Hard+Rock+Stadium+Miami+Gardens+FL'},
-  "Levi's Stadium":          {q:'Levis+Stadium+Santa+Clara+CA'},
-  'SoFi Stadium':            {q:'SoFi+Stadium+Inglewood+CA'},
-  'Lumen Field':             {q:'Lumen+Field+Seattle+WA'},
-  'Arrowhead Stadium':       {q:'Arrowhead+Stadium+Kansas+City+MO'},
+  'Estadio Azteca':          {lat:19.3029,  lng:-99.1505,  q:'Estadio+Azteca+Mexico+City'},
+  'Estadio Akron':           {lat:20.6867,  lng:-103.4667, q:'Estadio+Akron+Guadalajara+Mexico'},
+  'Estadio BBVA':            {lat:25.6694,  lng:-100.2436, q:'Estadio+BBVA+Monterrey+Mexico'},
+  'BMO Field':               {lat:43.6333,  lng:-79.4183,  q:'BMO+Field+Toronto+Canada'},
+  'BC Place':                {lat:49.2767,  lng:-123.1117, q:'BC+Place+Vancouver+Canada'},
+  'MetLife Stadium':         {lat:40.8135,  lng:-74.0745,  q:'MetLife+Stadium+East+Rutherford+NJ'},
+  'Gillette Stadium':        {lat:42.0909,  lng:-71.2643,  q:'Gillette+Stadium+Foxborough+MA'},
+  'NRG Stadium':             {lat:29.6847,  lng:-95.4107,  q:'NRG+Stadium+Houston+TX'},
+  'AT&T Stadium':            {lat:32.7479,  lng:-97.0945,  q:'ATT+Stadium+Arlington+TX'},
+  'Lincoln Financial Field': {lat:39.9008,  lng:-75.1675,  q:'Lincoln+Financial+Field+Philadelphia+PA'},
+  'Mercedes-Benz Stadium':   {lat:33.7553,  lng:-84.4006,  q:'Mercedes-Benz+Stadium+Atlanta+GA'},
+  'Hard Rock Stadium':       {lat:25.9580,  lng:-80.2389,  q:'Hard+Rock+Stadium+Miami+Gardens+FL'},
+  "Levi's Stadium":          {lat:37.4033,  lng:-121.9694, q:'Levis+Stadium+Santa+Clara+CA'},
+  'SoFi Stadium':            {lat:33.9535,  lng:-118.3392, q:'SoFi+Stadium+Inglewood+CA'},
+  'Lumen Field':             {lat:47.5952,  lng:-122.3316, q:'Lumen+Field+Seattle+WA'},
+  'Arrowhead Stadium':       {lat:39.0489,  lng:-94.4839,  q:'Arrowhead+Stadium+Kansas+City+MO'},
 };
 
 const GC = {A:'#0ea5e9',B:'#06b6d4',C:'#10b981',D:'#f59e0b',E:'#ef4444',F:'#f97316',G:'#8b5cf6',H:'#ec4899',I:'#14b8a6',J:'#a855f7',K:'#22c55e',L:'#f43f5e'};
@@ -403,8 +403,13 @@ function renderESPNStats(m,d,espnId){
     html+='<div style="font-size:9px;color:#fbbf24;font-weight:700;letter-spacing:1px;margin-bottom:5px">BUTS</div>';
     html+='<div style="background:#080f1e;border-radius:6px;padding:6px 10px;margin-bottom:10px">';
     goals.forEach(function(g){
-      html+='<div style="font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#e2e8f0">'+
-        '<span style="color:#64748b;margin-right:8px">'+(g.clock&&g.clock.displayValue||'')+'</span>'+(g.shortText||g.text||'')+'</div>';
+      var teamName=g.team&&g.team.displayName?normTeam(g.team.displayName):'';
+      var isHome=comps.find(function(c){return c.homeAway==='home'&&c.team&&c.team.id===g.team.id;});
+      var gColor=teamName===m.t1?m.color:'#94a3b8';
+      html+='<div style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
+        '<span style="color:#64748b;min-width:28px;font-size:9px">'+(g.clock&&g.clock.displayValue||'')+'</span>'+
+        '<span style="font-size:8px;background:'+gColor+'22;color:'+gColor+';border-radius:3px;padding:1px 4px;min-width:28px;text-align:center;font-weight:700">'+teamName+'</span>'+
+        '<span style="flex:1;color:#e2e8f0">'+(g.shortText||g.text||'')+'</span></div>';
     });
     html+='</div>';
   }
@@ -422,6 +427,8 @@ function renderESPNStats(m,d,espnId){
   html+=infoBlock('Stade',(m.venue||'')+' · '+(m.city||''),'#0ea5e9');
   html+='<button onclick="openLineupESPN(\"'+espnId+'\")" style="width:100%;margin-top:10px;background:#10b98122;border:1px solid #10b981;color:#10b981;border-radius:6px;padding:9px;font-size:11px;font-weight:700;cursor:pointer">Compositions des équipes</button>';
   document.getElementById('modal-body').innerHTML=html;
+  var lineupBtn=document.getElementById('btn-lineup-open');
+  if(lineupBtn){lineupBtn.addEventListener('click',function(){openLineupESPN(window._pendingLineupId);});}
 }
 
 function openMatchInfoFD(m){
@@ -488,12 +495,13 @@ function openLineupESPN(espnId){
 function openMap(m){
   var c=VENUE_COORDS[m.venue];
   if(!c)return;
+  var lat=c.lat, lng=c.lng;
+  var osmUrl='https://www.openstreetmap.org/export/embed.html?bbox='+(lng-0.01)+'%2C'+(lat-0.008)+'%2C'+(lng+0.01)+'%2C'+(lat+0.008)+'&layer=mapnik&marker='+lat+'%2C'+lng;
+  var mapsUrl='https://www.google.com/maps/search/?api=1&query='+c.q;
   openModal(m.venue+' · '+m.city,
     '<div style="border-radius:8px;overflow:hidden;margin-bottom:10px">'+
-    '<iframe width="100%" height="280" frameborder="0" style="border:0;border-radius:8px" '+
-    'src="https://www.google.com/maps/embed/v1/place?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&q='+c.q+'" allowfullscreen></iframe></div>'+
-    '<a href="https://www.google.com/maps/search/?api=1&query='+c.q+'" target="_blank" '+
-    'style="display:block;text-align:center;font-size:10px;color:#0ea5e9;text-decoration:none;padding:6px">'+
+    '<iframe width="100%" height="280" frameborder="0" scrolling="no" style="border:0;border-radius:8px" src="'+osmUrl+'"></iframe></div>'+
+    '<a href="'+mapsUrl+'" target="_blank" style="display:block;text-align:center;font-size:10px;color:#0ea5e9;text-decoration:none;padding:6px">'+
     'Ouvrir dans Google Maps ↗</a>'
   );
 }
@@ -536,9 +544,11 @@ function renderMatchRow(m){
     actions.appendChild(btnInfo);
     // Lineup button (only if ESPN ID exists)
     if(ESPN_ID_MAP[m.id]){
-      var btnLineup=document.createElement('button');btnLineup.className='action-btn';btnLineup.title='Compositions';btnLineup.textContent='\ud83d\udc55';btnLineup.style.color=m.color;
-      btnLineup.onclick=function(){_currentMatch=m;openLineupESPN(ESPN_ID_MAP[m.id]);};
-      actions.appendChild(btnLineup);
+      (function(match){
+        var btnLineup=document.createElement('button');btnLineup.className='action-btn';btnLineup.title='Compositions';btnLineup.textContent='\ud83d\udc55';btnLineup.style.color=match.color;
+        btnLineup.addEventListener('click',function(){_currentMatch=match;openLineupESPN(ESPN_ID_MAP[match.id]);});
+        actions.appendChild(btnLineup);
+      })(m);
     }
   }
   if(m.venue&&VENUE_COORDS[m.venue]){
