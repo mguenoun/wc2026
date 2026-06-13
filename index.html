@@ -121,8 +121,12 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <div id="knockout-timeline"></div>
   </div>
   <div id="view-scorers" class="hidden">
-    <div class="info-bar"><span>&#9917; Meilleurs buteurs &middot; mis &agrave; jour en temps r&eacute;el</span></div>
+    <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px">
+      <button id="tab-scorers-btn" onclick="showScorersTab('scorers')" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#0ea5e9;border:none;background:transparent;border-bottom:2px solid #0ea5e9;cursor:pointer">&#9917; Buteurs</button>
+      <button id="tab-keepers-btn" onclick="showScorersTab('keepers')" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#475569;border:none;background:transparent;border-bottom:2px solid transparent;cursor:pointer">&#129354; Gardiens</button>
+    </div>
     <div id="scorers-list"></div>
+    <div id="keepers-list" style="display:none"></div>
   </div>
 </div>
 <div id="modal-overlay" onclick="closeModal(event)">
@@ -284,7 +288,6 @@ async function fetchESPNScores(){
   }
   var events=[];
   var dates=Object.keys(datesToFetch).sort();
-  console.log('[ESPN] fetchESPNScores : '+dates.length+' date(s) à fetcher');
   for(var i=0;i<dates.length;i++){
     var ds=dates[i];
     try{
@@ -314,7 +317,7 @@ function processESPNScores(events){
           var eName=(e.name||'').toLowerCase();
           return eName.includes((m.t1||'').toLowerCase().slice(0,4))||eName.includes((m.t2||'').toLowerCase().slice(0,4));
         });
-        if(found){ESPN_ID_MAP[found.id]=e.id;matchId=found.id;console.log('[ESPN] auto-mapped',found.id,'->',e.id);}
+        if(found){ESPN_ID_MAP[found.id]=e.id;matchId=found.id;}
       }
     }
     if(!matchId)return;
@@ -372,8 +375,6 @@ async function fetchAll(){
     if(espnEvents.length){
       processESPNScores(espnEvents);
       espnOk=true;
-      var datesUsed=Object.keys((function(){var d={};allMatches.forEach(function(m){if(m.isFT||m.isLive)d[m.dayKey]=1;});return d;})()).length;
-      console.log('[WC2026] ESPN scores OK : '+espnEvents.length+' events sur '+datesUsed+' date(s)');
     }
   }catch(e){console.warn('[WC2026] ESPN scores failed:',e.message);}
 
@@ -491,7 +492,7 @@ function fetchESPNIds(){
           });
           if(match&&!ESPN_ID_MAP[match.id]){
             ESPN_ID_MAP[match.id]=e.id;
-            console.log('[ESPN] mapped',match.id,'->',e.id,e.name);
+
           }
         });
       })
@@ -753,6 +754,38 @@ function renderESPNStats(m,d,espnId){
     });
     html+='</div>';
   }
+  // Remplacements
+  var subs=events.filter(function(e){return e.type&&e.type.type==='substitution';});
+  if(subs.length){
+    html+='<div style="font-size:9px;color:#10b981;font-weight:700;letter-spacing:1px;margin-bottom:5px">REMPLACEMENTS</div>';
+    html+='<div style="background:#080f1e;border-radius:6px;padding:6px 10px;margin-bottom:10px">';
+    // Grouper par équipe
+    var subsByTeam={};
+    subs.forEach(function(s){
+      var tm=(s.text||'').match(/^Substitution,\s*([^.]+)\./i);
+      var teamName=tm?normTeam(tm[1].trim()):'';
+      var pm=(s.text||'').match(/\.\s*(.+?)\s+replaces\s+(.+?)\.?$/i);
+      if(!pm)return;
+      var tin=pm[1].trim(),tout=pm[2].trim();
+      var tColor=teamName===m.t1?m.color:'#94a3b8';
+      if(!subsByTeam[teamName])subsByTeam[teamName]={color:tColor,subs:[]};
+      subsByTeam[teamName].subs.push({tin:tin,tout:tout,clock:s.clock&&s.clock.displayValue||''});
+    });
+    Object.entries(subsByTeam).forEach(function(e){
+      var teamName=e[0],td=e[1];
+      html+='<div style="font-size:8px;font-weight:700;color:'+td.color+';letter-spacing:.5px;margin:5px 0 3px">'+teamName.toUpperCase()+'</div>';
+      td.subs.forEach(function(s){
+        html+='<div style="font-size:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px;color:#e2e8f0">'+
+          '<span style="color:#64748b;min-width:28px;font-size:9px">'+s.clock+'</span>'+
+          '<span style="color:#22c55e;font-size:10px">↑</span>'+
+          '<span style="flex:1">'+s.tin+'</span>'+
+          '<span style="color:#ef4444;font-size:10px">↓</span>'+
+          '<span style="flex:1;color:#64748b">'+s.tout+'</span>'+
+          '</div>';
+      });
+    });
+    html+='</div>';
+  }
   html+=infoBlock('Stade',(m.venue||'')+' · '+(m.city||''),'#0ea5e9');
   html+='<button id="btn-lineup-open" style="width:100%;margin-top:10px;background:#10b98122;border:1px solid #10b981;color:#10b981;border-radius:6px;padding:9px;font-size:11px;font-weight:700;cursor:pointer">Compositions des équipes</button>';
   window._pendingLineupId = espnId;
@@ -780,9 +813,82 @@ function openMatchInfoFD(m){
     .catch(function(){document.getElementById('modal-body').innerHTML='<p style="color:#ef4444;font-size:11px;padding:12px">Erreur.</p>';});
 }
 
+// Mapping position ESPN → ligne terrain (0=GK, 1=DEF, 2=MIL-DEF, 3=MIL, 4=MIL-OFF, 5=ATT)
+function posToLine(pos){
+  if(!pos)return 3;
+  var p=pos.toUpperCase().split('-')[0];
+  var map={'G':0,'GK':0,'RB':1,'LB':1,'CD':1,'CB':1,'SW':1,'RWB':2,'LWB':2,'DM':2,'CDM':2,'CM':3,'RM':3,'LM':3,'AM':4,'CAM':4,'SS':4,'CF':5,'ST':5,'F':5,'FW':5,'LW':5,'RW':5};
+  return map[p]!==undefined?map[p]:3;
+}
+
+// Rendu terrain SVG pour une équipe
+function renderPitchTeam(roster, color, flip){
+  var starters=roster.roster.filter(function(p){return p.starter;})
+    .sort(function(a,b){return a.formationPlace-b.formationPlace;});
+
+  // Grouper par ligne de position
+  var byLine={};
+  starters.forEach(function(p){
+    var line=posToLine(p.position&&p.position.abbreviation||'');
+    if(!byLine[line])byLine[line]=[];
+    byLine[line].push(p);
+  });
+
+  // Trier chaque ligne par formationPlace
+  Object.values(byLine).forEach(function(arr){arr.sort(function(a,b){return a.formationPlace-b.formationPlace;});});
+
+  var lines=Object.keys(byLine).map(Number).sort(function(a,b){return a-b;});
+  var nLines=lines.length;
+  var W=220,H=320;
+  var svg='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+
+  // Terrain
+  svg+='<rect width="'+W+'" height="'+H+'" fill="#0d2e1a" rx="6"/>';
+  // Lignes terrain
+  var ls='stroke:#1a5c30;stroke-width:1;fill:none;';
+  svg+='<rect x="10" y="10" width="'+(W-20)+'" height="'+(H-20)+'" style="'+ls+'"/>';
+  svg+='<line x1="10" y1="'+(H/2)+'" x2="'+(W-10)+'" y2="'+(H/2)+'" style="'+ls+'"/>';
+  svg+='<circle cx="'+(W/2)+'" cy="'+(H/2)+'" r="30" style="'+ls+'"/>';
+  svg+='<circle cx="'+(W/2)+'" cy="'+(H/2)+'" r="2" fill="#1a5c30"/>';
+  // Surface de réparation
+  var bw=120,bh=50;
+  svg+='<rect x="'+((W-bw)/2)+'" y="10" width="'+bw+'" height="'+bh+'" style="'+ls+'"/>';
+  svg+='<rect x="'+((W-bw)/2)+'" y="'+(H-10-bh)+'" width="'+bw+'" height="'+bh+'" style="'+ls+'"/>';
+  // Petit rectangle
+  var sw=60,sh=22;
+  svg+='<rect x="'+((W-sw)/2)+'" y="10" width="'+sw+'" height="'+sh+'" style="'+ls+'"/>';
+  svg+='<rect x="'+((W-sw)/2)+'" y="'+(H-10-sh)+'" width="'+sw+'" height="'+sh+'" style="'+ls+'"/>';
+
+  // Joueurs
+  lines.forEach(function(lineKey, li){
+    var players=byLine[lineKey];
+    var yRaw=li/(nLines-1); // 0=GK en bas, 1=ATT en haut
+    var yPct=flip?(1-yRaw):yRaw; // flip pour équipe du bas
+    var yPx=Math.round(15+(H-30)*yPct);
+    players.forEach(function(p,i){
+      var xPx=Math.round(((i+1)/(players.length+1))*W);
+      var name=(p.athlete&&p.athlete.displayName||'').split(' ');
+      var shortName=name.length>1?name[name.length-1]:name[0];
+      if(shortName.length>10)shortName=shortName.slice(0,9)+'.';
+      var subOut=p.subbedOut,subIn=p.subbedIn;
+      // Cercle joueur
+      svg+='<circle cx="'+xPx+'" cy="'+yPx+'" r="13" fill="'+color+'" opacity=".9"/>';
+      // Numéro
+      svg+='<text x="'+xPx+'" y="'+(yPx+4)+'" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="system-ui">'+( p.jersey||'')+'</text>';
+      // Icône remplacement
+      if(subOut)svg+='<text x="'+(xPx+10)+'" y="'+(yPx-8)+'" font-size="9" fill="#ef4444">↓</text>';
+      if(subIn) svg+='<text x="'+(xPx+10)+'" y="'+(yPx-8)+'" font-size="9" fill="#22c55e">↑</text>';
+      // Nom sous le cercle
+      svg+='<text x="'+xPx+'" y="'+(yPx+22)+'" text-anchor="middle" font-size="7.5" fill="#e2e8f0" font-family="system-ui" font-weight="600">'+shortName+'</text>';
+    });
+  });
+
+  svg+='</svg>';
+  return svg;
+}
+
 function openLineupESPN(espnId){
   var m=_currentMatch;
-  // If modal not open, open it first
   document.getElementById('modal-overlay').className='open';
   document.getElementById('modal-title').textContent='Compositions';
   document.getElementById('modal-body').innerHTML='<div style="text-align:center;padding:20px;color:#475569">⏳ Chargement des compositions…</div>';
@@ -791,35 +897,76 @@ function openLineupESPN(espnId){
     .then(function(d){
       var rosters=d.rosters||[];
       if(!rosters.length){document.getElementById('modal-body').innerHTML='<p style="color:#475569;font-size:11px;padding:12px">Compositions non disponibles.</p>';return;}
-      function renderTeam(roster,color){
+
+      var r0=rosters[0],r1=rosters[1];
+      var col0=m?m.color:'#0ea5e9';
+      var col1='#94a3b8';
+      var name0=normTeam(r0.team.displayName),name1=normTeam(r1.team.displayName);
+
+      // Onglets : Terrain / Liste
+      var html='<div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:10px">'+
+        '<button id="tab-pitch" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#0ea5e9;border:none;background:transparent;border-bottom:2px solid #0ea5e9;cursor:pointer">⚽ Terrain</button>'+
+        '<button id="tab-list" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#475569;border:none;background:transparent;border-bottom:2px solid transparent;cursor:pointer">☰ Liste</button>'+
+        '</div>';
+
+      // Vue terrain : 2 terrains côte à côte
+      html+='<div id="view-pitch">';
+      html+='<div style="display:flex;gap:6px;justify-content:center;align-items:flex-start">';
+      html+='<div style="text-align:center"><div style="font-size:9px;font-weight:700;color:'+col0+';margin-bottom:4px">'+name0+'</div>'+renderPitchTeam(r0,col0,false)+'</div>';
+      html+='<div style="text-align:center"><div style="font-size:9px;font-weight:700;color:'+col1+';margin-bottom:4px">'+name1+'</div>'+renderPitchTeam(r1,col1,true)+'</div>';
+      html+='</div>';
+      // Formation
+      html+='<div style="display:flex;justify-content:space-around;margin-top:6px;font-size:9px;color:#475569">'+
+        '<span style="color:'+col0+'">'+r0.formation+'</span>'+
+        '<span style="color:'+col1+'">'+r1.formation+'</span></div>';
+      html+='</div>';
+
+      // Vue liste
+      html+='<div id="view-list" style="display:none">';
+      function renderListTeam(roster,color){
         var starters=roster.roster.filter(function(p){return p.starter;});
         var bench=roster.roster.filter(function(p){return !p.starter;});
-        var html='<div style="font-size:8px;font-weight:700;letter-spacing:1px;color:'+color+';margin-bottom:5px">TITULAIRES</div>';
+        var h='<div style="font-size:8px;font-weight:700;letter-spacing:1px;color:'+color+';margin-bottom:5px">TITULAIRES</div>';
         starters.forEach(function(p){
-          html+='<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px">'+
+          h+='<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px">'+
             '<span style="min-width:18px;color:#475569;text-align:right;font-size:9px">'+(p.jersey||'')+'</span>'+
             '<span style="flex:1;color:#e2e8f0">'+(p.athlete&&p.athlete.displayName||'')+'</span>'+
             '<span style="font-size:8px;color:#475569;background:rgba(255,255,255,0.05);border-radius:3px;padding:1px 3px">'+normPos(p.position&&p.position.abbreviation||'')+'</span>'+
             (p.subbedOut?'<span style="color:#ef4444;font-size:9px"> ↓</span>':'')+'</div>';
         });
         if(bench.length){
-          html+='<div style="font-size:8px;font-weight:700;letter-spacing:1px;color:#475569;margin:7px 0 5px">REMPLAÇANTS</div>';
+          h+='<div style="font-size:8px;font-weight:700;letter-spacing:1px;color:#475569;margin:7px 0 5px">REMPLAÇANTS</div>';
           bench.forEach(function(p){
-            html+='<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px;opacity:.65">'+
+            h+='<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px;opacity:.65">'+
               '<span style="min-width:18px;color:#475569;text-align:right;font-size:9px">'+(p.jersey||'')+'</span>'+
               '<span style="flex:1;color:#e2e8f0">'+(p.athlete&&p.athlete.displayName||'')+'</span>'+
               '<span style="font-size:8px;color:#475569;background:rgba(255,255,255,0.05);border-radius:3px;padding:1px 3px">'+normPos(p.position&&p.position.abbreviation||'')+'</span>'+
               (p.subbedIn?'<span style="color:#22c55e;font-size:9px"> ↑</span>':'')+'</div>';
           });
         }
-        return html;
+        return h;
       }
-      var r0=rosters[0],r1=rosters[1];
-      document.getElementById('modal-title').textContent=normTeam(r0.team.displayName)+' – '+normTeam(r1.team.displayName);
-      document.getElementById('modal-body').innerHTML=
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
-        '<div>'+renderTeam(r0,m?m.color:'#0ea5e9')+'</div>'+
-        '<div>'+renderTeam(r1,'#94a3b8')+'</div></div>';
+      html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+        '<div>'+renderListTeam(r0,col0)+'</div>'+
+        '<div>'+renderListTeam(r1,col1)+'</div></div>';
+      html+='</div>';
+
+      document.getElementById('modal-title').textContent=name0+' – '+name1;
+      document.getElementById('modal-body').innerHTML=html;
+
+      // Gestion onglets
+      document.getElementById('tab-pitch').addEventListener('click',function(){
+        document.getElementById('view-pitch').style.display='';
+        document.getElementById('view-list').style.display='none';
+        this.style.color='#0ea5e9';this.style.borderBottomColor='#0ea5e9';
+        document.getElementById('tab-list').style.color='#475569';document.getElementById('tab-list').style.borderBottomColor='transparent';
+      });
+      document.getElementById('tab-list').addEventListener('click',function(){
+        document.getElementById('view-pitch').style.display='none';
+        document.getElementById('view-list').style.display='';
+        this.style.color='#0ea5e9';this.style.borderBottomColor='#0ea5e9';
+        document.getElementById('tab-pitch').style.color='#475569';document.getElementById('tab-pitch').style.borderBottomColor='transparent';
+      });
     })
     .catch(function(e){document.getElementById('modal-body').innerHTML='<p style="color:#ef4444;font-size:11px;padding:12px">Erreur: '+e.message+'</p>';});
 }
@@ -982,10 +1129,84 @@ function renderStandings(){
   });
 }
 
+function showScorersTab(tab){
+  var isScorers=tab==='scorers';
+  document.getElementById('scorers-list').style.display=isScorers?'':'none';
+  document.getElementById('keepers-list').style.display=isScorers?'none':'';
+  document.getElementById('tab-scorers-btn').style.color=isScorers?'#0ea5e9':'#475569';
+  document.getElementById('tab-scorers-btn').style.borderBottomColor=isScorers?'#0ea5e9':'transparent';
+  document.getElementById('tab-keepers-btn').style.color=isScorers?'#475569':'#0ea5e9';
+  document.getElementById('tab-keepers-btn').style.borderBottomColor=isScorers?'transparent':'#0ea5e9';
+  if(!isScorers&&!keepersLoaded)fetchKeepers();
+}
+
+var keepersLoaded=false;
+
+async function fetchKeepers(){
+  var c=document.getElementById('keepers-list');
+  if(!c)return;
+  c.innerHTML='<p style="color:#475569;font-size:11px;padding:16px">⏳ Calcul en cours…</p>';
+  var played=allMatches.filter(function(m){return m.isFT&&ESPN_ID_MAP[m.id];});
+  if(!played.length){c.innerHTML='<p style="color:#475569;font-size:11px;padding:16px">Données disponibles dès le premier match joué.</p>';return;}
+  var keeperStats={};
+  for(var i=0;i<played.length;i++){
+    var match=played[i];var eid=ESPN_ID_MAP[match.id];
+    try{
+      var r=await fetch(ESPN_BASE+'/summary?event='+eid);
+      var d=await r.json();
+      var bsTeams=d.boxscore&&d.boxscore.teams||[];
+      var savesMap={};
+      bsTeams.forEach(function(bt){
+        var saveStat=bt.statistics&&bt.statistics.find(function(s){return s.name==='saves';});
+        savesMap[bt.team&&bt.team.displayName||'']=saveStat?parseInt(saveStat.displayValue)||0:0;
+      });
+      var rosters=d.rosters||[];
+      rosters.forEach(function(roster){
+        var teamName=roster.team&&roster.team.displayName||'';
+        var gk=roster.roster&&roster.roster.find(function(p){return p.starter&&p.position&&p.position.abbreviation==='G';});
+        if(!gk)return;
+        var gkName=gk.athlete&&gk.athlete.displayName||'';if(!gkName)return;
+        var score=match.score||'';
+        var parts=score.split('–').map(function(x){return parseInt(x.trim())||0;});
+        var isHome=roster.homeAway==='home';
+        var ga=parts.length===2?(isHome?parts[1]:parts[0]):0;
+        var saves=savesMap[teamName]||0;
+        if(!keeperStats[gkName])keeperStats[gkName]={team:normTeam(teamName),saves:0,ga:0,matches:0};
+        keeperStats[gkName].saves+=saves;keeperStats[gkName].ga+=ga;keeperStats[gkName].matches++;
+      });
+    }catch(e){}
+  }
+  var ranking=Object.entries(keeperStats)
+    .map(function(e){return Object.assign({name:e[0]},e[1]);})
+    .sort(function(a,b){return (a.ga-b.ga)||(b.saves-a.saves);});
+  if(!ranking.length){c.innerHTML='<p style="color:#475569;font-size:11px;padding:16px">Aucune donnée disponible.</p>';return;}
+  var html='<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;padding:4px 12px;">';
+  html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:#475569;font-weight:700">'+
+    '<span style="min-width:20px">#</span><span style="flex:1">Gardien</span>'+
+    '<span style="min-width:36px;text-align:center">MJ</span>'+
+    '<span style="min-width:36px;text-align:center;color:#22c55e">Arrêts</span>'+
+    '<span style="min-width:36px;text-align:center;color:#ef4444">Enc.</span></div>';
+  ranking.forEach(function(k,i){
+    var rankColor=i===0?'#fbbf24':i===1?'#94a3b8':i===2?'#cd7f32':'#475569';
+    html+='<div class="scorer-row">'+
+      '<span class="scorer-rank" style="color:'+rankColor+'">'+(i+1)+'</span>'+
+      '<span class="scorer-name">'+k.name+'<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">('+k.team+')</span></span>'+
+      '<span style="font-size:10px;color:#64748b;min-width:36px;text-align:center">'+k.matches+'</span>'+
+      '<span style="font-size:12px;font-weight:800;color:#22c55e;min-width:36px;text-align:center">'+k.saves+'</span>'+
+      '<span style="font-size:12px;font-weight:800;color:#ef4444;min-width:36px;text-align:center">'+k.ga+'</span>'+
+      '</div>';
+  });
+  html+='</div>';c.innerHTML=html;keepersLoaded=true;
+}
+
 function renderScorers(){
   var c=document.getElementById('scorers-list');if(!c)return;c.innerHTML='';
-  if(!scorers.length){c.innerHTML='<p style="color:#475569;font-size:11px;padding:16px">Aucun buteur enregistr\u00e9 pour l\u2019instant.</p>';return;}
+  if(!scorers.length){c.innerHTML='<p style="color:#475569;font-size:11px;padding:16px">Aucun buteur enregistré pour l’instant.</p>';return;}
   var html='<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;padding:4px 12px;">';
+  html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:#475569;font-weight:700">'+
+    '<span style="min-width:20px">#</span><span style="flex:1">Joueur</span>'+
+    '<span style="min-width:36px;text-align:center;color:#22c55e">⚽ Buts</span>'+
+    '<span style="min-width:36px;text-align:center;color:#0ea5e9">→ Ast.</span></div>';
   for(var i=0;i<scorers.length;i++){
     var s=scorers[i];var player=s.player||{};var team=s.team||{};
     var goals=s.goals||0;var assists=s.assists||0;var penalties=s.penalties||0;
@@ -993,11 +1214,11 @@ function renderScorers(){
     html+='<div class="scorer-row">'+
       '<span class="scorer-rank" style="color:'+rankColor+'">'+rank+'</span>'+
       '<span class="scorer-name">'+(player.name||'?')+
-        '<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">('+normTeam(team.shortName||team.name||'')+')' +
-        '</span></span>'+
-      '<span class="scorer-goals" style="color:#22c55e">\u26bd '+goals+'</span>'+
-      (assists?'<span style="font-size:9px;color:#64748b;margin-left:4px">+'+assists+' passes</span>':'')+
-      (penalties?'<span style="font-size:8px;color:#f59e0b;margin-left:4px">('+penalties+' pen.)</span>':'')+
+        '<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">('+normTeam(team.shortName||team.name||'')+')</span>'+
+        (penalties?'<span style="font-size:8px;color:#f59e0b;margin-left:4px">('+penalties+' pen.)</span>':'')+
+        '</span>'+
+      '<span style="font-size:12px;font-weight:800;color:#22c55e;min-width:36px;text-align:center">⚽ '+goals+'</span>'+
+      (assists?'<span style="font-size:11px;font-weight:700;color:#0ea5e9;min-width:36px;text-align:center">→ '+assists+'</span>':'<span style="min-width:36px"></span>')+
       '</div>';
   }
   html+='</div>';c.innerHTML=html;
