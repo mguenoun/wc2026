@@ -10,6 +10,13 @@ function posToLine(pos){
 function renderPitch(r0,r1,col0,col1,cardMap,playerStats){
   var W=420,H=640,R=13;
   var svg='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+  // Filtre halo pour lisibilité des ratings
+  svg+='<defs><filter id="rh" x="-50%" y="-50%" width="200%" height="200%">'+
+    '<feMorphology in="SourceAlpha" operator="dilate" radius="1.2" result="exp"/>'+
+    '<feFlood flood-color="rgba(0,0,0,0.85)" result="col"/>'+
+    '<feComposite in="col" in2="exp" operator="in" result="sh"/>'+
+    '<feMerge><feMergeNode in="sh"/><feMergeNode in="SourceGraphic"/></feMerge>'+
+    '</filter></defs>';
   var ls='stroke:#1e5c2e;stroke-width:1;fill:none;';
   svg+='<rect width="'+W+'" height="'+H+'" fill="#0d2e1a" rx="8"/>';
   svg+='<rect x="15" y="12" width="'+(W-30)+'" height="'+(H-24)+'" style="'+ls+'"/>';
@@ -47,13 +54,13 @@ function renderPitch(r0,r1,col0,col1,cardMap,playerStats){
         var ps=playerStats&&playerStats[fullName];
         var rating=ps&&ps.rating;
         var card=cardMap&&cardMap[fullName];
-        var minTxt=(ps&&ps.subbedOut&&ps.minutes<90)?ps.minutes+"'":(ps&&ps.subbedIn)?ps.minutes+"'":'';
+        var minTxt=(ps&&ps.subbedOut&&ps.minutes>0&&ps.minutes<90)?ps.minutes+"'":(ps&&ps.subbedIn&&ps.minutes>0)?ps.minutes+"'":'';
         // Cercle couleur équipe
         out+='<circle cx="'+xPx+'" cy="'+yPx+'" r="'+R+'" fill="'+color+'" opacity=".92"/>';
         // Rating dans le cercle (texte coloré)
-        if(rating){
+        if(rating&&rating>0){
           var rc=ratingColor(rating);
-          out+='<text x="'+xPx+'" y="'+(yPx+2.5)+'" text-anchor="middle" font-size="7.5" font-weight="800" fill="'+rc+'" font-family="system-ui">'+rating.toFixed(1)+'</text>';
+          out+='<text x="'+xPx+'" y="'+(yPx+2.5)+'" text-anchor="middle" font-size="7.5" font-weight="800" fill="'+rc+'" font-family="system-ui" filter="url(#rh)">'+rating.toFixed(1)+'</text>';
         }
         // Nom + numéro sous le cercle
         out+='<text x="'+xPx+'" y="'+(yPx+R+9)+'" text-anchor="middle" font-size="7.5" fill="#e2e8f0" font-family="system-ui" font-weight="600">'+label+'</text>';
