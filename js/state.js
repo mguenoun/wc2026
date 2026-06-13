@@ -37,5 +37,16 @@ function startESPNLiveRefresh(){
   },30000);
 }
 
+// ─── INITIALISATION ───────────────────────────────────────────────────────────
+loadFallback();
+fetchAll();
+scheduleRefresh();
+startESPNLiveRefresh();
 
-// ─── FALLBACK ─────────────────────────────────────────────────────────────────
+// Refresh du minuteur sur la liste toutes les 60s
+setInterval(function(){
+  if(allMatches.some(function(m){return m.isLive;})){
+    renderGroupsTimeline();
+    renderKOTimeline();
+  }
+}, 30000);
