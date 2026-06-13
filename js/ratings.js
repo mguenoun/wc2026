@@ -2,7 +2,7 @@
 
 function getRole(pos){
   var p=(pos||'').toUpperCase().split('-')[0];
-  var m={'G':'GK','GK':'GK','CD':'DEF','CB':'DEF','SW':'DEF','RB':'FB','LB':'FB','RWB':'FB','LWB':'FB','DM':'DM','CDM':'DM','CM':'CM','RM':'CM','LM':'CM','AM':'AM','CAM':'AM','SS':'AM','CF':'FW','ST':'FW','F':'FW','FW':'FW','LW':'FW','RW':'FW'};
+  var m={'G':'GK','GK':'GK','CD':'DEF','CB':'DEF','SW':'DEF','RB':'FB','LB':'FB','RWB':'FB','LWB':'FB','DM':'DM','CDM':'DM','CM':'CM','RM':'CM','LM':'CM','AM':'AM','CAM':'AM','SS':'AM','CF':'FW','ST':'FW','F':'FW','FW':'FW','LW':'FW','RW':'FW','RF':'FW','LF':'FW','WF':'FW'};
   return m[p]||'CM';
 }
 
