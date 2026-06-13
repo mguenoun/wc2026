@@ -92,7 +92,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 <div id="header">
   <div class="eyebrow">FIFA &middot; USA &middot; MEXIQUE &middot; CANADA</div>
   <h1>COUPE DU MONDE 2026</h1>
-  <div class="sub">11 Juin &ndash; 19 Juillet &middot; 48 &eacute;quipes &middot; 104 matchs</div>
+  <div class="sub">11 Juin &ndash; 19 Juillet &middot; 48 &eacute;quipes &middot; 104 matchs &middot; <span style="color:#0ea5e9;font-weight:700" title="Heure du Maroc (UTC+1)">&#128336; Heure Maroc (GMT+1)</span></div>
   <div id="tabs">
     <button class="tab-btn active" onclick="switchView('groups')">&#128203; Phase de Groupes</button>
     <button class="tab-btn" onclick="switchView('standings')">&#128202; Classements</button>
@@ -265,36 +265,136 @@ function groupByDate(arr){
 
 
 // ─── API ──────────────────────────────────────────────────────────────────────
-async function fetchAll(){
-  setStatus('loading','Actualisation\u2026');
-  document.getElementById('refresh-btn').textContent='\u8635 \u2026';
-  if(PROXY_BASE.includes('REMPLACER')){setStatus('error','Proxy non configur\u00e9');loadFallback();renderAll();document.getElementById('loading').classList.add('hidden');showView(activeView);document.getElementById('refresh-btn').textContent='\u8635 Actualiser';return;}
-  try{
-    var wcResults=await Promise.all([fetch(PROXY_BASE+'/fd/competitions/WC/matches'),fetch(PROXY_BASE+'/fd/competitions/WC/standings')]);
-    var r1=wcResults[0],r2=wcResults[1];
-    if(!r1.ok)throw new Error('Proxy '+r1.status);
-    var data1=await r1.json();
-    loadFallback();
-    processMatches(data1.matches||[]);
-    if(r2.ok){var data2=await r2.json();processStandings(data2.standings||[]);}
-    else{console.warn('[WC2026] standings failed:',r2.status);}
-    if(!Object.keys(standings).length)computeStandingsFromMatches();
-    setStatus('ok','En ligne \u2713');
-    var now=new Date();
-    document.getElementById('last-update').textContent='Mis \u00e0 jour '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    renderAll();fetchScorers();fetchESPNIds();
-    document.getElementById('loading').classList.add('hidden');
-    showView(activeView);
-  }catch(e){
-    console.warn('API error:',e.message);
-    setStatus('error','Hors ligne \u2013 donn\u00e9es statiques');
-    loadFallback();renderAll();
-    document.getElementById('loading').classList.add('hidden');
-    showView(activeView);
+
+// Charge les scores depuis ESPN sur une fenêtre de dates autour d'aujourd'hui
+async function fetchESPNScores(){
+  // Fetcher uniquement les dates qui ont des matchs déjà commencés (isFT ou isLive)
+  // Logique robuste au rechargement de page : pas de fenêtre glissante, pas de perte de scores
+  var datesToFetch={};
+  allMatches.forEach(function(m){
+    if(m.isFT||m.isLive)datesToFetch[m.dayKey.replace(/-/g,'')]=1;
+  });
+  // Si rien n'est encore joué (tout début de tournoi), prendre hier + aujourd'hui
+  if(!Object.keys(datesToFetch).length){
+    var today=new Date();
+    for(var i=-1;i<=0;i++){
+      var d=new Date(today);d.setDate(d.getDate()+i);
+      datesToFetch[d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')]=1;
+    }
   }
-  document.getElementById('refresh-btn').textContent='\u8635 Actualiser';
+  var events=[];
+  var dates=Object.keys(datesToFetch).sort();
+  console.log('[ESPN] fetchESPNScores : '+dates.length+' date(s) à fetcher');
+  for(var i=0;i<dates.length;i++){
+    var ds=dates[i];
+    try{
+      var r=await fetch(ESPN_BASE+'/scoreboard?dates='+ds);
+      if(!r.ok)continue;
+      var data=await r.json();
+      if(data.events&&data.events.length)events=events.concat(data.events);
+    }catch(e){console.warn('[ESPN scoreboard] '+ds+':',e.message);}
+  }
+  return events;
 }
 
+// Applique les données ESPN aux allMatches (scores, statuts, clock)
+function processESPNScores(events){
+  if(!events||!events.length)return false;
+  var mapped=0;
+  events.forEach(function(e){
+    // Retrouver le match via ESPN_ID_MAP
+    var matchId=null;
+    Object.entries(ESPN_ID_MAP).forEach(function(entry){if(entry[1]===e.id)matchId=entry[0];});
+    if(!matchId){
+      // Tentative de mapping auto par date+équipes
+      var eDate=e.date?e.date.slice(0,10):null;
+      if(eDate){
+        var found=allMatches.find(function(m){
+          if(m.dayKey!==eDate)return false;
+          var eName=(e.name||'').toLowerCase();
+          return eName.includes((m.t1||'').toLowerCase().slice(0,4))||eName.includes((m.t2||'').toLowerCase().slice(0,4));
+        });
+        if(found){ESPN_ID_MAP[found.id]=e.id;matchId=found.id;console.log('[ESPN] auto-mapped',found.id,'->',e.id);}
+      }
+    }
+    if(!matchId)return;
+    var m=allMatches.find(function(m){return m.id===matchId;});
+    if(!m)return;
+    var state=e.status&&e.status.type&&e.status.type.state;
+    if(state!=='in'&&state!=='post')return; // ignorer les matchs pas encore commencés
+    // Ne jamais écraser un score FT déjà acquis par une entrée sans score (ex: match hors fenêtre)
+    if(m.isFT&&state==='post'&&m.score)return;
+    var comp=e.competitions&&e.competitions[0];
+    var comps=comp&&comp.competitors||[];
+    var home=comps.find(function(c){return c.homeAway==='home';})||{};
+    var away=comps.find(function(c){return c.homeAway==='away';})||{};
+    var newScore=(home.score||'0')+' \u2013 '+(away.score||'0');
+    var isLive=state==='in';
+    var isFT=state==='post';
+    var clock=e.status&&e.status.displayClock||'';
+    var period=e.status&&e.status.period||0;
+    var clockDisplay='';
+    if(isLive&&clock){
+      if(clock.indexOf("'")>=0){clockDisplay=clock;}
+      else{var mins=parseInt(clock.split(':')[0])||0;
+        if(period<=2)clockDisplay=mins+"'";
+        else clockDisplay='Prolong. '+mins+"'";}
+    }
+    m.score=newScore;m.isLive=isLive;m.isFT=isFT;m.clockDisplay=clockDisplay;
+    if(isFT)m.status='FINISHED';
+    if(isLive)m.status='IN_PLAY';
+    mapped++;
+  });
+  return mapped>0;
+}
+
+async function fetchAll(){
+  setStatus('loading','Actualisation…');
+  document.getElementById('refresh-btn').textContent='蘵 …';
+  if(PROXY_BASE.includes('REMPLACER')){setStatus('error','Proxy non configuré');loadFallback();renderAll();document.getElementById('loading').classList.add('hidden');showView(activeView);document.getElementById('refresh-btn').textContent='蘵 Actualiser';return;}
+
+  loadFallback(); // base statique : remet tous les matchs à score:null
+
+  // ── 1. FD matches : bootstrap des statuts (isFT/isLive) ────────────────
+  // Nécessaire pour que fetchESPNScores() sache quelles dates fetcher
+  var fdOk=false;
+  try{
+    var r1=await fetch(PROXY_BASE+'/fd/competitions/WC/matches');
+    if(r1.ok){var data1=await r1.json();processMatches(data1.matches||[]);fdOk=true;}
+    else console.warn('[WC2026] FD matches:',r1.status);
+  }catch(e){console.warn('[WC2026] FD matches failed:',e.message);}
+
+  // ── 2. ESPN par-dessus : scores plus frais, clock, statuts corrects ────────
+  // fetchESPNScores utilise les isFT/isLive bootstrappés par FD pour cibler les bonnes dates
+  var espnOk=false;
+  try{
+    var espnEvents=await fetchESPNScores();
+    if(espnEvents.length){
+      processESPNScores(espnEvents);
+      espnOk=true;
+      var datesUsed=Object.keys((function(){var d={};allMatches.forEach(function(m){if(m.isFT||m.isLive)d[m.dayKey]=1;});return d;})()).length;
+      console.log('[WC2026] ESPN scores OK : '+espnEvents.length+' events sur '+datesUsed+' date(s)');
+    }
+  }catch(e){console.warn('[WC2026] ESPN scores failed:',e.message);}
+
+  // ── 3. FD classements (toujours, ESPN n'expose pas les groupes facilement) ──
+  try{
+    var r2=await fetch(PROXY_BASE+'/fd/competitions/WC/standings');
+    if(r2.ok){var data2=await r2.json();processStandings(data2.standings||[]);}
+    else console.warn('[WC2026] standings:',r2.status);
+  }catch(e){console.warn('[WC2026] standings error:',e.message);}
+
+  if(!Object.keys(standings).length)computeStandingsFromMatches();
+
+  var src=espnOk?'ESPN+FD':(fdOk?'FD':'statique');
+  setStatus('ok','En ligne ✓ ('+src+')');
+  var now=new Date();
+  document.getElementById('last-update').textContent='Mis à jour '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  renderAll();fetchScorers();fetchESPNIds();
+  document.getElementById('loading').classList.add('hidden');
+  showView(activeView);
+  document.getElementById('refresh-btn').textContent='蘵 Actualiser';
+}
 function setStatus(state,label){
   var dot=document.getElementById('conn-dot'),lbl=document.getElementById('conn-label');
   dot.className='status-dot';
@@ -710,7 +810,10 @@ function renderMatchRow(m){
   teams.innerHTML=m.t1+'<span class="vs">\u2013</span>'+m.t2;
 
   var sc=document.createElement('span');sc.className='match-score';sc.style.color=m.color;
-  if(m.isLive){sc.innerHTML='<span class="status-live">\u26a1 '+(m.score||'0\u20130')+(m.clockDisplay?' '+m.clockDisplay:'')+'</span>';}
+  if(m.isLive){
+    sc.innerHTML='<span style="font-size:12px;font-weight:900;color:#22c55e;animation:pulse 1.5s infinite">\u26a1 '+(m.score||'0\u20130')+'</span>'+
+      (m.clockDisplay?'<span style="font-size:8px;color:#22c55e;display:block;text-align:center;line-height:1.2">'+m.clockDisplay+'</span>':'');
+  }
   else if(m.isFT&&m.score){sc.textContent=m.score;sc.style.color='#e2e8f0';}
   else sc.innerHTML='<span class="status-ns">\u2013</span>';
 
