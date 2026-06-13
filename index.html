@@ -98,6 +98,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <button class="tab-btn" onclick="switchView('standings')">&#128202; Classements</button>
     <button class="tab-btn" onclick="switchView('knockout')">&#127942; &Eacute;limination Directe</button>
     <button class="tab-btn" onclick="switchView('scorers')">&#9917; Buteurs</button>
+    <button class="tab-btn" onclick="switchView('keepers')">&#129354; Gardiens</button>
   </div>
 </div>
 <div id="status-bar">
@@ -121,12 +122,12 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <div id="knockout-timeline"></div>
   </div>
   <div id="view-scorers" class="hidden">
-    <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px">
-      <button id="tab-scorers-btn" onclick="showScorersTab('scorers')" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#0ea5e9;border:none;background:transparent;border-bottom:2px solid #0ea5e9;cursor:pointer">&#9917; Buteurs</button>
-      <button id="tab-keepers-btn" onclick="showScorersTab('keepers')" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#475569;border:none;background:transparent;border-bottom:2px solid transparent;cursor:pointer">&#129354; Gardiens</button>
-    </div>
+    <div class="info-bar"><span>&#9917; Meilleurs buteurs &middot; mis &agrave; jour en temps r&eacute;el</span></div>
     <div id="scorers-list"></div>
-    <div id="keepers-list" style="display:none"></div>
+  </div>
+  <div id="view-keepers" class="hidden">
+    <div class="info-bar"><span>&#129354; Classement gardiens &middot; arr&ecirc;ts &amp; buts encaiss&eacute;s</span></div>
+    <div id="keepers-list"></div>
   </div>
 </div>
 <div id="modal-overlay" onclick="closeModal(event)">
@@ -862,9 +863,19 @@ function renderPitchTeam(roster, color, flip){
   // Joueurs
   lines.forEach(function(lineKey, li){
     var players=byLine[lineKey];
-    var yRaw=li/(nLines-1); // 0=GK en bas, 1=ATT en haut
-    var yPct=flip?(1-yRaw):yRaw; // flip pour équipe du bas
-    var yPx=Math.round(15+(H-30)*yPct);
+    var yPx;
+    if(lineKey===0){
+      // GK toujours fixé en bas (non flip) ou en haut (flip)
+      yPx=flip?20:(H-20);
+    } else {
+      // Lignes de champ : réparties entre y=H-45 (défense) et y=25 (attaque)
+      var fieldLines=lines.filter(function(l){return l!==0;});
+      var liField=fieldLines.indexOf(lineKey);
+      var nField=fieldLines.length;
+      var yRaw=nField>1?liField/(nField-1):0.5;
+      var yPct=flip?yRaw:(1-yRaw);
+      yPx=Math.round(25+(H-70)*yPct);
+    }
     players.forEach(function(p,i){
       var xPx=Math.round(((i+1)/(players.length+1))*W);
       var name=(p.athlete&&p.athlete.displayName||'').split(' ');
@@ -1129,17 +1140,6 @@ function renderStandings(){
   });
 }
 
-function showScorersTab(tab){
-  var isScorers=tab==='scorers';
-  document.getElementById('scorers-list').style.display=isScorers?'':'none';
-  document.getElementById('keepers-list').style.display=isScorers?'none':'';
-  document.getElementById('tab-scorers-btn').style.color=isScorers?'#0ea5e9':'#475569';
-  document.getElementById('tab-scorers-btn').style.borderBottomColor=isScorers?'#0ea5e9':'transparent';
-  document.getElementById('tab-keepers-btn').style.color=isScorers?'#475569':'#0ea5e9';
-  document.getElementById('tab-keepers-btn').style.borderBottomColor=isScorers?'transparent':'#0ea5e9';
-  if(!isScorers&&!keepersLoaded)fetchKeepers();
-}
-
 var keepersLoaded=false;
 
 async function fetchKeepers(){
@@ -1229,11 +1229,15 @@ function renderAll(){
 }
 
 function showView(v){
-  ['groups','standings','knockout','scorers'].forEach(function(id){document.getElementById('view-'+id).classList.toggle('hidden',id!==v);});
-  document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',['groups','standings','knockout','scorers'][i]===v);});
+  ['groups','standings','knockout','scorers','keepers'].forEach(function(id){document.getElementById('view-'+id).classList.toggle('hidden',id!==v);});
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',['groups','standings','knockout','scorers','keepers'][i]===v);});
 }
 
-function switchView(v){activeView=v;showView(v);if(v==='scorers')renderScorers();}
+function switchView(v){
+  activeView=v;showView(v);
+  if(v==='scorers')renderScorers();
+  if(v==='keepers'&&!keepersLoaded)fetchKeepers();
+}
 
 function scheduleRefresh(){
   var hasLive=allMatches.some(function(m){return m.isLive;});
