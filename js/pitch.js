@@ -113,3 +113,75 @@ function renderPlayerList(roster, color, teamInfo, cardMap, playerStats){
   }
   return h;
 }
+
+function openLineupESPN(espnId){
+  var m=_currentMatch;
+  document.getElementById('modal-overlay').className='open';
+  document.getElementById('modal-title').textContent='Compositions';
+  document.getElementById('modal-body').innerHTML='<div style="text-align:center;padding:20px;color:#475569">⏳ Chargement des compositions…</div>';
+  fetch(ESPN_BASE+'/summary?event='+espnId)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var rosters=d.rosters||[];
+      if(!rosters.length){document.getElementById('modal-body').innerHTML='<p style="color:#475569;font-size:11px;padding:12px">Compositions non disponibles.</p>';return;}
+      var r0=rosters[0],r1=rosters[1];
+      var col0=m?m.color:'#0ea5e9', col1='#94a3b8';
+      var name0=normTeam(r0.team.displayName),name1=normTeam(r1.team.displayName);
+
+      // Onglets Terrain / Liste
+      var html='<div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:10px">'+
+        '<button id="tab-pitch" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#0ea5e9;border:none;background:transparent;border-bottom:2px solid #0ea5e9;cursor:pointer">⚽ Terrain</button>'+
+        '<button id="tab-list" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#475569;border:none;background:transparent;border-bottom:2px solid transparent;cursor:pointer">☰ Liste</button>'+
+        '</div>';
+
+      // Vue terrain
+      html+='<div id="view-pitch" style="text-align:center;overflow-y:auto">'+renderPitch(r0,r1,col0,col1)+'</div>';
+
+      // Vue liste
+      html+='<div id="view-list" style="display:none">';
+      function renderListTeam(roster,color){
+        var starters=roster.roster.filter(function(p){return p.starter;});
+        var bench=roster.roster.filter(function(p){return !p.starter;});
+        var h='<div style="font-size:8px;font-weight:700;letter-spacing:1px;color:'+color+';margin-bottom:5px">TITULAIRES</div>';
+        starters.forEach(function(p){
+          h+='<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px">'+
+            '<span style="min-width:18px;color:#475569;text-align:right;font-size:9px">'+(p.jersey||'')+'</span>'+
+            '<span style="flex:1;color:#e2e8f0">'+(p.athlete&&p.athlete.displayName||'')+'</span>'+
+            '<span style="font-size:8px;color:#475569;background:rgba(255,255,255,0.05);border-radius:3px;padding:1px 3px">'+normPos(p.position&&p.position.abbreviation||'')+'</span>'+
+            (p.subbedOut?'<span style="color:#ef4444;font-size:9px"> ↓</span>':'')+'</div>';
+        });
+        if(bench.length){
+          h+='<div style="font-size:8px;font-weight:700;letter-spacing:1px;color:#475569;margin:7px 0 5px">REMPLAÇANTS</div>';
+          bench.forEach(function(p){
+            h+='<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px;opacity:.65">'+
+              '<span style="min-width:18px;color:#475569;text-align:right;font-size:9px">'+(p.jersey||'')+'</span>'+
+              '<span style="flex:1;color:#e2e8f0">'+(p.athlete&&p.athlete.displayName||'')+'</span>'+
+              '<span style="font-size:8px;color:#475569;background:rgba(255,255,255,0.05);border-radius:3px;padding:1px 3px">'+normPos(p.position&&p.position.abbreviation||'')+'</span>'+
+              (p.subbedIn?'<span style="color:#22c55e;font-size:9px"> ↑</span>':'')+'</div>';
+          });
+        }
+        return h;
+      }
+      html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+        '<div>'+renderListTeam(r0,col0)+'</div>'+
+        '<div>'+renderListTeam(r1,col1)+'</div></div>';
+      html+='</div>';
+
+      document.getElementById('modal-title').textContent=name0+' – '+name1;
+      document.getElementById('modal-body').innerHTML=html;
+
+      document.getElementById('tab-pitch').addEventListener('click',function(){
+        document.getElementById('view-pitch').style.display='';
+        document.getElementById('view-list').style.display='none';
+        this.style.color='#0ea5e9';this.style.borderBottomColor='#0ea5e9';
+        document.getElementById('tab-list').style.color='#475569';document.getElementById('tab-list').style.borderBottomColor='transparent';
+      });
+      document.getElementById('tab-list').addEventListener('click',function(){
+        document.getElementById('view-pitch').style.display='none';
+        document.getElementById('view-list').style.display='';
+        this.style.color='#0ea5e9';this.style.borderBottomColor='#0ea5e9';
+        document.getElementById('tab-pitch').style.color='#475569';document.getElementById('tab-pitch').style.borderBottomColor='transparent';
+      });
+    })
+    .catch(function(e){document.getElementById('modal-body').innerHTML='<p style="color:#ef4444;font-size:11px;padding:12px">Erreur: '+e.message+'</p>';});
+}
