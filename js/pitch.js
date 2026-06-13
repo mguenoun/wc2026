@@ -3,7 +3,7 @@
 function posToLine(pos){
   if(!pos)return 3;
   var p=pos.toUpperCase().split('-')[0];
-  var map={'G':0,'GK':0,'RB':1,'LB':1,'CD':1,'CB':1,'SW':1,'RWB':2,'LWB':2,'DM':2,'CDM':2,'CM':3,'RM':3,'LM':3,'AM':4,'CAM':4,'SS':4,'CF':5,'ST':5,'F':5,'FW':5,'LW':5,'RW':5};
+  var map={'G':0,'GK':0,'RB':1,'LB':1,'CD':1,'CB':1,'SW':1,'RWB':2,'LWB':2,'DM':2,'CDM':2,'CM':3,'RM':3,'LM':3,'AM':4,'CAM':4,'SS':4,'CF':5,'ST':5,'F':5,'FW':5,'LW':5,'RW':5,'RF':5,'LF':5,'WF':5};
   return map[p]!==undefined?map[p]:3;
 }
 
