@@ -576,6 +576,9 @@ function fetchESPNLiveScores(){
 function fetchScorers(){
   fetch(PROXY_BASE+'/fd/competitions/WC/scorers?limit=20')
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(data){scorers=data.scorers||[];if(activeView==='scorers')renderScorers();})
+    .catch(function(e){console.warn('[WC2026] scorers:',e.message);});
+}
 
 var keepersLoaded=false;
 
@@ -638,9 +641,6 @@ async function fetchKeepers(){
   html+='</div>';c.innerHTML=html;keepersLoaded=true;
 }
 
-    .then(function(data){scorers=data.scorers||[];if(activeView==='scorers')renderScorers();})
-    .catch(function(e){console.warn('[WC2026] scorers:',e.message);});
-}
 
 
 // ─── MODAL ────────────────────────────────────────────────────────────────────
