@@ -840,7 +840,7 @@ function renderPitchTeam(roster, color, flip){
 
   var lines=Object.keys(byLine).map(Number).sort(function(a,b){return a-b;});
   var nLines=lines.length;
-  var W=220,H=320;
+  var W=220,H=340;
   var svg='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
 
   // Terrain
@@ -864,17 +864,21 @@ function renderPitchTeam(roster, color, flip){
   lines.forEach(function(lineKey, li){
     var players=byLine[lineKey];
     var yPx;
+    // H=320. GK à 30px du bord, lignes de champ entre 45px et H-45px
+    // flip=true : équipe orientée vers le bas (GK en haut)
+    var GK_TOP=30, GK_BOT=H-30;
+    var FIELD_TOP=50, FIELD_BOT=H-50;
     if(lineKey===0){
-      // GK toujours fixé en bas (non flip) ou en haut (flip)
-      yPx=flip?20:(H-20);
+      yPx=flip?GK_TOP:GK_BOT;
     } else {
-      // Lignes de champ : réparties entre y=H-45 (défense) et y=25 (attaque)
       var fieldLines=lines.filter(function(l){return l!==0;});
       var liField=fieldLines.indexOf(lineKey);
       var nField=fieldLines.length;
       var yRaw=nField>1?liField/(nField-1):0.5;
+      // flip=false (équipe gauche) : défense en bas (FIELD_BOT), attaque en haut (FIELD_TOP)
+      // flip=true  (équipe droite) : défense en haut (FIELD_TOP), attaque en bas (FIELD_BOT)
       var yPct=flip?yRaw:(1-yRaw);
-      yPx=Math.round(25+(H-70)*yPct);
+      yPx=Math.round(FIELD_TOP+(FIELD_BOT-FIELD_TOP)*yPct);
     }
     players.forEach(function(p,i){
       var xPx=Math.round(((i+1)/(players.length+1))*W);
