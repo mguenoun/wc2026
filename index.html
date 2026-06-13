@@ -676,36 +676,80 @@ function renderESPNStats(m,d,espnId){
     html+='<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:9px;font-weight:700">'+
       '<span style="color:'+m.color+'">'+m.t1+'</span><span style="color:#94a3b8">'+m.t2+'</span></div></div>';
   }
-  // Buts
+  // Buts + Assists
   var events=d.keyEvents||[];
   var goals=events.filter(function(e){return e.scoringPlay;});
   if(goals.length){
+    // Comptage des assists (hors CSC)
+    var assistCount={};
+    goals.forEach(function(g){
+      if(/own\s+goal/i.test(g.shortText||''))return;
+      var am=(g.text||'').match(/Assisted by ([^.]+?)(?:\s+with|\s*\.)/i);
+      if(am){var n=am[1].trim();assistCount[n]=(assistCount[n]||0)+1;}
+    });
+
     html+='<div style="font-size:9px;color:#fbbf24;font-weight:700;letter-spacing:1px;margin-bottom:5px">BUTS</div>';
     html+='<div style="background:#080f1e;border-radius:6px;padding:6px 10px;margin-bottom:10px">';
     goals.forEach(function(g){
       var teamName=g.team&&g.team.displayName?normTeam(g.team.displayName):'';
       var gColor=teamName===m.t1?m.color:'#94a3b8';
-      var rawText=g.shortText||g.text||'';
-      // Insert team name in parentheses after player name
-      // shortText format: "Player Name Goal" → "Player Name (Team) Goal"
-      var displayText=rawText;
-      if(teamName&&g.shortText){
-        displayText=g.shortText.replace(/^([^!]+)/,function(match){return match+' <span style="color:'+gColor+';font-size:8px">('+teamName+')</span>';});
-      }
+      var type=g.type&&g.type.type||'';
+      var isHeader=type==='goal---header';
+      var isOwnGoal=/own\s+goal/i.test(g.shortText||'');
+      // Nom du joueur nettoyé
+      var playerName=(g.shortText||'')
+        .replace(/\s+Own\s+Goal$/i,'')
+        .replace(/\s+Goal\s*-\s*Header$/i,'')
+        .replace(/\s+Goal$/i,'');
+      // Icône type de but
+      var icon=isOwnGoal
+        ?'<span style="color:#ef4444;font-size:9px">\u26bd CSC</span> '
+        :isHeader
+          ?'<span style="color:#fbbf24;font-size:9px">\u26bd t\u00eate</span> '
+          :'<span style="color:#22c55e;font-size:9px">\u26bd</span> ';
+      // Assist
+      var am=(g.text||'').match(/Assisted by ([^.]+?)(?:\s+with|\s*\.)/i);
+      var assistHtml=am?'<span style="color:#475569;font-size:8px"> \u2192 '+am[1].trim()+'</span>':'';
+      // Équipe
+      var teamHtml=teamName?'<span style="color:'+gColor+';font-size:8px;margin-left:3px">('+teamName+')</span>':'';
       html+='<div style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
         '<span style="color:#64748b;min-width:28px;font-size:9px">'+(g.clock&&g.clock.displayValue||'')+'</span>'+
-        '<span style="flex:1;color:#e2e8f0">'+displayText+'</span></div>';
+        '<span style="flex:1;color:#e2e8f0">'+icon+playerName+teamHtml+assistHtml+'</span></div>';
     });
     html+='</div>';
+
+    // Assists
+    var assistEntries=Object.entries(assistCount).sort(function(a,b){return b[1]-a[1];});
+    if(assistEntries.length){
+      html+='<div style="font-size:9px;color:#0ea5e9;font-weight:700;letter-spacing:1px;margin-bottom:5px">PASSES D\u00c9CISIVES</div>';
+      html+='<div style="background:#080f1e;border-radius:6px;padding:6px 10px;margin-bottom:10px">';
+      assistEntries.forEach(function(ae){
+        html+='<div style="font-size:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px;color:#e2e8f0">'+
+          '<span style="color:#0ea5e9;font-size:9px;min-width:14px">\u2192</span>'+
+          '<span style="flex:1">'+ae[0]+'</span>'+
+          (ae[1]>1?'<span style="font-size:9px;color:#0ea5e9;font-weight:700">x'+ae[1]+'</span>':'')+
+          '</div>';
+      });
+      html+='</div>';
+    }
   }
-  // Cartons
-  var cards=events.filter(function(e){return e.type&&(e.type.type==='yellowcard'||e.type.type==='redcard');});
+  // Cartons — filtre corrigé : ESPN utilise "yellow-card" et "red-card" (avec tiret)
+  var cards=events.filter(function(e){return e.type&&(e.type.type==='yellow-card'||e.type.type==='red-card');});
   if(cards.length){
     html+='<div style="font-size:9px;color:#ef4444;font-weight:700;letter-spacing:1px;margin-bottom:5px">CARTONS</div>';
     html+='<div style="background:#080f1e;border-radius:6px;padding:6px 10px;margin-bottom:10px">';
     cards.forEach(function(c){
-      html+='<div style="font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:#e2e8f0">'+
-        '<span style="color:#64748b;margin-right:8px">'+(c.clock&&c.clock.displayValue||'')+'</span>'+(c.text||'')+'</div>';
+      var isRed=c.type.type==='red-card';
+      var playerName=(c.shortText||'')
+        .replace(/\s+Red\s+Card$/i,'')
+        .replace(/\s+Yellow\s+Card$/i,'');
+      var cardIcon=isRed
+        ?'<span style="font-size:11px">🟥</span>'
+        :'<span style="font-size:11px">🟨</span>';
+      html+='<div style="font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px;color:#e2e8f0">'+
+        '<span style="color:#64748b;min-width:28px;font-size:9px">'+(c.clock&&c.clock.displayValue||'')+'</span>'+
+        cardIcon+
+        '<span style="flex:1">'+playerName+'</span></div>';
     });
     html+='</div>';
   }
@@ -887,7 +931,12 @@ function renderGrpFilters(){
   all.addEventListener('click',function(){activeFilter='all';renderAll();});c.appendChild(all);
   Object.entries(GC).forEach(function(e){var g=e[0],col=e[1];
     var btn=document.createElement('button');btn.className='grp-btn';btn.textContent='Gr.'+g;
-    if(activeFilter===g){btn.style.background=hex2rgba(col,.13);btn.style.borderColor=col;btn.style.color=col;}
+    // Actif : couleur pleine ; inactif : couleur atténuée visible
+    if(activeFilter===g){
+      btn.style.background=hex2rgba(col,.18);btn.style.borderColor=col;btn.style.color=col;
+    } else {
+      btn.style.borderColor=hex2rgba(col,.35);btn.style.color=hex2rgba(col,.6);
+    }
     btn.addEventListener('click',function(){activeFilter=g;renderAll();});c.appendChild(btn);
   });
 }
