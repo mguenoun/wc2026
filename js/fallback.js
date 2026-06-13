@@ -111,15 +111,3 @@ function loadFallback(){
   allMatches=grpRaw.map(function(m){return Object.assign({},m,{dateLabel:m.date,color:GC[m.grp],phase:'Groupe',score:null,status:'SCHEDULED',isLive:false,isFT:false,ko:false,last:J3.indexOf(m.id)>=0});})
     .concat(koRaw.map(function(m){return Object.assign({},m,{dateLabel:m.date,score:null,status:'SCHEDULED',isLive:false,isFT:false,ko:true,last:false});}));
 }
-
-fetchAll();
-scheduleRefresh();
-startESPNLiveRefresh();
-
-// Refresh du minuteur sur la liste toutes les 60s
-setInterval(function(){
-  if(allMatches.some(function(m){return m.isLive;})){
-    renderGroupsTimeline();
-    renderKOTimeline();
-  }
-}, 30000);
