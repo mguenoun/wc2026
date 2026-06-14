@@ -112,6 +112,7 @@ async function fetchPlayerRankings(){
       Object.entries(stats).forEach(function(entry){
         var name=entry[0],s=entry[1];
         if(!s.rating||!s.minutes||s.minutes<1)return;
+        if(s.role==='GK')return; // GK dans onglet dédié
         if(!aggregated[name])aggregated[name]={team:s.team,role:s.role,totalRating:0,totalMinutes:0,goals:0,assists:0,saves:0,matches:0};
         var a=aggregated[name];
         // Rating pondéré par minutes
