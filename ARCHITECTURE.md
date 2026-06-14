@@ -346,3 +346,376 @@ wrangler secret put API_TOKEN_AS
 | Status pipeline | https://wc2026.mguenoun.workers.dev/stats/status |
 | Classement joueurs | https://wc2026.mguenoun.workers.dev/stats/players |
 | Classement gardiens | https://wc2026.mguenoun.workers.dev/stats/keepers |
+
+---
+
+## Diagrammes d'architecture
+
+> Les PNG sont dans `docs/`. Pour régénérer depuis les sources SVG ci-dessous :
+> ```bash
+> python3 -c "
+> from playwright.sync_api import sync_playwright
+> import os
+> svgs = [('diag1_architecture','/tmp/d1.svg'),('diag2_sequence','/tmp/d2.svg'),('diag3_interactions','/tmp/d3.svg')]
+> with sync_playwright() as p:
+>     b = p.chromium.launch()
+>     for name, path in svgs:
+>         svg = open(path).read()
+>         html = f'<!DOCTYPE html><html><head><style>body{{margin:0;padding:16px;background:white}}</style></head><body>' + svg + '</body></html>'
+>         pg = b.new_page(viewport={'width':950,'height':800})
+>         pg.set_content(html); pg.wait_for_load_state('networkidle')
+>         h = pg.evaluate('document.body.scrollHeight')
+>         pg.set_viewport_size({'width':950,'height':h+32})
+>         pg.screenshot(path=f'docs/{name}.png', full_page=True)
+>     b.close()
+> "
+> ```
+
+### Diagramme 1 — Composants et déploiement
+
+![Architecture globale](docs/diag1_architecture.png)
+
+<details>
+<summary>Source SVG — Diagramme 1</summary>
+
+```svg
+<svg width="900" viewBox="0 0 680 640" xmlns="http://www.w3.org/2000/svg" style="background:white;font-family:Arial,sans-serif">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<!-- GitHub Pages -->
+<rect x="30" y="20" width="300" height="220" rx="14" fill="#e6f1fb" stroke="#378ADD" stroke-width="1"/>
+<text x="180" y="46" text-anchor="middle" font-size="13" font-weight="bold" fill="#0C447C">GitHub Pages</text>
+<text x="180" y="62" text-anchor="middle" font-size="10" fill="#185FA5">mguenoun.github.io/wc2026</text>
+
+<rect x="50" y="76" width="120" height="36" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
+<text x="110" y="90" text-anchor="middle" font-size="11" font-weight="bold" fill="#26215C">index.html</text>
+<text x="110" y="104" text-anchor="middle" font-size="9" fill="#3C3489">Page principale</text>
+
+<rect x="190" y="76" width="120" height="36" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
+<text x="250" y="90" text-anchor="middle" font-size="11" font-weight="bold" fill="#26215C">test.html</text>
+<text x="250" y="104" text-anchor="middle" font-size="9" fill="#3C3489">Page dev/test</text>
+
+<rect x="50" y="128" width="260" height="94" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
+<text x="180" y="148" text-anchor="middle" font-size="11" font-weight="bold" fill="#26215C">js/ (10 fichiers)</text>
+<text x="180" y="168" text-anchor="middle" font-size="9" fill="#3C3489">config · fallback · api · ratings</text>
+<text x="180" y="184" text-anchor="middle" font-size="9" fill="#3C3489">modal · pitch · map · render</text>
+<text x="180" y="200" text-anchor="middle" font-size="9" fill="#3C3489">rankings · state</text>
+
+<!-- Cloudflare Worker -->
+<rect x="30" y="268" width="300" height="210" rx="14" fill="#e1f5ee" stroke="#1D9E75" stroke-width="1"/>
+<text x="180" y="294" text-anchor="middle" font-size="13" font-weight="bold" fill="#085041">Cloudflare Worker</text>
+<text x="180" y="310" text-anchor="middle" font-size="10" fill="#0F6E56">wc2026.mguenoun.workers.dev</text>
+
+<rect x="50" y="322" width="118" height="36" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="109" y="336" text-anchor="middle" font-size="9" font-weight="bold" fill="#04342C">Proxy /fd/</text>
+<text x="109" y="350" text-anchor="middle" font-size="9" fill="#04342C">football-data.org</text>
+
+<rect x="192" y="322" width="118" height="36" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="251" y="336" text-anchor="middle" font-size="9" font-weight="bold" fill="#04342C">/stats/players</text>
+<text x="251" y="350" text-anchor="middle" font-size="9" fill="#04342C">/stats/keepers</text>
+
+<rect x="50" y="374" width="260" height="88" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="180" y="394" text-anchor="middle" font-size="11" font-weight="bold" fill="#04342C">Pipeline KV (3 étapes)</text>
+<text x="180" y="413" text-anchor="middle" font-size="9" fill="#085041">Step 1 · Découverte matchs terminés</text>
+<text x="180" y="431" text-anchor="middle" font-size="9" fill="#085041">Step 2 · Fetch URLs joueurs (~7 req)</text>
+<text x="180" y="449" text-anchor="middle" font-size="9" fill="#085041">Step 3 · Stats x10 séquentiels (~40 req)</text>
+
+<!-- Cloudflare KV -->
+<rect x="380" y="268" width="270" height="210" rx="14" fill="#FAEEDA" stroke="#BA7517" stroke-width="1"/>
+<text x="515" y="294" text-anchor="middle" font-size="13" font-weight="bold" fill="#412402">Cloudflare KV</text>
+<text x="515" y="310" text-anchor="middle" font-size="10" fill="#633806">WC2026_STATS (persistant)</text>
+
+<rect x="400" y="322" width="230" height="140" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
+<text x="515" y="342" text-anchor="middle" font-size="9" fill="#412402">espn_map → matchKey: ESPN ID</text>
+<text x="515" y="362" text-anchor="middle" font-size="9" fill="#412402">pipeline_queue → {pending...}</text>
+<text x="515" y="382" text-anchor="middle" font-size="9" fill="#412402">urls:{eid} → URLs stats (temp)</text>
+<text x="515" y="402" text-anchor="middle" font-size="9" fill="#412402">partial:{eid}:N → groupe N (temp)</text>
+<text x="515" y="422" text-anchor="middle" font-size="9" fill="#412402">match:{eid} → stats finales ✓</text>
+<text x="515" y="442" text-anchor="middle" font-size="9" fill="#633806">Lecture &lt; 200ms</text>
+
+<!-- Crons -->
+<rect x="380" y="20" width="270" height="220" rx="14" fill="#f1f5f9" stroke="#888780" stroke-width="1"/>
+<text x="515" y="46" text-anchor="middle" font-size="13" font-weight="bold" fill="#2C2C2A">Cron Triggers</text>
+<text x="515" y="62" text-anchor="middle" font-size="10" fill="#5F5E5A">Cloudflare (4 crons)</text>
+
+<rect x="400" y="76" width="230" height="148" rx="6" fill="#D3D1C7" stroke="#888780" stroke-width="0.8"/>
+<text x="515" y="96" text-anchor="middle" font-size="9" font-family="Courier,monospace" fill="#2C2C2A">*/30 * * * *   → step 1</text>
+<text x="515" y="116" text-anchor="middle" font-size="9" font-family="Courier,monospace" fill="#2C2C2A">0 */2 * * *    → step 2</text>
+<text x="515" y="136" text-anchor="middle" font-size="9" font-family="Courier,monospace" fill="#2C2C2A">10 */2 * * *   → step 3</text>
+<text x="515" y="156" text-anchor="middle" font-size="9" font-family="Courier,monospace" fill="#2C2C2A">20 */2 * * *   → step 3</text>
+<text x="515" y="176" text-anchor="middle" font-size="9" fill="#5F5E5A">Plan gratuit · 50 req/invocation</text>
+<text x="515" y="196" text-anchor="middle" font-size="9" fill="#5F5E5A">Logs → Observability → scheduled</text>
+
+<!-- Sources données -->
+<rect x="30" y="510" width="180" height="100" rx="10" fill="#FAECE7" stroke="#D85A30" stroke-width="1"/>
+<text x="120" y="534" text-anchor="middle" font-size="12" font-weight="bold" fill="#4A1B0C">ESPN APIs</text>
+<text x="120" y="552" text-anchor="middle" font-size="9" fill="#712B13">Scores · Compos</text>
+<text x="120" y="568" text-anchor="middle" font-size="9" fill="#712B13">Stats (Core API)</text>
+<text x="120" y="584" text-anchor="middle" font-size="9" fill="#712B13">Direct · CORS ok</text>
+
+<rect x="228" y="510" width="180" height="100" rx="10" fill="#FAECE7" stroke="#D85A30" stroke-width="1"/>
+<text x="318" y="534" text-anchor="middle" font-size="12" font-weight="bold" fill="#4A1B0C">football-data.org</text>
+<text x="318" y="552" text-anchor="middle" font-size="9" fill="#712B13">Scores · Standings</text>
+<text x="318" y="568" text-anchor="middle" font-size="9" fill="#712B13">Buteurs</text>
+<text x="318" y="584" text-anchor="middle" font-size="9" fill="#712B13">Via proxy /fd/</text>
+
+<rect x="426" y="510" width="224" height="100" rx="10" fill="#f1f5f9" stroke="#888780" stroke-width="1"/>
+<text x="538" y="534" text-anchor="middle" font-size="12" font-weight="bold" fill="#2C2C2A">Navigateur</text>
+<text x="538" y="552" text-anchor="middle" font-size="9" fill="#5F5E5A">Init one-shot (POST)</text>
+<text x="538" y="568" text-anchor="middle" font-size="9" fill="#5F5E5A">/stats/init + forceReset</text>
+<text x="538" y="584" text-anchor="middle" font-size="9" fill="#5F5E5A">Pipeline manuel (debug)</text>
+
+<!-- Flèches -->
+<line x1="180" y1="240" x2="180" y2="266" stroke="#378ADD" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="192" y="257" font-size="9" fill="#666">fetch()</text>
+
+<line x1="330" y1="373" x2="378" y2="373" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="334" y="366" font-size="9" fill="#666">KV put/get</text>
+
+<line x1="515" y1="240" x2="515" y2="266" stroke="#888" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="524" y="257" font-size="9" fill="#666">déclenche</text>
+
+<line x1="120" y1="478" x2="120" y2="508" stroke="#aaa" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M180 478 L180 495 L280 495 L280 508" fill="none" stroke="#aaa" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M538 508 L538 490 L332 490 L332 270" fill="none" stroke="#aaa" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<text x="410" y="486" font-size="9" fill="#666">one-shot init</text>
+</svg>
+
+```
+
+</details>
+
+---
+
+### Diagramme 2 — Séquence au chargement de la page
+
+![Séquence chargement](docs/diag2_sequence.png)
+
+<details>
+<summary>Source SVG — Diagramme 2</summary>
+
+```svg
+<svg width="900" viewBox="0 0 680 600" xmlns="http://www.w3.org/2000/svg" style="background:white;font-family:Arial,sans-serif">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<text x="340" y="26" text-anchor="middle" font-size="15" font-weight="bold" fill="#0369a1">Séquence au chargement de la page</text>
+<text x="340" y="44" text-anchor="middle" font-size="10" fill="#475569">Exécuté dans state.js (chargé en dernier)</text>
+
+<!-- Numéros étapes -->
+<text x="26" y="90" font-size="11" fill="#888">①</text>
+<text x="26" y="142" font-size="11" fill="#888">②</text>
+<text x="26" y="210" font-size="11" fill="#888">③</text>
+<text x="26" y="300" font-size="11" fill="#888">④</text>
+<text x="26" y="368" font-size="11" fill="#888">⑤</text>
+<text x="26" y="430" font-size="11" fill="#888">⑥</text>
+<text x="26" y="498" font-size="11" fill="#888">⑦</text>
+
+<!-- ① loadFallback -->
+<rect x="48" y="68" width="580" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="68" y="86" font-size="11" font-weight="bold" fill="#26215C">loadFallback()</text>
+<text x="68" y="102" font-size="9" fill="#3C3489">fallback.js → peuple allMatches (données statiques calendrier complet)</text>
+
+<line x1="340" y1="112" x2="340" y2="128" stroke="#aaa" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="350" y="123" font-size="8" fill="#888">instantané</text>
+
+<!-- ② renderAll -->
+<rect x="48" y="128" width="580" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="68" y="146" font-size="11" font-weight="bold" fill="#26215C">renderAll()</text>
+<text x="68" y="162" font-size="9" fill="#3C3489">Affichage immédiat du calendrier statique · filtres · timeline KO</text>
+
+<line x1="340" y1="172" x2="340" y2="188" stroke="#aaa" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="350" y="183" font-size="8" fill="#888">async</text>
+
+<!-- ③ fetchAll + sous-étapes -->
+<rect x="48" y="188" width="580" height="158" rx="8" fill="#e6f1fb" stroke="#378ADD" stroke-width="0.8"/>
+<text x="68" y="208" font-size="11" font-weight="bold" fill="#042C53">fetchAll()</text>
+<text x="68" y="224" font-size="9" fill="#0C447C">api.js → fetch scores + standings + buteurs en parallèle</text>
+
+<rect x="66" y="232" width="172" height="100" rx="6" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.6"/>
+<text x="152" y="252" text-anchor="middle" font-size="10" font-weight="bold" fill="#042C53">ESPN scoreboard</text>
+<text x="152" y="270" text-anchor="middle" font-size="9" fill="#0C447C">Scores live</text>
+<text x="152" y="288" text-anchor="middle" font-size="9" fill="#0C447C">Statuts matchs</text>
+<text x="152" y="306" text-anchor="middle" font-size="9" fill="#0C447C">Direct · CORS ok</text>
+
+<rect x="254" y="232" width="172" height="100" rx="6" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.6"/>
+<text x="340" y="252" text-anchor="middle" font-size="10" font-weight="bold" fill="#042C53">Proxy /fd/ → FD</text>
+<text x="340" y="270" text-anchor="middle" font-size="9" fill="#0C447C">Standings groupes</text>
+<text x="340" y="288" text-anchor="middle" font-size="9" fill="#0C447C">Bootstrap scores</text>
+<text x="340" y="306" text-anchor="middle" font-size="9" fill="#0C447C">Via Worker</text>
+
+<rect x="442" y="232" width="172" height="100" rx="6" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.6"/>
+<text x="528" y="252" text-anchor="middle" font-size="10" font-weight="bold" fill="#042C53">fetchScorers()</text>
+<text x="528" y="270" text-anchor="middle" font-size="9" fill="#0C447C">Buteurs /fd/</text>
+<text x="528" y="288" text-anchor="middle" font-size="9" fill="#0C447C">Liste complète</text>
+<text x="528" y="306" text-anchor="middle" font-size="9" fill="#0C447C">Via Worker</text>
+
+<line x1="340" y1="346" x2="340" y2="362" stroke="#aaa" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+<!-- ④ renderAll update -->
+<rect x="48" y="362" width="580" height="44" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="68" y="380" font-size="11" font-weight="bold" fill="#26215C">renderAll()</text>
+<text x="68" y="396" font-size="9" fill="#3C3489">Mise à jour scores live · standings · statuts matchs</text>
+
+<line x1="340" y1="406" x2="340" y2="418" stroke="#aaa" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+<!-- ⑤ scheduleRefresh -->
+<rect x="48" y="418" width="580" height="44" rx="8" fill="#f1f5f9" stroke="#888780" stroke-width="0.8"/>
+<text x="68" y="436" font-size="11" font-weight="bold" fill="#2C2C2A">scheduleRefresh()</text>
+<text x="68" y="452" font-size="9" fill="#5F5E5A">Calcule délai jusqu'au prochain match · relance fetchAll() automatiquement</text>
+
+<line x1="340" y1="462" x2="340" y2="474" stroke="#aaa" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+<!-- ⑥ startESPNLiveRefresh -->
+<rect x="48" y="474" width="580" height="44" rx="8" fill="#f1f5f9" stroke="#888780" stroke-width="0.8"/>
+<text x="68" y="492" font-size="11" font-weight="bold" fill="#2C2C2A">startESPNLiveRefresh()</text>
+<text x="68" y="508" font-size="9" fill="#5F5E5A">Si match en cours → setInterval 60s → fetchESPNLiveScores() pour le minuteur</text>
+
+<line x1="340" y1="518" x2="340" y2="530" stroke="#aaa" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+<!-- ⑦ setInterval -->
+<rect x="48" y="530" width="580" height="44" rx="8" fill="#f1f5f9" stroke="#888780" stroke-width="0.8"/>
+<text x="68" y="548" font-size="11" font-weight="bold" fill="#2C2C2A">setInterval 30s</text>
+<text x="68" y="564" font-size="9" fill="#5F5E5A">Si match live → re-render timelines (minuteur affiché)</text>
+</svg>
+
+```
+
+</details>
+
+---
+
+### Diagramme 3 — Interactions UI par clic
+
+![Interactions UI](docs/diag3_interactions.png)
+
+<details>
+<summary>Source SVG — Diagramme 3</summary>
+
+```svg
+<svg width="900" viewBox="0 0 680 720" xmlns="http://www.w3.org/2000/svg" style="background:white;font-family:Arial,sans-serif">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<text x="340" y="26" text-anchor="middle" font-size="15" font-weight="bold" fill="#0369a1">Interactions UI — actions déclenchées par clic</text>
+
+<!-- Barre onglets -->
+<rect x="30" y="40" width="620" height="52" rx="10" fill="#e6f1fb" stroke="#378ADD" stroke-width="1"/>
+<text x="340" y="58" text-anchor="middle" font-size="12" font-weight="bold" fill="#042C53">Barre d'onglets principale</text>
+<text x="340" y="74" text-anchor="middle" font-size="9" fill="#185FA5">switchView(v) → showView() → masque tous les onglets · affiche v</text>
+
+<!-- Onglets -->
+<rect x="38"  y="100" width="76" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="76"  y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">📋 Groupes</text>
+<rect x="122" y="100" width="82" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="163" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">📊 Classements</text>
+<rect x="212" y="100" width="72" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="248" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">🏆 KO</text>
+<rect x="292" y="100" width="70" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="327" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">⚽ Buteurs</text>
+<rect x="370" y="100" width="70" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="405" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">🥅 Gardiens</text>
+<rect x="448" y="100" width="68" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="482" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">⭐ Joueurs</text>
+
+<!-- Flèches onglets -->
+<line x1="163" y1="128" x2="163" y2="156" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="248" y1="128" x2="248" y2="156" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="405" y1="128" x2="405" y2="196" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="482" y1="128" x2="482" y2="156" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+<!-- Rang 1 actions onglets -->
+<rect x="80"  y="156" width="150" height="44" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="155" y="174" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderStandings()</text>
+<text x="155" y="190" text-anchor="middle" font-size="9" fill="#085041">standings en mémoire</text>
+
+<rect x="248" y="156" width="154" height="44" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="325" y="174" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderKOTimeline()</text>
+<text x="325" y="190" text-anchor="middle" font-size="9" fill="#085041">allMatches filtré ko:true</text>
+
+<rect x="420" y="156" width="146" height="44" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
+<text x="493" y="174" text-anchor="middle" font-size="10" font-weight="bold" fill="#412402">fetchPlayerRankings()</text>
+<text x="493" y="190" text-anchor="middle" font-size="9" fill="#633806">1 appel /stats/players</text>
+
+<!-- Rang 2 décalé Gardiens -->
+<rect x="340" y="196" width="130" height="44" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
+<text x="405" y="214" text-anchor="middle" font-size="10" font-weight="bold" fill="#412402">fetchKeepers()</text>
+<text x="405" y="230" text-anchor="middle" font-size="9" fill="#633806">1 appel /stats/keepers</text>
+
+<!-- Séparateur -->
+<line x1="30" y1="260" x2="650" y2="260" stroke="#cbd5e1" stroke-width="0.5" stroke-dasharray="4 3"/>
+<text x="340" y="276" text-anchor="middle" font-size="10" fill="#475569">Interactions sur un match (clic sur une ligne du calendrier)</text>
+
+<!-- Ligne match — 2 boutons seulement : Stats + Compos -->
+<rect x="30" y="286" width="620" height="40" rx="8" fill="#f1f5f9" stroke="#888780" stroke-width="0.8"/>
+<text x="200" y="311" text-anchor="middle" font-size="12" font-weight="bold" fill="#2C2C2A">🟢 USA – Paraguay  4–1  FT</text>
+<rect x="466" y="293" width="56" height="26" rx="4" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="494" y="310" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">📊 Stats</text>
+<rect x="534" y="293" width="64" height="26" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.7"/>
+<text x="566" y="310" text-anchor="middle" font-size="9" font-weight="bold" fill="#26215C">👕 Compos</text>
+
+<!-- Flèches boutons match -->
+<line x1="494" y1="319" x2="220" y2="356" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="566" y1="319" x2="490" y2="356" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+<!-- Col gauche : Stats -->
+<rect x="30" y="356" width="340" height="56" rx="6" fill="#FAECE7" stroke="#D85A30" stroke-width="0.8"/>
+<text x="200" y="376" text-anchor="middle" font-size="10" font-weight="bold" fill="#4A1B0C">openMatchInfo()</text>
+<text x="200" y="394" text-anchor="middle" font-size="9" fill="#712B13">ESPN summary → stats équipes</text>
+<text x="200" y="410" text-anchor="middle" font-size="9" fill="#712B13">buts · cartons · remplacements</text>
+
+<!-- Col droite : Compos -->
+<rect x="388" y="356" width="180" height="56" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="478" y="376" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">openLineupESPN()</text>
+<text x="478" y="394" text-anchor="middle" font-size="9" fill="#3C3489">ESPN rosters</text>
+<text x="478" y="410" text-anchor="middle" font-size="9" fill="#3C3489">Phase 1 : terrain SVG immédiat</text>
+
+<!-- Suite compos phase 2 -->
+<line x1="478" y1="412" x2="478" y2="432" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="388" y="432" width="180" height="56" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="478" y="452" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">loadMatchPlayerStats()</text>
+<text x="478" y="470" text-anchor="middle" font-size="9" fill="#3C3489">ESPN Core API × 22 joueurs</text>
+<text x="478" y="486" text-anchor="middle" font-size="9" fill="#3C3489">Ratings injectés ~1.5s</text>
+
+<line x1="478" y1="488" x2="478" y2="508" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="388" y="508" width="180" height="44" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="478" y="526" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">renderPitch() / renderPlayerList()</text>
+<text x="478" y="542" text-anchor="middle" font-size="9" fill="#3C3489">Onglet Terrain · Liste</text>
+
+<!-- Filtres groupes -->
+<line x1="30" y1="572" x2="650" y2="572" stroke="#cbd5e1" stroke-width="0.5" stroke-dasharray="4 3"/>
+<text x="340" y="588" text-anchor="middle" font-size="10" fill="#475569">Filtres groupes (onglet Groupes)</text>
+
+<rect x="30" y="598" width="620" height="40" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
+<text x="76"  y="622" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Tous</text>
+<text x="152" y="622" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.A</text>
+<text x="228" y="622" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.B</text>
+<text x="304" y="622" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.C</text>
+<text x="380" y="622" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.D ...</text>
+<text x="530" y="614" text-anchor="middle" font-size="9" fill="#27500A">activeFilter = grp</text>
+<text x="530" y="630" text-anchor="middle" font-size="9" fill="#27500A">→ renderAll()</text>
+
+<!-- Légende -->
+<rect x="30" y="654" width="14" height="12" rx="2" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.6"/>
+<text x="50" y="664" font-size="8" fill="#475569">Depuis mémoire : allMatches / standings / scorers</text>
+<rect x="30" y="672" width="14" height="12" rx="2" fill="#FAC775" stroke="#BA7517" stroke-width="0.6"/>
+<text x="50" y="682" font-size="8" fill="#475569">Lazy load (1 seule fois) → Worker KV /stats/players ou /stats/keepers</text>
+<rect x="30" y="690" width="14" height="12" rx="2" fill="#FAECE7" stroke="#D85A30" stroke-width="0.6"/>
+<text x="50" y="700" font-size="8" fill="#475569">Appel ESPN live au clic → modale stats</text>
+<rect x="30" y="708" width="14" height="12" rx="2" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.6"/>
+<text x="50" y="718" font-size="8" fill="#475569">ESPN Core API → compositions + ratings (~1.5s chargement progressif)</text>
+</svg>
+
+```
+
+</details>
