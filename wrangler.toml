@@ -1,0 +1,10 @@
+name = "wc2026"
+main = "worker/worker.js"
+compatibility_date = "2026-06-11"
+
+[[kv_namespaces]]
+binding = "STATS_KV"
+id = "749700d94d114156a758b14e2e9b6587"
+
+[triggers]
+crons = ["*/30 * * * *", "0 */2 * * *", "10 */2 * * *", "20 */2 * * *"]
