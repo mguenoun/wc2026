@@ -33,7 +33,12 @@ function renderPitch(r0,r1,col0,col1,cardMap,playerStats){
     var starters=roster.roster.filter(function(p){return p.starter;}).sort(function(a,b){return a.formationPlace-b.formationPlace;});
     var byLine={};
     starters.forEach(function(p){var l=posToLine(p.position&&p.position.abbreviation||'');if(!byLine[l])byLine[l]=[];byLine[l].push(p);});
-    Object.values(byLine).forEach(function(arr){arr.sort(function(a,b){return a.formationPlace-b.formationPlace;});});
+    // ESPN : formationPlace croissant = droite du terrain
+    // side=0 (équipe haut, vue de dos) : sa droite = gauche écran → tri croissant
+    // side=1 (équipe bas, vue de face) : sa droite = droite écran → tri décroissant
+    Object.values(byLine).forEach(function(arr){
+      arr.sort(function(a,b){return side===0?a.formationPlace-b.formationPlace:b.formationPlace-a.formationPlace;});
+    });
     var lines=Object.keys(byLine).map(Number).sort(function(a,b){return a-b;});
     var fieldLines=lines.filter(function(l){return l!==0;});
     var nField=fieldLines.length;
