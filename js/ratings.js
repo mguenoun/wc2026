@@ -1,66 +1,234 @@
 // ─── RATINGS & STATS JOUEURS ─────────────────────────────────────────────────
+// Formule v7 : architecture base rôle + bonus/malus hors rôle
+// Calibrée sur 3 matchs vs SofaScore et FotMob
 
 function getRole(pos){
   var p=(pos||'').toUpperCase().split('-')[0];
-  var m={'G':'GK','GK':'GK','CD':'DEF','CB':'DEF','SW':'DEF','RB':'FB','LB':'FB','RWB':'FB','LWB':'FB','DM':'DM','CDM':'DM','CM':'CM','RM':'CM','LM':'CM','AM':'AM','CAM':'AM','SS':'AM','CF':'FW','ST':'FW','F':'FW','FW':'FW','LW':'FW','RW':'FW','RF':'FW','LF':'FW','WF':'FW'};
+  var m={
+    'G':'GK','GK':'GK',
+    'CD':'DEF','CB':'DEF','SW':'DEF',
+    'RB':'FB','LB':'FB','RWB':'FB','LWB':'FB',
+    'DM':'DM','CDM':'DM',
+    'CM':'CM','RM':'CM','LM':'CM',
+    'AM':'AM','CAM':'AM','SS':'AM',
+    'CF':'FW','ST':'FW','F':'FW','FW':'FW','LW':'FW','RW':'FW','RF':'FW','LF':'FW','WF':'FW'
+  };
   return m[p]||'CM';
 }
 
-var RATING_WEIGHTS={
-  GK: {goals:1.5,assists:0.8,xG:0.1,xA:0.1,passPct:0.3,duelEff:0.1,saves:0.5,goalsPrev:0.6,cleanSheet:0.5,yellow:-0.5,red:-1.5},
-  DEF:{goals:1.5,assists:0.9,xG:0.2,xA:0.2,passPct:0.6,duelEff:0.9,saves:0,goalsPrev:0,cleanSheet:0.3,yellow:-0.6,red:-1.5},
-  FB: {goals:1.3,assists:1.1,xG:0.3,xA:0.6,passPct:0.5,duelEff:0.7,saves:0,goalsPrev:0,cleanSheet:0.2,yellow:-0.5,red:-1.5},
-  DM: {goals:1.2,assists:1.0,xG:0.3,xA:0.4,passPct:0.7,duelEff:0.8,saves:0,goalsPrev:0,cleanSheet:0.1,yellow:-0.5,red:-1.5},
-  CM: {goals:1.2,assists:1.0,xG:0.5,xA:0.5,passPct:0.5,duelEff:0.5,saves:0,goalsPrev:0,cleanSheet:0,yellow:-0.5,red:-1.5},
-  AM: {goals:1.2,assists:1.1,xG:0.6,xA:0.7,passPct:0.4,duelEff:0.4,saves:0,goalsPrev:0,cleanSheet:0,yellow:-0.5,red:-1.5},
-  FW: {goals:1.4,assists:0.9,xG:0.8,xA:0.4,passPct:0.2,duelEff:0.4,saves:0,goalsPrev:0,cleanSheet:0,yellow:-0.5,red:-1.5},
-};
-
 function calcRating(raw, role, minutes){
   if(!minutes||minutes<1)return null;
-  var w=RATING_WEIGHTS[role]||RATING_WEIGHTS.CM;
-  var p90=90/minutes;
-  // Stats de volume normalisées per90
-  var passes=raw.passes*p90, totalPass=raw.totalPass*p90;
-  var duelsWon=raw.duelsWon*p90, duels=raw.duels*p90;
-  var rating=6.0;
-  rating+=raw.goals*w.goals; rating+=raw.assists*w.assists;
-  rating+=raw.xG*w.xG; rating+=raw.xA*w.xA;
-  if(totalPass>=15)rating+=(passes/totalPass-0.75)*w.passPct;
-  if(duels>=3)rating+=(duelsWon/duels-0.5)*w.duelEff;
-  rating+=raw.saves*w.saves; rating+=raw.goalsPrev*w.goalsPrev; rating+=raw.cleanSheet*w.cleanSheet;
-  rating+=raw.yellow*w.yellow; rating+=raw.red*w.red;
-  return Math.round(Math.max(4.0,Math.min(9.5,rating))*10)/10;
+
+  // Per90 atténué : normalise seulement à 20% de l'écart
+  // 90min→1.0 | 60min→1.06 | 45min→1.10 | 30min→1.13
+  var p90=1+(90/minutes-1)*0.2;
+
+  // progCarries plafonné à 6 avant normalisation
+  var progCarriesCapped=Math.min(raw.progCarries||0,6);
+
+  var n={
+    passes:      raw.passes      *p90,
+    totalPass:   raw.totalPass   *p90,
+    duelsWon:    raw.duelsWon    *p90,
+    duels:       raw.duels       *p90,
+    tackles:     (raw.tackles||0)       *p90,
+    intercept:   (raw.interceptions||0) *p90,
+    clearances:  (raw.clearances||0)    *p90,
+    ballRec:     (raw.ballRecovery||0)  *p90,
+    crosses:     (raw.crosses||0)       *p90,
+    progCarries: progCarriesCapped      *p90,
+    shots:       (raw.shotsOnTarget||0),  // absolu
+  };
+
+  var ev={
+    goals:raw.goals,  assists:raw.assists,
+    xG:raw.xG,       xA:raw.xA,
+    saves:raw.saves,  cs:raw.cleanSheet,
+    yellow:raw.yellow,red:raw.red,
+  };
+
+  var passPct=n.totalPass>=15?(n.passes/n.totalPass-0.75):0;
+  var duelPct=n.duels>=3?(n.duelsWon/n.duels-0.50):0;
+
+  var base=6.3;
+  var score=0;
+  var offScore=0;  // contribution offensive plafonnée
+  var volScore=0;  // contribution volume/défensive plafonnée
+
+  if(role==='GK'){
+    score+=ev.saves*0.35;
+    score+=ev.cs*0.30;
+    score+=passPct*0.25;
+    offScore+=ev.goals*2.0+ev.assists*1.0;
+    score+=Math.min(offScore,2.5);
+    score+=ev.yellow*-0.3+ev.red*-1.0;
+
+  }else if(role==='DEF'){
+    volScore+=n.tackles*0.15;
+    volScore+=n.intercept*0.12;
+    volScore+=n.clearances*0.10;
+    volScore+=n.ballRec*0.06;
+    volScore+=duelPct*0.80;
+    volScore+=passPct*0.50;
+    score+=Math.min(volScore,1.8);
+    score+=ev.cs*0.35;
+    offScore+=ev.goals*1.8+ev.assists*1.0+ev.xG*0.25+n.shots*0.15;
+    score+=Math.min(offScore,2.5);
+    score+=ev.yellow*-0.35+ev.red*-1.0;
+
+  }else if(role==='FB'){
+    volScore+=n.tackles*0.10;
+    volScore+=n.intercept*0.10;
+    volScore+=n.clearances*0.06;
+    volScore+=duelPct*0.65;
+    volScore+=passPct*0.40;
+    volScore+=n.crosses*0.15;
+    volScore+=n.progCarries*0.08;
+    score+=Math.min(volScore,1.8);
+    score+=ev.cs*0.25;
+    offScore+=ev.goals*1.6+ev.assists*1.0+ev.xA*0.40+n.shots*0.12;
+    score+=Math.min(offScore,2.5);
+    score+=ev.yellow*-0.30+ev.red*-1.0;
+
+  }else if(role==='DM'){
+    volScore+=n.tackles*0.18;
+    volScore+=n.intercept*0.15;
+    volScore+=n.ballRec*0.12;
+    volScore+=n.clearances*0.06;
+    volScore+=duelPct*0.75;
+    volScore+=passPct*0.60;
+    score+=Math.min(volScore,1.5);
+    offScore+=ev.goals*1.5+ev.assists*1.0+ev.xG*0.25+ev.xA*0.30+n.shots*0.12;
+    score+=Math.min(offScore,2.5);
+    score+=ev.yellow*-0.30+ev.red*-1.0;
+
+  }else if(role==='CM'){
+    volScore+=passPct*0.45;
+    volScore+=duelPct*0.45;
+    volScore+=n.tackles*0.10;
+    volScore+=n.intercept*0.08;
+    volScore+=n.ballRec*0.08;
+    volScore+=n.progCarries*0.07;
+    score+=Math.min(volScore,1.2);
+    offScore+=ev.goals*1.4+ev.assists*0.90+ev.xG*0.40+ev.xA*0.35+n.shots*0.15;
+    score+=Math.min(offScore,2.5);
+    score+=ev.yellow*-0.30+ev.red*-1.0;
+
+  }else if(role==='AM'){
+    volScore+=n.shots*0.20;
+    volScore+=ev.xG*0.50;
+    volScore+=ev.xA*0.50;
+    volScore+=n.progCarries*0.08;
+    volScore+=passPct*0.30;
+    volScore+=n.tackles*0.06;
+    volScore+=n.ballRec*0.05;
+    score+=Math.min(volScore,1.8);
+    offScore+=ev.goals*1.4+ev.assists*0.90;
+    score+=Math.min(offScore,2.5);
+    if(ev.xG<0.05&&ev.xA<0.05&&n.shots<0.5)score-=0.15;
+    score+=ev.yellow*-0.30+ev.red*-1.0;
+
+  }else{ // FW
+    // xG et shots dans offScore pour bénéficier du plafond
+    offScore+=ev.goals*1.5;
+    offScore+=ev.xG*0.55;
+    offScore+=n.shots*0.22;
+    offScore+=ev.assists*0.80;
+    offScore+=ev.xA*0.25;
+    score+=Math.min(offScore,2.8);
+    volScore+=n.progCarries*0.08;
+    volScore+=n.ballRec*0.05;
+    volScore+=n.tackles*0.06;
+    score+=Math.min(volScore,0.6);
+    if(n.shots<0.5&&ev.xG<0.10)score-=0.20;
+    score+=ev.yellow*-0.30+ev.red*-1.0;
+  }
+
+  return Math.round(Math.max(4.0,Math.min(9.5,base+score))*10)/10;
 }
 
-function ratingColor(r){return r>=7.5?'#22c55e':r>=6.5?'#0ea5e9':r>=6.0?'#f59e0b':'#ef4444';}
+function ratingColor(r){
+  return r>=7.5?'#22c55e':r>=6.5?'#0ea5e9':r>=6.0?'#f59e0b':'#ef4444';
+}
 
-// Charger les stats de tous les joueurs d'un match via ESPN core API
+// Charger les stats de tous les joueurs d'un match via ESPN Core API
 async function loadMatchPlayerStats(eid, rosters){
   var namesByTeam=[];
   rosters.forEach(function(team){
     var map={};
-    team.roster.forEach(function(p){map[p.jersey]={name:p.athlete&&p.athlete.displayName||'?',pos:p.position&&p.position.abbreviation||'',fullName:p.athlete&&p.athlete.displayName||''};});
+    team.roster.forEach(function(p){
+      map[p.jersey]={
+        name:p.athlete&&p.athlete.displayName||'?',
+        pos:p.position&&p.position.abbreviation||'',
+        fullName:p.athlete&&p.athlete.displayName||''
+      };
+    });
     namesByTeam.push({teamName:normTeam(team.team.displayName),map:map});
   });
+
   var ESPN_CORE='https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world';
-  var d1=await fetch(ESPN_CORE+'/events/'+eid+'/competitions/'+eid+'/competitors').then(function(r){return r.json();});
+  var d1=await fetch(ESPN_CORE+'/events/'+eid+'/competitions/'+eid+'/competitors')
+    .then(function(r){return r.json();});
+
   var playerStats={};
   var teamIdx=0;
+
   for(var i=0;i<d1.items.length;i++){
-    var item=d1.items[i];
-    var comp=await fetch(item.$ref.replace('http://','https://')).then(function(r){return r.json();});
-    var roster=await fetch(comp.roster.$ref.replace('http://','https://')).then(function(r){return r.json();});
+    var comp=await fetch(d1.items[i].$ref.replace('http://','https://'))
+      .then(function(r){return r.json();});
+    var roster=await fetch(comp.roster.$ref.replace('http://','https://'))
+      .then(function(r){return r.json();});
     var teamInfo=namesByTeam[teamIdx++]||{teamName:'?',map:{}};
+
     await Promise.all(roster.entries.map(function(e){
       var info=teamInfo.map[e.jersey]||{name:'#'+e.jersey,pos:'',fullName:''};
       var role=getRole(info.pos);
-      return fetch(e.statistics.$ref.replace('http://','https://')).then(function(r){return r.json();}).then(function(s){
-        var gs=function(cat,name){var c=(s.splits&&s.splits.categories||[]).find(function(x){return x.name===cat;});return c&&c.stats&&c.stats.find(function(x){return x.name===name;})?c.stats.find(function(x){return x.name===name;}).value:0;};
-        var minutes=gs('general','minutes');
-        var raw={goals:gs('offensive','totalGoals'),assists:gs('offensive','goalAssists'),xG:gs('offensive','expectedGoals'),xA:gs('offensive','expectedAssists'),passes:gs('offensive','accuratePasses'),totalPass:gs('offensive','totalPasses'),duelsWon:gs('general','duelsWon')||gs('general','groundDuelsWon'),duels:gs('general','duels')||gs('general','groundDuels'),saves:gs('goalKeeping','saves'),goalsPrev:gs('goalKeeping','goalsPrevented'),cleanSheet:gs('goalKeeping','cleanSheet'),yellow:gs('general','yellowCards'),red:gs('general','redCards')};
-        playerStats[info.fullName]={rating:calcRating(raw,role,minutes),minutes:minutes,goals:raw.goals,assists:raw.assists,saves:raw.saves,yellow:raw.yellow,red:raw.red,starter:e.starter,subbedIn:e.subbedIn,subbedOut:e.subbedOut,team:teamInfo.teamName,pos:info.pos,role:role};
-      });
+      return fetch(e.statistics.$ref.replace('http://','https://'))
+        .then(function(r){return r.json();})
+        .then(function(s){
+          var gs=function(cat,name){
+            var c=(s.splits&&s.splits.categories||[]).find(function(x){return x.name===cat;});
+            return c&&c.stats&&c.stats.find(function(x){return x.name===name;})?
+              c.stats.find(function(x){return x.name===name;}).value:0;
+          };
+          var minutes=gs('general','minutes');
+          var raw={
+            goals:    gs('offensive','totalGoals'),
+            assists:  gs('offensive','goalAssists'),
+            xG:       gs('offensive','expectedGoals'),
+            xA:       gs('offensive','expectedAssists'),
+            passes:   gs('offensive','accuratePasses'),
+            totalPass:gs('offensive','totalPasses'),
+            shotsOnTarget:gs('offensive','shotsOnTarget'),
+            progCarries:  gs('offensive','progressiveCarries'),
+            crosses:      gs('offensive','accurateCrosses'),
+            duelsWon: gs('general','duelsWon')||gs('general','groundDuelsWon'),
+            duels:    gs('general','duels')||gs('general','groundDuels'),
+            saves:    gs('goalKeeping','saves'),
+            cleanSheet:gs('goalKeeping','cleanSheet'),
+            tackles:  gs('defensive','effectiveTackles'),
+            interceptions:gs('defensive','interceptions'),
+            clearances:   gs('defensive','effectiveClearance'),
+            ballRecovery: gs('defensive','ballRecovery'),
+            yellow:   gs('general','yellowCards'),
+            red:      gs('general','redCards'),
+          };
+          playerStats[info.fullName]={
+            rating:  calcRating(raw,role,minutes),
+            minutes: minutes,
+            goals:   raw.goals,
+            assists: raw.assists,
+            saves:   raw.saves,
+            yellow:  raw.yellow,
+            red:     raw.red,
+            starter: e.starter,
+            subbedIn:  e.subbedIn,
+            subbedOut: e.subbedOut,
+            team: teamInfo.teamName,
+            pos:  info.pos,
+            role: role,
+          };
+        });
     }));
   }
   return playerStats;
