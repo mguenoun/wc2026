@@ -83,14 +83,14 @@ function renderESPNStats(m,d,espnId){
       if(!st0&&!st1)return;
       var v0=parseFloat((st0&&st0.displayValue)||'0')||0;
       var v1=parseFloat((st1&&st1.displayValue)||'0')||0;
-      var total=v0+v1||1,pct0=Math.round(v0/total*100);
+      var total=v0+v1,pct0=total>0?Math.round(v0/total*100):0,pct1=total>0?Math.round(v1/total*100):0;
       html+='<div style="display:flex;align-items:center;gap:5px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">'+
         '<span style="min-width:26px;font-size:11px;font-weight:800;color:'+m.color+';text-align:right">'+v0+'</span>'+
         '<div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden">'+
           '<div style="height:100%;width:'+pct0+'%;background:'+m.color+';border-radius:2px"></div></div>'+
         '<span style="font-size:9px;color:#64748b;min-width:90px;text-align:center">'+(LABELS[name]||name)+'</span>'+
         '<div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;transform:scaleX(-1)">'+
-          '<div style="height:100%;width:'+(100-pct0)+'%;background:#94a3b8;border-radius:2px"></div></div>'+
+          '<div style="height:100%;width:'+pct1+'%;background:#94a3b8;border-radius:2px"></div></div>'+
         '<span style="min-width:26px;font-size:11px;font-weight:800;color:#94a3b8">'+v1+'</span></div>';
     });
     html+='<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:9px;font-weight:700">'+
