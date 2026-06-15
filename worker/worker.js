@@ -174,12 +174,48 @@ function calcRating(raw, role, minutes) {
 // ─── PIPELINE ─────────────────────────────────────────────────────────────────
 
 async function step1_discover(env) {
-  const espnMap = await kv.get(env, 'espn_map');
-  if (!espnMap) return { step: 1, error: 'No espn_map. Run /stats/init first.' };
+  const queue   = await kv.get(env, 'pipeline_queue') || { pending: [], processing: [], done: [] };
+  const espnMap = await kv.get(env, 'espn_map') || {};
+  let added = 0, newIds = 0;
 
-  const queue = await kv.get(env, 'pipeline_queue') || { pending: [], processing: [], done: [] };
-  let added = 0;
+  // Scanner les 7 derniers jours pour détecter automatiquement les matchs terminés
+  const today = new Date();
+  const dates = [];
+  for (let i = 0; i <= 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
+  }
 
+  for (const dateStr of dates) {
+    try {
+      const data = await fetch(`${ESPN_BASE}/scoreboard?dates=${dateStr}`).then(r => r.json());
+      for (const event of (data.events || [])) {
+        const espnId = event.id;
+        const completed = event.competitions?.[0]?.status?.type?.completed;
+        if (!completed) continue;
+        if (espnMap[espnId]) continue; // déjà connu
+
+        // Nouveau match terminé → ajouter à espn_map
+        const comp = event.competitions?.[0];
+        const home = comp?.competitors?.find(c => c.homeAway === 'home');
+        const away = comp?.competitors?.find(c => c.homeAway === 'away');
+        espnMap[espnId] = {
+          espnId,
+          matchKey: '',
+          t1: home?.team?.displayName || '',
+          t2: away?.team?.displayName || '',
+          score: `${home?.score||'0'} – ${away?.score||'0'}`,
+          dayKey: `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`,
+        };
+        newIds++;
+      }
+    } catch (_) {}
+  }
+
+  if (newIds > 0) await kv.put(env, 'espn_map', espnMap);
+
+  // Ajouter les matchs non traités à la queue
   for (const espnId of Object.keys(espnMap)) {
     if (queue.done.includes(espnId) || queue.pending.includes(espnId) || queue.processing.includes(espnId)) continue;
     const cached = await env.STATS_KV.get('match:' + espnId);
@@ -189,7 +225,7 @@ async function step1_discover(env) {
   }
 
   await kv.put(env, 'pipeline_queue', queue);
-  return { step: 1, added, pending: queue.pending.length, processing: queue.processing.length, done: queue.done.length };
+  return { step: 1, newIds, added, pending: queue.pending.length, processing: queue.processing.length, done: queue.done.length };
 }
 
 async function step2_fetchUrls(env) {
