@@ -1,5 +1,8 @@
 function renderAll(){
-  renderGrpFilters();renderGroupsTimeline();renderKOTimeline();renderKOLegend();renderStandings();
+  renderGrpFilters();renderGroupsTimeline();renderKOLegend();
+  // Ne reconstruire le timeline KO que si on est en vue liste (évite d'écraser le bracket)
+  if(koBracketView!=='bracket'){renderKOTimeline();}
+  renderStandings();
 }
 
 function showView(v){
@@ -12,6 +15,12 @@ function switchView(v){
   if(v==='scorers')renderScorers();
   if(v==='keepers'&&!keepersLoaded)fetchKeepers();
   if(v==='players'&&!playersLoaded)fetchPlayerRankings();
+  // Si retour sur KO en mode bracket → re-rendre le bracket
+  if(v==='knockout'&&koBracketView==='bracket'){
+    var c=document.getElementById('knockout-timeline');
+    c.innerHTML='';
+    renderKOBracket(c,allMatches.filter(function(m){return m.ko;}));
+  }
 }
 
 function scheduleRefresh(){
