@@ -155,34 +155,43 @@ function makeBracketCard(m, phase){
   var tbd1=!m.t1||m.t1.indexOf('Vainq')===0||m.t1.indexOf('V.')===0;
   var tbd2=!m.t2||m.t2.indexOf('Vainq')===0||m.t2.indexOf('V.')===0;
 
-  // Icônes
-  var icons='';
+  // Icônes — construction DOM pour éviter conflits de quotes
+  var iconsDiv=document.createElement('div');
+  iconsDiv.className='bkt-icons';
   if(isFT||isLive){
     var eid=ESPN_ID_MAP&&ESPN_ID_MAP[m.id]?ESPN_ID_MAP[m.id]:'';
-    icons+='<button class="bkt-ico action-btn" title="Stats" onclick="event.stopPropagation();_currentMatch=allMatches.find(function(x){return x.id===''+m.id+''});openMatchInfo(''+eid+'')">📊</button>';
-    icons+='<button class="bkt-ico action-btn" title="Compositions" onclick="event.stopPropagation();_currentMatch=allMatches.find(function(x){return x.id===''+m.id+''});openLineupESPN(''+eid+'')">👕</button>';
+    var btnStats=document.createElement('button');
+    btnStats.className='bkt-ico action-btn';btnStats.title='Stats';btnStats.textContent='📊';
+    btnStats.onclick=(function(mid,espnId){return function(e){e.stopPropagation();_currentMatch=allMatches.find(function(x){return x.id===mid;});openMatchInfo(espnId);};})(m.id,eid);
+    var btnCompo=document.createElement('button');
+    btnCompo.className='bkt-ico action-btn';btnCompo.title='Compositions';btnCompo.textContent='👕';
+    btnCompo.onclick=(function(mid,espnId){return function(e){e.stopPropagation();_currentMatch=allMatches.find(function(x){return x.id===mid;});openLineupESPN(espnId);};})(m.id,eid);
+    iconsDiv.appendChild(btnStats);iconsDiv.appendChild(btnCompo);
   }
   if(m.venue&&VENUE_COORDS&&VENUE_COORDS[m.venue]){
-    icons+='<button class="bkt-ico action-btn" title="Stade" onclick="event.stopPropagation();openMap(allMatches.find(function(x){return x.id===''+m.id+''}))">📍</button>';
+    var btnMap=document.createElement('button');
+    btnMap.className='bkt-ico action-btn';btnMap.title='Stade';btnMap.textContent='📍';
+    btnMap.onclick=(function(mid){return function(e){e.stopPropagation();openMap(allMatches.find(function(x){return x.id===mid;}));};})(m.id);
+    iconsDiv.appendChild(btnMap);
   }
 
   var venueShort=m.venue?m.venue.replace(' Stadium','').replace(' Field',''):'';
   var cityShort=m.city||'';
   var venueLabel=(venueShort?(venueShort+(cityShort?' · '+cityShort:'')):'');
 
-  card.innerHTML=
-    '<div class="bkt-team'+(w1?' bkt-win':'')+(tbd1?' bkt-tbd':'')+'">'+
-      '<span class="bkt-tn">'+(m.t1||'?')+'</span>'+
-      '<span class="bkt-sc">'+(isFT||isLive?s1:'')+'</span>'+
-    '</div>'+
-    '<div class="bkt-team'+(w2?' bkt-win':'')+(tbd2?' bkt-tbd':'')+'">'+
-      '<span class="bkt-tn">'+(m.t2||'?')+'</span>'+
-      '<span class="bkt-sc">'+(isFT||isLive?s2:'')+'</span>'+
-    '</div>'+
-    '<div class="bkt-foot">'+
-      '<span class="bkt-venue">'+venueLabel+'</span>'+
-      '<div class="bkt-icons">'+icons+'</div>'+
-    '</div>';
+  // Construction DOM du card complet
+  var row1=document.createElement('div');
+  row1.className='bkt-team'+(w1?' bkt-win':'')+(tbd1?' bkt-tbd':'');
+  row1.innerHTML='<span class="bkt-tn">'+(m.t1||'?')+'</span><span class="bkt-sc">'+(isFT||isLive?s1:'')+'</span>';
+  var row2=document.createElement('div');
+  row2.className='bkt-team'+(w2?' bkt-win':'')+(tbd2?' bkt-tbd':'');
+  row2.innerHTML='<span class="bkt-tn">'+(m.t2||'?')+'</span><span class="bkt-sc">'+(isFT||isLive?s2:'')+'</span>';
+  var foot=document.createElement('div');
+  foot.className='bkt-foot';
+  var venue=document.createElement('span');
+  venue.className='bkt-venue';venue.textContent=venueLabel;
+  foot.appendChild(venue);foot.appendChild(iconsDiv);
+  card.appendChild(row1);card.appendChild(row2);card.appendChild(foot);
 
   return card;
 }
