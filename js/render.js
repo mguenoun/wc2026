@@ -34,33 +34,8 @@ var koBracketView='list'; // 'list' ou 'bracket'
 
 function renderKOTimeline(){
   var c=document.getElementById('knockout-timeline');
-
-  // Conserver ou créer le switch une seule fois
-  var sw=document.getElementById('ko-view-switch');
-  if(!sw){
-    sw=document.createElement('div');
-    sw.id='ko-view-switch';
-    sw.style.cssText='display:flex;gap:6px;margin-bottom:12px;justify-content:flex-end';
-    var btnList=document.createElement('button');
-    btnList.id='ko-btn-list';btnList.textContent='Liste';
-    btnList.onclick=function(){setKOView('list');};
-    var btnBkt=document.createElement('button');
-    btnBkt.id='ko-btn-bracket';btnBkt.textContent='Bracket';
-    btnBkt.onclick=function(){setKOView('bracket');};
-    sw.appendChild(btnList);sw.appendChild(btnBkt);
-  }
-  // Mettre à jour l'état actif
-  var bl=document.getElementById('ko-btn-list');
-  var bb=document.getElementById('ko-btn-bracket');
-  if(bl)bl.className='ko-sw-btn'+(koBracketView==='list'?' ko-sw-active':'');
-  if(bb)bb.className='ko-sw-btn'+(koBracketView==='bracket'?' ko-sw-active':'');
-
-  // Vider le contenu sauf le switch
-  while(c.lastChild&&c.lastChild!==sw)c.removeChild(c.lastChild);
-  if(!c.contains(sw))c.insertBefore(sw,c.firstChild);
-
+  c.innerHTML='';
   var koMatches=allMatches.filter(function(m){return m.ko;});
-
   if(koBracketView==='list'){
     groupByDate(koMatches).forEach(function(e){renderDayBlock(e[0],e[1],c);});
   } else {
@@ -207,10 +182,10 @@ function makeBracketCard(m, phase){
 
 function drawBracketConnectors(){
   var pairs=[
-    {svgId:'ko-conn-32',fromId:'ko-col-32',toId:'ko-col-16'},
-    {svgId:'ko-conn-16',fromId:'ko-col-16',toId:'ko-col-QF'},
-    {svgId:'ko-conn-QF',fromId:'ko-col-QF',toId:'ko-col-SF'},
-    {svgId:'ko-conn-SF',fromId:'ko-col-SF',toId:'ko-col-FIN'},
+    {svgId:'ko-conn-32es',   fromId:'ko-col-32es',   toId:'ko-col-16es'},
+    {svgId:'ko-conn-16es',   fromId:'ko-col-16es',   toId:'ko-col-Quarts'},
+    {svgId:'ko-conn-Quarts', fromId:'ko-col-Quarts', toId:'ko-col-Demis'},
+    {svgId:'ko-conn-Demis',  fromId:'ko-col-Demis',  toId:'ko-col-Finale'},
   ];
   var ns='http://www.w3.org/2000/svg';
   pairs.forEach(function(pair){
@@ -252,6 +227,21 @@ function renderKOLegend(){
     var s=document.createElement('span');s.className='phase-badge';s.style.background=hex2rgba(p.color,.1);s.style.border='1px solid '+hex2rgba(p.color,.3);s.style.color=p.color;
     s.innerHTML=p.label+' <span style="opacity:.6">'+p.date+'</span>';c.appendChild(s);
   });
+  // Switch Liste / Bracket dans la légende
+  var koLegendBar=document.getElementById('ko-legend');
+  koLegendBar.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center';
+  var sw=document.createElement('div');
+  sw.style.cssText='display:flex;gap:5px;margin-left:auto';
+  var btnList=document.createElement('button');
+  btnList.className='ko-sw-btn'+(koBracketView==='list'?' ko-sw-active':'');
+  btnList.textContent='Liste';
+  btnList.onclick=function(){setKOView('list');};
+  var btnBkt=document.createElement('button');
+  btnBkt.className='ko-sw-btn'+(koBracketView==='bracket'?' ko-sw-active':'');
+  btnBkt.textContent='Bracket';
+  btnBkt.onclick=function(){setKOView('bracket');};
+  sw.appendChild(btnList);sw.appendChild(btnBkt);
+  c.appendChild(sw);
 }
 
 function renderStandings(){
