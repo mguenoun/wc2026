@@ -39,8 +39,8 @@ function renderKOTimeline(){
   // Switch Liste / Bracket
   var sw=document.createElement('div');
   sw.style.cssText='display:flex;gap:6px;margin-bottom:12px;justify-content:flex-end';
-  sw.innerHTML='<button class="ko-sw-btn'+(koBracketView==='list'?' ko-sw-active':'')+'" onclick="setKOView('list')">☰ Liste</button>'+
-    '<button class="ko-sw-btn'+(koBracketView==='bracket'?' ko-sw-active':'')+'" onclick="setKOView('bracket')">⊞ Bracket</button>';
+  sw.innerHTML='<button class="ko-sw-btn'+(koBracketView==='list'?' ko-sw-active':'')+'" onclick="setKOView(&quot;list&quot;)">&#9776; Liste</button>'+
+    '<button class="ko-sw-btn'+(koBracketView==='bracket'?' ko-sw-active':'')+'" onclick="setKOView(&quot;bracket&quot;)">&#8862; Bracket</button>';
   c.appendChild(sw);
 
   var koMatches=allMatches.filter(function(m){return m.ko;});
