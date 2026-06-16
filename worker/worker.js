@@ -636,6 +636,29 @@ export default {
     }
     if (path === '/data/refresh') return jsonResp(await step0_refreshData(env), cors);
 
+    if (path === '/data/live') {
+      // Cache ESPN 30s — réduit les appels directs browser→ESPN à 0
+      const LIVE_TTL = 30_000;
+      const cached = await kv.get(env, 'cache:live');
+      if (cached && (Date.now() - (cached.lastUpdate || 0)) < LIVE_TTL) {
+        return jsonResp(cached, cors);
+      }
+      // Fetch ESPN hier + aujourd'hui UTC (couvre minuit heure locale = veille UTC)
+      const allEvents = [];
+      const today = new Date();
+      for (let i = -1; i <= 0; i++) {
+        const d = new Date(today); d.setDate(d.getDate() + i);
+        const ds = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+        try {
+          const r = await fetch(`${ESPN_BASE}/scoreboard?dates=${ds}`);
+          if (r.ok) { const data = await r.json(); if (data.events) allEvents.push(...data.events); }
+        } catch (_) {}
+      }
+      const live = { events: allEvents, lastUpdate: Date.now() };
+      await kv.put(env, 'cache:live', live);
+      return jsonResp(live, cors);
+    }
+
     if (path.startsWith('/fd/')) {
       const token = env.API_TOKEN_FD || env.API_TOKEN;
       if (!token) return new Response('API_TOKEN_FD not set', { status: 500, headers: cors });

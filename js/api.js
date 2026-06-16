@@ -1,32 +1,3 @@
-async function fetchESPNScores(){
-  // Fetcher uniquement les dates qui ont des matchs déjà commencés (isFT ou isLive)
-  // Logique robuste au rechargement de page : pas de fenêtre glissante, pas de perte de scores
-  var datesToFetch={};
-  allMatches.forEach(function(m){
-    if(m.isFT||m.isLive)datesToFetch[m.dayKey.replace(/-/g,'')]=1;
-  });
-  // Si rien n'est encore joué (tout début de tournoi), prendre hier + aujourd'hui
-  if(!Object.keys(datesToFetch).length){
-    var today=new Date();
-    for(var i=-1;i<=0;i++){
-      var d=new Date(today);d.setDate(d.getDate()+i);
-      datesToFetch[d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')]=1;
-    }
-  }
-  var events=[];
-  var dates=Object.keys(datesToFetch).sort();
-  for(var i=0;i<dates.length;i++){
-    var ds=dates[i];
-    try{
-      var r=await fetch(ESPN_BASE+'/scoreboard?dates='+ds);
-      if(!r.ok)continue;
-      var data=await r.json();
-      if(data.events&&data.events.length)events=events.concat(data.events);
-    }catch(e){console.warn('[ESPN scoreboard] '+ds+':',e.message);}
-  }
-  return events;
-}
-
 // Applique les données ESPN aux allMatches (scores, statuts, clock)
 function processESPNScores(events){
   if(!events||!events.length)return false;
@@ -107,27 +78,12 @@ async function fetchAll(){
     }catch(e){console.warn('[WC2026] FD matches fallback:',e.message);}
   }
 
-  // ── 2. ESPN : dates récentes avec matchs joués ou en cours ──────────────────
-  // Logique identique à fetchESPNScores() mais bornée aux 4 derniers jours :
-  // données plus anciennes servies par KV, pas besoin de re-fetcher ESPN pour elles.
-  // L'ensemble des dates est calculé dynamiquement à partir de l'état des matchs.
+  // ── 2. ESPN via Worker /data/live (cache KV 30s, zéro appel direct ESPN) ────
   var espnOk=false;
-  var espnDatesMap={};
-  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-3);
-  allMatches.forEach(function(m){
-    if((m.isFT||m.isLive)&&new Date(m.dayKey)>=cutoff)
-      espnDatesMap[m.dayKey.replace(/-/g,'')]=1;
-  });
-  // Toujours inclure aujourd'hui pour détecter les matchs live démarrant dans la journée
-  var _now=new Date();
-  espnDatesMap[_now.getFullYear()+String(_now.getMonth()+1).padStart(2,'0')+String(_now.getDate()).padStart(2,'0')]=1;
-  var espnDates=Object.keys(espnDatesMap).sort();
-  for(var _i=0;_i<espnDates.length;_i++){
-    try{
-      var rE=await fetch(ESPN_BASE+'/scoreboard?dates='+espnDates[_i]);
-      if(rE.ok){var dE=await rE.json();if(dE.events&&dE.events.length){processESPNScores(dE.events);espnOk=true;}}
-    }catch(e){console.warn('[WC2026] ESPN '+espnDates[_i]+':',e.message);}
-  }
+  try{
+    var rL=await fetch(PROXY_BASE+'/data/live');
+    if(rL.ok){var dL=await rL.json();if(dL.events&&dL.events.length){processESPNScores(dL.events);espnOk=true;}}
+  }catch(e){console.warn('[WC2026] /data/live:',e.message);}
 
   // ── 3. Classements depuis cache KV worker ─────────────────────────────────
   var standOk=false;
@@ -234,45 +190,10 @@ function computeStandingsFromMatches(){
   });
 }
 
-// Auto-découverte des IDs ESPN pour les matchs non encore mappés
-function fetchESPNIds(){
-  var today = new Date();
-  var dates = [];
-  for(var i=-1; i<=2; i++){
-    var d = new Date(today);
-    d.setDate(d.getDate()+i);
-    var y=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
-    dates.push(''+y+mo+dy);
-  }
-  dates.forEach(function(dateStr){
-    fetch(ESPN_BASE+'/scoreboard?dates='+dateStr)
-      .then(function(r){return r.json();})
-      .then(function(data){
-        data.events&&data.events.forEach(function(e){
-          // Chercher le match correspondant par date + équipes
-          var eDate = dateStr.slice(0,4)+'-'+dateStr.slice(4,6)+'-'+dateStr.slice(6,8);
-          var match = allMatches.find(function(m){
-            if(m.dayKey!==eDate) return false;
-            var eName=e.name.toLowerCase();
-            return eName.includes(m.t1.toLowerCase().slice(0,4))||
-                   eName.includes(m.t2.toLowerCase().slice(0,4));
-          });
-          if(match&&!ESPN_ID_MAP[match.id]){
-            ESPN_ID_MAP[match.id]=e.id;
-
-          }
-        });
-      })
-      .catch(function(){});
-  });
-}
 
 // Mise à jour des scores en direct via ESPN (plus rapide que football-data.org)
 async function fetchESPNLiveScores(){
-  var today = new Date();
-  var y=today.getFullYear(),mo=String(today.getMonth()+1).padStart(2,'0'),dy=String(today.getDate()).padStart(2,'0');
-  var dateStr=''+y+mo+dy;
-  fetch(ESPN_BASE+'/scoreboard?dates='+dateStr)
+  fetch(PROXY_BASE+'/data/live')
     .then(function(r){return r.json();})
     .then(function(data){
       if(!data.events||!data.events.length)return;

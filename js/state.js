@@ -40,7 +40,7 @@ function scheduleRefresh(){
 
 // ─── INITIALISATION ───────────────────────────────────────────────────────────
 loadFallback();
-fetchAll().then(function(){ fetchESPNIds(); }); // fetchESPNIds une seule fois après le premier fetchAll
+fetchAll();
 scheduleRefresh();
 
 // Refresh du minuteur sur la liste toutes les 30s (seulement si match en cours)
