@@ -1,0 +1,95 @@
+<svg width="900" viewBox="0 0 680 740" xmlns="http://www.w3.org/2000/svg" style="background:white;font-family:Arial,sans-serif">
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="340" y="26" text-anchor="middle" font-size="15" font-weight="bold" fill="#0369a1">Interactions UI — actions declenchees par clic</text>
+<!-- Barre onglets -->
+<rect x="30" y="40" width="620" height="52" rx="10" fill="#e6f1fb" stroke="#378ADD" stroke-width="1"/>
+<text x="340" y="58" text-anchor="middle" font-size="12" font-weight="bold" fill="#042C53">Barre d onglets principale</text>
+<text x="340" y="74" text-anchor="middle" font-size="9" fill="#185FA5">switchView(v) masque tous les onglets et affiche v</text>
+<!-- Onglets -->
+<rect x="38"  y="100" width="76" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="76"  y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">Groupes</text>
+<rect x="122" y="100" width="82" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="163" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">Classements</text>
+<rect x="212" y="100" width="72" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="248" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">KO</text>
+<rect x="292" y="100" width="70" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="327" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">Buteurs</text>
+<rect x="370" y="100" width="70" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="405" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">Gardiens</text>
+<rect x="448" y="100" width="68" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="482" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">Joueurs</text>
+<line x1="163" y1="128" x2="163" y2="156" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="248" y1="128" x2="248" y2="156" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="405" y1="128" x2="405" y2="196" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="482" y1="128" x2="482" y2="156" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="80"  y="156" width="150" height="44" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="155" y="174" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderStandings()</text>
+<text x="155" y="190" text-anchor="middle" font-size="9" fill="#085041">standings en memoire</text>
+<rect x="248" y="156" width="154" height="44" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="325" y="174" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderKOTimeline()</text>
+<text x="325" y="190" text-anchor="middle" font-size="9" fill="#085041">allMatches filtre ko:true</text>
+<rect x="420" y="156" width="146" height="44" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
+<text x="493" y="174" text-anchor="middle" font-size="10" font-weight="bold" fill="#412402">fetchPlayerRankings()</text>
+<text x="493" y="190" text-anchor="middle" font-size="9" fill="#633806">/stats/players (Worker KV)</text>
+<rect x="340" y="196" width="130" height="44" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
+<text x="405" y="214" text-anchor="middle" font-size="10" font-weight="bold" fill="#412402">fetchKeepers()</text>
+<text x="405" y="230" text-anchor="middle" font-size="9" fill="#633806">/stats/keepers (Worker KV)</text>
+<!-- Separateur -->
+<line x1="30" y1="260" x2="650" y2="260" stroke="#cbd5e1" stroke-width="0.5" stroke-dasharray="4 3"/>
+<text x="340" y="276" text-anchor="middle" font-size="10" fill="#475569">Interactions sur un match (clic sur une ligne)</text>
+<!-- Ligne match -->
+<rect x="30" y="286" width="620" height="40" rx="8" fill="#f1f5f9" stroke="#888780" stroke-width="0.8"/>
+<text x="200" y="311" text-anchor="middle" font-size="12" font-weight="bold" fill="#2C2C2A">USA – Paraguay  4-1  FT</text>
+<rect x="466" y="293" width="56" height="26" rx="4" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="494" y="310" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">Stats</text>
+<rect x="534" y="293" width="64" height="26" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.7"/>
+<text x="566" y="310" text-anchor="middle" font-size="9" font-weight="bold" fill="#26215C">Compos</text>
+<line x1="494" y1="319" x2="220" y2="356" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="566" y1="319" x2="490" y2="356" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
+<!-- Stats modal -->
+<rect x="30" y="356" width="340" height="56" rx="6" fill="#FAECE7" stroke="#D85A30" stroke-width="0.8"/>
+<text x="200" y="376" text-anchor="middle" font-size="10" font-weight="bold" fill="#4A1B0C">openMatchInfo()</text>
+<text x="200" y="392" text-anchor="middle" font-size="9" fill="#712B13">Worker /data/summary/:id (cache KV 60s/perm)</text>
+<text x="200" y="408" text-anchor="middle" font-size="9" fill="#712B13">buts · cartons · remplacements · stats equipes</text>
+<!-- Compos modal -->
+<rect x="388" y="356" width="240" height="56" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="508" y="376" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">openLineupESPN()</text>
+<text x="508" y="392" text-anchor="middle" font-size="9" fill="#3C3489">Worker /data/summary/:id rosters</text>
+<text x="508" y="408" text-anchor="middle" font-size="9" fill="#3C3489">Phase 1 : terrain SVG immediat (sans ratings)</text>
+<line x1="508" y1="412" x2="508" y2="432" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow)"/>
+<!-- loadMatchPlayerStats -->
+<rect x="388" y="432" width="240" height="70" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="508" y="452" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">loadMatchPlayerStats()</text>
+<text x="508" y="468" text-anchor="middle" font-size="9" fill="#3C3489">1. Fast path : Worker /data/stats/:id (KV)</text>
+<text x="508" y="484" text-anchor="middle" font-size="9" fill="#3C3489">2. Fallback : ESPN Core x22-52 joueurs</text>
+<text x="508" y="498" text-anchor="middle" font-size="9" fill="#3C3489">Ratings v8 sans xG/xA injectes Phase 2</text>
+<line x1="508" y1="502" x2="508" y2="522" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow)"/>
+<!-- renderPitch -->
+<rect x="388" y="522" width="240" height="44" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="508" y="542" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">renderPitch() / renderPlayerList()</text>
+<text x="508" y="558" text-anchor="middle" font-size="9" fill="#3C3489">Terrain SVG + liste avec ratings colores</text>
+<!-- Filtres -->
+<line x1="30" y1="586" x2="650" y2="586" stroke="#cbd5e1" stroke-width="0.5" stroke-dasharray="4 3"/>
+<text x="340" y="602" text-anchor="middle" font-size="10" fill="#475569">Filtres groupes</text>
+<rect x="30" y="612" width="620" height="40" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
+<text x="76"  y="636" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Tous</text>
+<text x="152" y="636" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.A</text>
+<text x="228" y="636" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.B</text>
+<text x="304" y="636" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.C</text>
+<text x="380" y="636" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.D ...</text>
+<text x="530" y="628" text-anchor="middle" font-size="9" fill="#27500A">activeFilter = grp</text>
+<text x="530" y="644" text-anchor="middle" font-size="9" fill="#27500A">renderAll()</text>
+<!-- Legende -->
+<rect x="30" y="668" width="14" height="12" rx="2" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.6"/>
+<text x="50" y="678" font-size="8" fill="#475569">Depuis memoire locale : allMatches / standings / scorers</text>
+<rect x="30" y="684" width="14" height="12" rx="2" fill="#FAC775" stroke="#BA7517" stroke-width="0.6"/>
+<text x="50" y="694" font-size="8" fill="#475569">Lazy load unique Worker KV /stats/players ou /stats/keepers</text>
+<rect x="30" y="700" width="14" height="12" rx="2" fill="#FAECE7" stroke="#D85A30" stroke-width="0.6"/>
+<text x="50" y="710" font-size="8" fill="#475569">Worker /data/summary/:id cache KV (rapide des 2e appel)</text>
+<rect x="30" y="716" width="14" height="12" rx="2" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.6"/>
+<text x="50" y="726" font-size="8" fill="#475569">Ratings v8 : KV fast-path ou ESPN Core fallback (1-3s)</text>
+</svg>

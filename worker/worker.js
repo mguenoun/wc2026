@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker — WC2026 v6
+ * Cloudflare Worker — WC2026 v7
  *
  * Changements vs v4 :
  * - step3 boucle sur TOUS les groupes d'un match en une seule invocation
@@ -120,7 +120,6 @@ function calcRating(raw, role, minutes) {
   };
   const ev = {
     goals: raw.goals, assists: raw.assists,
-    xG: raw.xG, xA: raw.xA,
     saves: raw.saves, cs: raw.cleanSheet,
     yellow: raw.yellow, red: raw.red,
   };
@@ -136,36 +135,36 @@ function calcRating(raw, role, minutes) {
   } else if (role === 'DEF') {
     vol = n.tackles*0.15 + n.intercept*0.12 + n.clearances*0.10 + n.ballRec*0.06 + duelPct*0.80 + passPct*0.50;
     score += Math.min(vol, 1.8) + ev.cs * 0.35;
-    off = ev.goals*1.8 + ev.assists*1.0 + ev.xG*0.25 + n.shots*0.15;
+    off = ev.goals*1.8 + ev.assists*1.0 + n.shots*0.15;
     score += Math.min(off, 2.5) + ev.yellow * -0.35 + ev.red * -1.0;
   } else if (role === 'FB') {
     vol = n.tackles*0.10 + n.intercept*0.10 + n.clearances*0.06 + duelPct*0.65 + passPct*0.40 + n.crosses*0.15 + n.progCarries*0.08;
     score += Math.min(vol, 1.8) + ev.cs * 0.25;
-    off = ev.goals*1.6 + ev.assists*1.0 + ev.xA*0.40 + n.shots*0.12;
+    off = ev.goals*1.6 + ev.assists*1.0 + n.shots*0.12;
     score += Math.min(off, 2.5) + ev.yellow * -0.30 + ev.red * -1.0;
   } else if (role === 'DM') {
     vol = n.tackles*0.18 + n.intercept*0.15 + n.ballRec*0.12 + n.clearances*0.06 + duelPct*0.75 + passPct*0.60;
     score += Math.min(vol, 1.5);
-    off = ev.goals*1.5 + ev.assists*1.0 + ev.xG*0.25 + ev.xA*0.30 + n.shots*0.12;
+    off = ev.goals*1.5 + ev.assists*1.0 + n.shots*0.12;
     score += Math.min(off, 2.5) + ev.yellow * -0.30 + ev.red * -1.0;
   } else if (role === 'CM') {
     vol = passPct*0.45 + duelPct*0.45 + n.tackles*0.10 + n.intercept*0.08 + n.ballRec*0.08 + n.progCarries*0.07;
     score += Math.min(vol, 1.2);
-    off = ev.goals*1.4 + ev.assists*0.90 + ev.xG*0.40 + ev.xA*0.35 + n.shots*0.15;
+    off = ev.goals*1.4 + ev.assists*0.90 + n.shots*0.15;
     score += Math.min(off, 2.5) + ev.yellow * -0.30 + ev.red * -1.0;
   } else if (role === 'AM') {
-    vol = n.shots*0.20 + ev.xG*0.50 + ev.xA*0.50 + n.progCarries*0.08 + passPct*0.30 + n.tackles*0.06 + n.ballRec*0.05;
+    vol = n.shots*0.20 + n.progCarries*0.08 + passPct*0.30 + n.tackles*0.06 + n.ballRec*0.05;
     score += Math.min(vol, 1.8);
     off = ev.goals*1.4 + ev.assists*0.90;
     score += Math.min(off, 2.5);
-    if (ev.xG < 0.05 && ev.xA < 0.05 && n.shots < 0.5) score -= 0.15;
+    if (n.shots < 0.5) score -= 0.15;
     score += ev.yellow * -0.30 + ev.red * -1.0;
   } else { // FW
-    off = ev.goals*1.5 + ev.xG*0.55 + n.shots*0.22 + ev.assists*0.80 + ev.xA*0.25;
+    off = ev.goals*1.5 + n.shots*0.22 + ev.assists*0.80;
     score += Math.min(off, 2.8);
     vol = n.progCarries*0.08 + n.ballRec*0.05 + n.tackles*0.06;
     score += Math.min(vol, 0.6);
-    if (n.shots < 0.5 && ev.xG < 0.10) score -= 0.20;
+    if (n.shots < 0.5) score -= 0.20;
     score += ev.yellow * -0.30 + ev.red * -1.0;
   }
   return Math.round(Math.max(4.0, Math.min(9.5, base + score)) * 10) / 10;
@@ -417,7 +416,6 @@ async function step3_fetchStats(env) {
         const role    = getRole(p.pos);
         const raw = {
           goals: gs('offensive','totalGoals'), assists: gs('offensive','goalAssists'),
-          xG: gs('offensive','expectedGoals'), xA: gs('offensive','expectedAssists'),
           passes: gs('offensive','accuratePasses'), totalPass: gs('offensive','totalPasses'),
           shotsOnTarget: gs('offensive','shotsOnTarget'),
           progCarries: gs('offensive','progressiveCarries'),

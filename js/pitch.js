@@ -134,6 +134,15 @@ function openLineupESPN(espnId){
   fetch(PROXY_BASE+'/data/summary/'+espnId)
     .then(function(r){return r.json();})
     .then(function(d){
+      // DEBUG temporaire : inspecter les stats par joueur disponibles dans le summary
+      var bkPlayers=d.boxscore&&d.boxscore.players;
+      if(bkPlayers&&bkPlayers.length){
+        var s0=bkPlayers[0].statistics||[];
+        console.log('[WC2026][boxscore.players] catégories disponibles:',s0.map(function(s){return s.name;}));
+        var a0=s0[0]&&s0[0].athletes&&s0[0].athletes[0];
+        if(a0)console.log('[WC2026][boxscore.players] exemple joueur:',JSON.stringify(a0).slice(0,600));
+      }else{console.log('[WC2026][boxscore.players] absent ou vide');}
+
       var rosters=d.rosters||[];
       if(!rosters.length){document.getElementById('modal-body').innerHTML='<p style="color:#475569;font-size:11px;padding:12px">Compositions non disponibles.</p>';return;}
       var r0=rosters[0],r1=rosters[1];

@@ -1,6 +1,5 @@
 // ─── RATINGS & STATS JOUEURS ─────────────────────────────────────────────────
-// Formule v7 : architecture base rôle + bonus/malus hors rôle
-// Calibrée sur 3 matchs vs SofaScore et FotMob
+// Formule v8 : suppression xG/xA (inflation vs SofaScore/FotMob confirmée)
 
 function getRole(pos){
   var p=(pos||'').toUpperCase().split('-')[0];
@@ -42,7 +41,6 @@ function calcRating(raw, role, minutes){
 
   var ev={
     goals:raw.goals,  assists:raw.assists,
-    xG:raw.xG,       xA:raw.xA,
     saves:raw.saves,  cs:raw.cleanSheet,
     yellow:raw.yellow,red:raw.red,
   };
@@ -72,7 +70,7 @@ function calcRating(raw, role, minutes){
     volScore+=passPct*0.50;
     score+=Math.min(volScore,1.8);
     score+=ev.cs*0.35;
-    offScore+=ev.goals*1.8+ev.assists*1.0+ev.xG*0.25+n.shots*0.15;
+    offScore+=ev.goals*1.8+ev.assists*1.0+n.shots*0.15;
     score+=Math.min(offScore,2.5);
     score+=ev.yellow*-0.35+ev.red*-1.0;
 
@@ -86,7 +84,7 @@ function calcRating(raw, role, minutes){
     volScore+=n.progCarries*0.08;
     score+=Math.min(volScore,1.8);
     score+=ev.cs*0.25;
-    offScore+=ev.goals*1.6+ev.assists*1.0+ev.xA*0.40+n.shots*0.12;
+    offScore+=ev.goals*1.6+ev.assists*1.0+n.shots*0.12;
     score+=Math.min(offScore,2.5);
     score+=ev.yellow*-0.30+ev.red*-1.0;
 
@@ -98,7 +96,7 @@ function calcRating(raw, role, minutes){
     volScore+=duelPct*0.75;
     volScore+=passPct*0.60;
     score+=Math.min(volScore,1.5);
-    offScore+=ev.goals*1.5+ev.assists*1.0+ev.xG*0.25+ev.xA*0.30+n.shots*0.12;
+    offScore+=ev.goals*1.5+ev.assists*1.0+n.shots*0.12;
     score+=Math.min(offScore,2.5);
     score+=ev.yellow*-0.30+ev.red*-1.0;
 
@@ -110,14 +108,12 @@ function calcRating(raw, role, minutes){
     volScore+=n.ballRec*0.08;
     volScore+=n.progCarries*0.07;
     score+=Math.min(volScore,1.2);
-    offScore+=ev.goals*1.4+ev.assists*0.90+ev.xG*0.40+ev.xA*0.35+n.shots*0.15;
+    offScore+=ev.goals*1.4+ev.assists*0.90+n.shots*0.15;
     score+=Math.min(offScore,2.5);
     score+=ev.yellow*-0.30+ev.red*-1.0;
 
   }else if(role==='AM'){
     volScore+=n.shots*0.20;
-    volScore+=ev.xG*0.50;
-    volScore+=ev.xA*0.50;
     volScore+=n.progCarries*0.08;
     volScore+=passPct*0.30;
     volScore+=n.tackles*0.06;
@@ -125,22 +121,19 @@ function calcRating(raw, role, minutes){
     score+=Math.min(volScore,1.8);
     offScore+=ev.goals*1.4+ev.assists*0.90;
     score+=Math.min(offScore,2.5);
-    if(ev.xG<0.05&&ev.xA<0.05&&n.shots<0.5)score-=0.15;
+    if(n.shots<0.5)score-=0.15;
     score+=ev.yellow*-0.30+ev.red*-1.0;
 
   }else{ // FW
-    // xG et shots dans offScore pour bénéficier du plafond
     offScore+=ev.goals*1.5;
-    offScore+=ev.xG*0.55;
     offScore+=n.shots*0.22;
     offScore+=ev.assists*0.80;
-    offScore+=ev.xA*0.25;
     score+=Math.min(offScore,2.8);
     volScore+=n.progCarries*0.08;
     volScore+=n.ballRec*0.05;
     volScore+=n.tackles*0.06;
     score+=Math.min(volScore,0.6);
-    if(n.shots<0.5&&ev.xG<0.10)score-=0.20;
+    if(n.shots<0.5)score-=0.20;
     score+=ev.yellow*-0.30+ev.red*-1.0;
   }
 
@@ -205,8 +198,6 @@ async function loadMatchPlayerStats(eid, rosters){
           var raw={
             goals:    gs('offensive','totalGoals'),
             assists:  gs('offensive','goalAssists'),
-            xG:       gs('offensive','expectedGoals'),
-            xA:       gs('offensive','expectedAssists'),
             passes:   gs('offensive','accuratePasses'),
             totalPass:gs('offensive','totalPasses'),
             shotsOnTarget:gs('offensive','shotsOnTarget'),
