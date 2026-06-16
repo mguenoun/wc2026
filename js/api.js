@@ -104,21 +104,21 @@ async function fetchAll(){
     }catch(e){console.warn('[WC2026] FD matches fallback:',e.message);}
   }
 
-  // ── 2. ESPN : 3 derniers jours (avant-hier / hier / aujourd'hui) ─────────────
-  // Les matchs "00h00 heure fr" (ex : M26) sont à 22h UTC la veille → ESPN les
-  // range sous J-2 côté US/UTC. On couvre jusqu'à 3 jours en arrière, en
-  // ne fetchant que les dates où des matchs sont réellement prévus. Max 3 appels.
+  // ── 2. ESPN : dates récentes avec matchs joués ou en cours ──────────────────
+  // Logique identique à fetchESPNScores() mais bornée aux 4 derniers jours :
+  // données plus anciennes servies par KV, pas besoin de re-fetcher ESPN pour elles.
+  // L'ensemble des dates est calculé dynamiquement à partir de l'état des matchs.
   var espnOk=false;
+  var espnDatesMap={};
+  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-3);
+  allMatches.forEach(function(m){
+    if((m.isFT||m.isLive)&&new Date(m.dayKey)>=cutoff)
+      espnDatesMap[m.dayKey.replace(/-/g,'')]=1;
+  });
+  // Toujours inclure aujourd'hui pour détecter les matchs live démarrant dans la journée
   var _now=new Date();
-  function _dkFmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-  var todayKey=_dkFmt(_now);
-  var espnDates=[];
-  for(var _di=-2;_di<=0;_di++){
-    var _dd=new Date(_now);_dd.setDate(_dd.getDate()+_di);
-    var _dk=_dkFmt(_dd);
-    if(allMatches.some(function(m){return m.dayKey===_dk;}))
-      espnDates.push(_dk.replace(/-/g,''));
-  }
+  espnDatesMap[_now.getFullYear()+String(_now.getMonth()+1).padStart(2,'0')+String(_now.getDate()).padStart(2,'0')]=1;
+  var espnDates=Object.keys(espnDatesMap).sort();
   for(var _i=0;_i<espnDates.length;_i++){
     try{
       var rE=await fetch(ESPN_BASE+'/scoreboard?dates='+espnDates[_i]);
@@ -173,6 +173,12 @@ function processMatches(matches){
   });
   allMatches=allMatches.map(function(sm){
     var apiM=apiByKey[sm.dayKey+'|'+sm.t1]||apiByKey[sm.dayKey+'|'+sm.t2];
+    // Fallback J-1 : matchs "00h00 heure locale" dont utcDate FD est la veille
+    if(!apiM){
+      var prev=new Date(sm.dayKey);prev.setDate(prev.getDate()-1);
+      var prevKey=prev.toISOString().slice(0,10);
+      apiM=apiByKey[prevKey+'|'+sm.t1]||apiByKey[prevKey+'|'+sm.t2];
+    }
     if(!apiM)return sm;
     var isLive=['IN_PLAY','PAUSED'].includes(apiM.status);
     var isFT=apiM.status==='FINISHED';
