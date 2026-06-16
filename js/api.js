@@ -85,36 +85,58 @@ async function fetchAll(){
 
   loadFallback(); // base statique : remet tous les matchs à score:null
 
-  // ── 1. FD matches : bootstrap des statuts (isFT/isLive) ────────────────
-  // Nécessaire pour que fetchESPNScores() sache quelles dates fetcher
+  // ── 1. Données matchs depuis cache KV worker (rapide, pré-agrégé) ──────────
   var fdOk=false;
   try{
-    var r1=await fetch(PROXY_BASE+'/fd/competitions/WC/matches');
-    if(r1.ok){var data1=await r1.json();processMatches(data1.matches||[]);fdOk=true;}
-    else console.warn('[WC2026] FD matches:',r1.status);
-  }catch(e){console.warn('[WC2026] FD matches failed:',e.message);}
-
-  // ── 2. ESPN par-dessus : scores plus frais, clock, statuts corrects ────────
-  // fetchESPNScores utilise les isFT/isLive bootstrappés par FD pour cibler les bonnes dates
-  var espnOk=false;
-  try{
-    var espnEvents=await fetchESPNScores();
-    if(espnEvents.length){
-      processESPNScores(espnEvents);
-      espnOk=true;
+    var r1=await fetch(PROXY_BASE+'/data/matches');
+    if(r1.ok){
+      var d1=await r1.json();
+      if(d1.matches&&d1.matches.length){processMatches(d1.matches);fdOk=true;}
     }
-  }catch(e){console.warn('[WC2026] ESPN scores failed:',e.message);}
+  }catch(e){console.warn('[WC2026] /data/matches:',e.message);}
 
-  // ── 3. FD classements (toujours, ESPN n'expose pas les groupes facilement) ──
+  // Fallback direct FD si cache KV vide (premier déploiement ou reset)
+  if(!fdOk){
+    try{
+      var r1b=await fetch(PROXY_BASE+'/fd/competitions/WC/matches');
+      if(r1b.ok){var d1b=await r1b.json();processMatches(d1b.matches||[]);fdOk=true;}
+      else console.warn('[WC2026] FD matches fallback:',r1b.status);
+    }catch(e){console.warn('[WC2026] FD matches fallback:',e.message);}
+  }
+
+  // ── 2. ESPN live : seulement si un match est en cours ou a lieu aujourd'hui ─
+  // (le cache KV couvre les données historiques ; ESPN reste pour le score/minutage en direct)
+  var espnOk=false;
+  var today=new Date();
+  var todayKey=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var hasLiveOrToday=allMatches.some(function(m){return m.isLive||(m.dayKey===todayKey&&m.isFT);});
+  if(hasLiveOrToday){
+    try{
+      var dateStr=todayKey.replace(/-/g,'');
+      var rE=await fetch(ESPN_BASE+'/scoreboard?dates='+dateStr);
+      if(rE.ok){var dE=await rE.json();if(dE.events&&dE.events.length){processESPNScores(dE.events);espnOk=true;}}
+    }catch(e){console.warn('[WC2026] ESPN live:',e.message);}
+  }
+
+  // ── 3. Classements depuis cache KV worker ─────────────────────────────────
+  var standOk=false;
   try{
-    var r2=await fetch(PROXY_BASE+'/fd/competitions/WC/standings');
-    if(r2.ok){var data2=await r2.json();processStandings(data2.standings||[]);}
-    else console.warn('[WC2026] standings:',r2.status);
-  }catch(e){console.warn('[WC2026] standings error:',e.message);}
+    var r2=await fetch(PROXY_BASE+'/data/standings');
+    if(r2.ok){var d2=await r2.json();if(d2.standings&&d2.standings.length){processStandings(d2.standings);standOk=true;}}
+  }catch(e){console.warn('[WC2026] /data/standings:',e.message);}
+
+  // Fallback direct FD si cache KV classements vide
+  if(!standOk){
+    try{
+      var r2b=await fetch(PROXY_BASE+'/fd/competitions/WC/standings');
+      if(r2b.ok){var d2b=await r2b.json();processStandings(d2b.standings||[]);}
+      else console.warn('[WC2026] FD standings fallback:',r2b.status);
+    }catch(e){console.warn('[WC2026] FD standings fallback:',e.message);}
+  }
 
   if(!Object.keys(standings).length)computeStandingsFromMatches();
 
-  var src=espnOk?'ESPN+FD':(fdOk?'FD':'statique');
+  var src=espnOk?'KV+ESPN':(fdOk?'KV':'statique');
   setStatus('ok','En ligne ✓ ('+src+')');
   var now=new Date();
   document.getElementById('last-update').textContent='Mis à jour '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
@@ -295,9 +317,15 @@ function fetchESPNLiveScores(){
 }
 
 function fetchScorers(){
-  fetch(PROXY_BASE+'/fd/competitions/WC/scorers?limit=20')
+  fetch(PROXY_BASE+'/data/scorers')
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(data){scorers=data.scorers||[];if(activeView==='scorers')renderScorers();})
+    .then(function(data){
+      if(data.scorers&&data.scorers.length){scorers=data.scorers;if(activeView==='scorers')renderScorers();return;}
+      // Fallback direct FD si cache KV vide
+      return fetch(PROXY_BASE+'/fd/competitions/WC/scorers?limit=20')
+        .then(function(r2){return r2.json();})
+        .then(function(d2){scorers=d2.scorers||[];if(activeView==='scorers')renderScorers();});
+    })
     .catch(function(e){console.warn('[WC2026] scorers:',e.message);});
 }
 

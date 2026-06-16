@@ -171,6 +171,69 @@ function calcRating(raw, role, minutes) {
   return Math.round(Math.max(4.0, Math.min(9.5, base + score)) * 10) / 10;
 }
 
+// ─── STEP 0 : CACHE KV DES DONNÉES FD (matchs, classements, buteurs) ─────────
+// Appelé toutes les 30 min. Met à jour KV de manière différentielle (écrit seulement si changement).
+// Réduit les appels frontend : 1 requête worker au lieu de 1 FD + N ESPN.
+
+async function step0_refreshData(env) {
+  const token = env.API_TOKEN_FD || env.API_TOKEN;
+  if (!token) return { step: 0, error: 'No FD token' };
+
+  let changes = 0;
+  const now = Date.now();
+
+  // ── 1. Matchs FD ───────────────────────────────────────────────────────────
+  try {
+    const resp = await fetch(`${FD_BASE}/competitions/WC/matches`, { headers: { 'X-Auth-Token': token } });
+    if (resp.ok) {
+      const fdData = await resp.json();
+      const cached = await kv.get(env, 'cache:matches') || { byId: {}, lastUpdate: 0 };
+      for (const m of (fdData.matches || [])) {
+        const key  = String(m.id);
+        const sh   = m.score?.fullTime?.home ?? null;
+        const sa   = m.score?.fullTime?.away ?? null;
+        const prev = cached.byId[key];
+        if (!prev || prev.status !== m.status || prev.sh !== sh || prev.sa !== sa) {
+          cached.byId[key] = {
+            id: m.id, utcDate: m.utcDate, status: m.status, stage: m.stage,
+            homeTeam: { name: m.homeTeam?.name, shortName: m.homeTeam?.shortName },
+            awayTeam: { name: m.awayTeam?.name, shortName: m.awayTeam?.shortName },
+            score: m.score ? { fullTime: { home: sh, away: sa } } : null,
+            sh, sa,
+          };
+          changes++;
+        }
+      }
+      if (changes > 0) { cached.lastUpdate = now; await kv.put(env, 'cache:matches', cached); }
+    }
+  } catch (e) { console.warn('[step0] FD matches:', e.message); }
+
+  // ── 2. Classements FD (seulement si des matchs ont changé) ────────────────
+  if (changes > 0) {
+    try {
+      const resp = await fetch(`${FD_BASE}/competitions/WC/standings`, { headers: { 'X-Auth-Token': token } });
+      if (resp.ok) {
+        const data = await resp.json();
+        await kv.put(env, 'cache:standings', { standings: data.standings || [], lastUpdate: now });
+      }
+    } catch (e) { console.warn('[step0] FD standings:', e.message); }
+  }
+
+  // ── 3. Buteurs FD (toutes les 3h) ─────────────────────────────────────────
+  const cachedScorers = await kv.get(env, 'cache:scorers');
+  if (!cachedScorers || (now - (cachedScorers.lastUpdate || 0)) > 3 * 60 * 60 * 1000) {
+    try {
+      const resp = await fetch(`${FD_BASE}/competitions/WC/scorers?limit=20`, { headers: { 'X-Auth-Token': token } });
+      if (resp.ok) {
+        const data = await resp.json();
+        await kv.put(env, 'cache:scorers', { scorers: data.scorers || [], lastUpdate: now });
+      }
+    } catch (e) { console.warn('[step0] FD scorers:', e.message); }
+  }
+
+  return { step: 0, changes, lastUpdate: now };
+}
+
 // ─── PIPELINE ─────────────────────────────────────────────────────────────────
 
 async function step1_discover(env) {
@@ -558,6 +621,21 @@ export default {
     if (path === '/stats/step2')   return jsonResp(await step2_fetchUrls(env),  cors);
     if (path === '/stats/step3')   return jsonResp(await step3_fetchStats(env), cors);
 
+    // ── Cache KV côté worker (données pré-agrégées pour le frontend) ──────────
+    if (path === '/data/matches') {
+      const c = await kv.get(env, 'cache:matches');
+      return jsonResp({ matches: c ? Object.values(c.byId) : [], lastUpdate: c?.lastUpdate || 0 }, cors);
+    }
+    if (path === '/data/standings') {
+      const c = await kv.get(env, 'cache:standings');
+      return jsonResp(c || { standings: [], lastUpdate: 0 }, cors);
+    }
+    if (path === '/data/scorers') {
+      const c = await kv.get(env, 'cache:scorers');
+      return jsonResp(c || { scorers: [], lastUpdate: 0 }, cors);
+    }
+    if (path === '/data/refresh') return jsonResp(await step0_refreshData(env), cors);
+
     if (path.startsWith('/fd/')) {
       const token = env.API_TOKEN_FD || env.API_TOKEN;
       if (!token) return new Response('API_TOKEN_FD not set', { status: 500, headers: cors });
@@ -578,8 +656,10 @@ export default {
     console.log(`[CRON] ${cron} fired at ${ts}`);
 
     if (cron === '*/30 * * * *') {
-      const result = await step1_discover(env);
-      console.log(`[CRON] step1 result: ${JSON.stringify(result)}`);
+      const result0 = await step0_refreshData(env);
+      console.log(`[CRON] step0 result: ${JSON.stringify(result0)}`);
+      const result1 = await step1_discover(env);
+      console.log(`[CRON] step1 result: ${JSON.stringify(result1)}`);
       ctx.waitUntil(Promise.resolve());
     }
 

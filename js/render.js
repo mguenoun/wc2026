@@ -32,6 +32,32 @@ var KO_PHASES=[
 
 var koBracketView='list'; // 'list' ou 'bracket'
 
+// Résout le nom d'équipe réel pour un placeholder KO (standings ou résultat)
+function resolveMatchWinner(matchId, wantLoser){
+  var m=allMatches.find(function(x){return x.id===matchId;});
+  if(!m||!m.isFT||!m.score)return null;
+  var parts=m.score.split(' – ');
+  var s1=parseInt(parts[0])||0,s2=parseInt(parts[1])||0;
+  if(s1===s2)return null; // prolongations/tirs au but : score FT à égalité
+  return wantLoser?(s1>s2?m.t2:m.t1):(s1>s2?m.t1:m.t2);
+}
+
+function resolveKOTeam(teamStr){
+  if(!teamStr)return null;
+  var m1=teamStr.match(/^(1er|2e) Gr\.([A-L])$/);
+  if(m1){
+    var pos=m1[1]==='1er'?0:1;
+    return(standings&&standings[m1[2]]&&standings[m1[2]][pos])?standings[m1[2]][pos].team:null;
+  }
+  var m2=teamStr.match(/^V\s+(\S+)$/);
+  if(m2)return resolveMatchWinner(m2[1],false);
+  var m3=teamStr.match(/^Vainq\.\s+(\S+)$/);
+  if(m3)return resolveMatchWinner(m3[1],false);
+  var m4=teamStr.match(/^Perdant\s+(\S+)$/);
+  if(m4)return resolveMatchWinner(m4[1],true);
+  return null;
+}
+
 function renderKOTimeline(){
   var c=document.getElementById('knockout-timeline');
   c.innerHTML='';
@@ -123,10 +149,16 @@ function makeBracketCard(m, phase){
   card.style.margin='3px 0';
 
   if(!m){
-    // Slot vide
-    card.innerHTML='<div class="bkt-team bkt-tbd"><span class="bkt-tn">À déterminer</span></div>'+
-      '<div class="bkt-team bkt-tbd"><span class="bkt-tn">À déterminer</span></div>'+
-      '<div class="bkt-foot"><span class="bkt-venue">—</span><div class="bkt-icons"></div></div>';
+    var headE=document.createElement('div');headE.className='bkt-head';
+    headE.innerHTML='<span class="bkt-mid">—</span>';
+    card.appendChild(headE);
+    var r1e=document.createElement('div');r1e.className='bkt-team bkt-tbd';
+    r1e.innerHTML='<div class="bkt-left"><span class="bkt-tn">À déterminer</span></div>';
+    var r2e=document.createElement('div');r2e.className='bkt-team bkt-tbd';
+    r2e.innerHTML='<div class="bkt-left"><span class="bkt-tn">À déterminer</span></div>';
+    var fe=document.createElement('div');fe.className='bkt-foot';
+    fe.innerHTML='<span class="bkt-venue">—</span><div class="bkt-icons"></div>';
+    card.appendChild(r1e);card.appendChild(r2e);card.appendChild(fe);
     return card;
   }
 
@@ -136,12 +168,22 @@ function makeBracketCard(m, phase){
   var s1=parts[0]||'', s2=parts[1]||'';
   var w1=isFT&&s1!==''&&parseInt(s1)>parseInt(s2);
   var w2=isFT&&s2!==''&&parseInt(s2)>parseInt(s1);
-  var tbd1=!m.t1||m.t1.indexOf('Vainq')===0||m.t1.indexOf('V.')===0;
-  var tbd2=!m.t2||m.t2.indexOf('Vainq')===0||m.t2.indexOf('V.')===0;
+  var tbd1=!m.t1||/^(Vainq\.|V\s|Perdant|1er|2e|3e)/.test(m.t1);
+  var tbd2=!m.t2||/^(Vainq\.|V\s|Perdant|1er|2e|3e)/.test(m.t2);
 
-  // Icônes — construction DOM pour éviter conflits de quotes
-  var iconsDiv=document.createElement('div');
-  iconsDiv.className='bkt-icons';
+  // Noms résolus depuis classements ou résultats précédents
+  var res1=resolveKOTeam(m.t1);
+  var res2=resolveKOTeam(m.t2);
+
+  // En-tête : numéro de match + date courte
+  var head=document.createElement('div');head.className='bkt-head';
+  var midSpan=document.createElement('span');midSpan.className='bkt-mid';midSpan.textContent=m.id||'';
+  var dateSpan=document.createElement('span');dateSpan.className='bkt-date';
+  dateSpan.textContent=m.date?m.date.replace(/^\S+\s+/,''):'';
+  head.appendChild(midSpan);head.appendChild(dateSpan);
+
+  // Icônes
+  var iconsDiv=document.createElement('div');iconsDiv.className='bkt-icons';
   if(isFT||isLive){
     var eid=ESPN_ID_MAP&&ESPN_ID_MAP[m.id]?ESPN_ID_MAP[m.id]:'';
     var btnStats=document.createElement('button');
@@ -160,23 +202,33 @@ function makeBracketCard(m, phase){
   }
 
   var venueShort=m.venue?m.venue.replace(' Stadium','').replace(' Field',''):'';
-  var cityShort=m.city||'';
-  var venueLabel=(venueShort?(venueShort+(cityShort?' · '+cityShort:'')):'');
+  var venueLabel=venueShort+(m.city?' · '+m.city:'');
 
-  // Construction DOM du card complet
+  // Rangée équipe 1
   var row1=document.createElement('div');
   row1.className='bkt-team'+(w1?' bkt-win':'')+(tbd1?' bkt-tbd':'');
-  row1.innerHTML='<span class="bkt-tn">'+(m.t1||'?')+'</span><span class="bkt-sc">'+(isFT||isLive?s1:'')+'</span>';
+  var left1=document.createElement('div');left1.className='bkt-left';
+  var tn1=document.createElement('span');tn1.className='bkt-tn';tn1.textContent=m.t1||'?';
+  left1.appendChild(tn1);
+  if(res1){var r1el=document.createElement('span');r1el.className='bkt-res';r1el.textContent='('+res1+')';left1.appendChild(r1el);}
+  var sc1=document.createElement('span');sc1.className='bkt-sc';sc1.textContent=(isFT||isLive)?s1:'';
+  row1.appendChild(left1);row1.appendChild(sc1);
+
+  // Rangée équipe 2
   var row2=document.createElement('div');
   row2.className='bkt-team'+(w2?' bkt-win':'')+(tbd2?' bkt-tbd':'');
-  row2.innerHTML='<span class="bkt-tn">'+(m.t2||'?')+'</span><span class="bkt-sc">'+(isFT||isLive?s2:'')+'</span>';
-  var foot=document.createElement('div');
-  foot.className='bkt-foot';
-  var venue=document.createElement('span');
-  venue.className='bkt-venue';venue.textContent=venueLabel;
-  foot.appendChild(venue);foot.appendChild(iconsDiv);
-  card.appendChild(row1);card.appendChild(row2);card.appendChild(foot);
+  var left2=document.createElement('div');left2.className='bkt-left';
+  var tn2=document.createElement('span');tn2.className='bkt-tn';tn2.textContent=m.t2||'?';
+  left2.appendChild(tn2);
+  if(res2){var r2el=document.createElement('span');r2el.className='bkt-res';r2el.textContent='('+res2+')';left2.appendChild(r2el);}
+  var sc2=document.createElement('span');sc2.className='bkt-sc';sc2.textContent=(isFT||isLive)?s2:'';
+  row2.appendChild(left2);row2.appendChild(sc2);
 
+  var foot=document.createElement('div');foot.className='bkt-foot';
+  var venue=document.createElement('span');venue.className='bkt-venue';venue.textContent=venueLabel;
+  foot.appendChild(venue);foot.appendChild(iconsDiv);
+
+  card.appendChild(head);card.appendChild(row1);card.appendChild(row2);card.appendChild(foot);
   return card;
 }
 
