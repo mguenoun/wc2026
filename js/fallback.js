@@ -76,9 +76,9 @@ function loadFallback(){
   ];
   var koRaw=[
     {id:"M73", date:"Dimanche 28 Juin",   time:"21h00",dayKey:"2026-06-28",phase:"32es",color:"#8b5cf6",t1:"2e Gr.A",       t2:"2e Gr.B",          venue:"SoFi Stadium",            city:"Inglewood"},
-    {id:"M76", date:"Lundi 29 Juin",      time:"19h00",dayKey:"2026-06-29",phase:"32es",color:"#8b5cf6",t1:"1er Gr.C",      t2:"3e B/C/D",         venue:"NRG Stadium",             city:"Houston"},
+    {id:"M76", date:"Lundi 29 Juin",      time:"19h00",dayKey:"2026-06-29",phase:"32es",color:"#8b5cf6",t1:"1er Gr.C",      t2:"2e Gr.F",          venue:"NRG Stadium",             city:"Houston"},
     {id:"M74", date:"Lundi 29 Juin",      time:"22h30",dayKey:"2026-06-29",phase:"32es",color:"#8b5cf6",t1:"1er Gr.E",      t2:"3e A/B/C/D/F",     venue:"Gillette Stadium",        city:"Foxborough"},
-    {id:"M75", date:"Mardi 30 Juin",      time:"03h00",dayKey:"2026-06-30",phase:"32es",color:"#8b5cf6",t1:"1er Gr.F",      t2:"3e C/D/E",         venue:"Estadio BBVA",            city:"Monterrey"},
+    {id:"M75", date:"Mardi 30 Juin",      time:"03h00",dayKey:"2026-06-30",phase:"32es",color:"#8b5cf6",t1:"1er Gr.F",      t2:"2e Gr.C",          venue:"Estadio BBVA",            city:"Monterrey"},
     {id:"M78", date:"Mardi 30 Juin",      time:"19h00",dayKey:"2026-06-30",phase:"32es",color:"#8b5cf6",t1:"2e Gr.E",       t2:"2e Gr.I",          venue:"AT&T Stadium",            city:"Arlington"},
     {id:"M77", date:"Mardi 30 Juin",      time:"23h00",dayKey:"2026-06-30",phase:"32es",color:"#8b5cf6",t1:"1er Gr.I",      t2:"3e C/D/F/G/H",     venue:"MetLife Stadium",         city:"East Rutherford"},
     {id:"M79", date:"Mercredi 1 Juillet", time:"03h00",dayKey:"2026-07-01",phase:"32es",color:"#8b5cf6",t1:"1er Gr.A",      t2:"3e C/E/F/H/I",     venue:"Estadio Azteca",          city:"Mexico City"},
