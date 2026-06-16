@@ -193,66 +193,41 @@ function computeStandingsFromMatches(){
 
 // Mise à jour des scores en direct via ESPN (plus rapide que football-data.org)
 async function fetchESPNLiveScores(){
-  fetch(PROXY_BASE+'/data/live')
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(!data.events||!data.events.length)return;
-      var updated=false;
-      data.events.forEach(function(e){
-        var status=e.status&&e.status.type&&e.status.type.state; // 'pre','in','post'
-        if(status!=='in'&&status!=='post')return;
-        // Find matching match in allMatches by ESPN ID
-        var matchId=null;
-        Object.entries(ESPN_ID_MAP).forEach(function(entry){
-          if(entry[1]===e.id)matchId=entry[0];
-        });
-        if(!matchId)return;
-        var m=allMatches.find(function(m){return m.id===matchId;});
-        if(!m)return;
-        var comps=e.competitions&&e.competitions[0]&&e.competitions[0].competitors||[];
-        var home=comps.find(function(c){return c.homeAway==='home';})||{};
-        var away=comps.find(function(c){return c.homeAway==='away';})||{};
-        var newScore=(home.score||'0')+' – '+(away.score||'0');
-        var isLive=status==='in';
-        var isFT=status==='post';
-        // Get official clock from ESPN — displayClock already contains e.g. "34:00", "45'+2'"
-        var clock=e.status&&e.status.displayClock||'';
-        var period=e.status&&e.status.period||0;
-        var clockDisplay='';
-        if(isLive&&clock){
-          // displayClock can be "34:00" (mm:ss) or "45'+2'" (already formatted)
-          if(clock.indexOf("'")>=0){
-            // Already formatted with apostrophe e.g. "90'+2'" — use as-is
-            clockDisplay=clock;
-          } else {
-            // Format mm:ss → extract minutes only
-            var mins=parseInt(clock.split(':')[0])||0;
-            if(period===1) clockDisplay=mins+"'";
-            else if(period===2) clockDisplay=mins+"'";
-            else if(period>=3) clockDisplay='Prolong. '+mins+"'";
-          }
-        }
-        if(m.score!==newScore||m.isLive!==isLive||m.isFT!==isFT||m.clockDisplay!==clockDisplay){
-          m.score=newScore;
-          m.isLive=isLive;
-          m.isFT=isFT;
-          m.clockDisplay=clockDisplay;
-          if(isFT)m.status='FINISHED';
-          if(isLive)m.status='IN_PLAY';
-          updated=true;
-        }
-      });
-      // Always re-render timeline to update minute counter
-      if(allMatches.some(function(m){return m.isLive;})){
-        renderGroupsTimeline();
-        renderKOTimeline();
+  try{
+    var r=await fetch(PROXY_BASE+'/data/live');
+    var data=await r.json();
+    if(!data.events||!data.events.length)return;
+    var updated=false;
+    data.events.forEach(function(e){
+      var status=e.status&&e.status.type&&e.status.type.state;
+      if(status!=='in'&&status!=='post')return;
+      var matchId=null;
+      Object.entries(ESPN_ID_MAP).forEach(function(entry){if(entry[1]===e.id)matchId=entry[0];});
+      if(!matchId)return;
+      var m=allMatches.find(function(x){return x.id===matchId;});
+      if(!m)return;
+      var comps=e.competitions&&e.competitions[0]&&e.competitions[0].competitors||[];
+      var home=comps.find(function(c){return c.homeAway==='home';})||{};
+      var away=comps.find(function(c){return c.homeAway==='away';})||{};
+      var newScore=(home.score||'0')+' – '+(away.score||'0');
+      var isLive=status==='in',isFT=status==='post';
+      var clock=e.status&&e.status.displayClock||'';
+      var period=e.status&&e.status.period||0;
+      var clockDisplay='';
+      if(isLive&&clock){
+        if(clock.indexOf("'")>=0){clockDisplay=clock;}
+        else{var mins=parseInt(clock.split(':')[0])||0;
+          clockDisplay=(period>=3?'Prolong. ':'')+mins+"'";}
       }
-      if(updated){
-        computeStandingsFromMatches();
-        renderStandings();
+      if(m.score!==newScore||m.isLive!==isLive||m.isFT!==isFT||m.clockDisplay!==clockDisplay){
+        m.score=newScore;m.isLive=isLive;m.isFT=isFT;m.clockDisplay=clockDisplay;
+        if(isFT)m.status='FINISHED';if(isLive)m.status='IN_PLAY';
+        updated=true;
       }
-    })
-    .catch(function(){});
+    });
+    if(allMatches.some(function(m){return m.isLive;})){renderGroupsTimeline();renderKOTimeline();}
+    if(updated){computeStandingsFromMatches();renderStandings();}
+  }catch(e){console.warn('[WC2026] fetchESPNLiveScores:',e.message);}
 }
 
 function fetchScorers(){

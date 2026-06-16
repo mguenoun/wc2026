@@ -23,19 +23,20 @@ function switchView(v){
   }
 }
 
+var _refreshTick=0;
 function scheduleRefresh(){
-  var hasLive=allMatches.some(function(m){return m.isLive;});
-  var delay=hasLive?30000:300000;
+  // Toujours 30s — hasLive évalué au moment du tick, pas au moment de l'appel
   setTimeout(async function(){
+    _refreshTick++;
+    var hasLive=allMatches.some(function(m){return m.isLive;});
     if(hasLive){
-      // Match en cours : ESPN live d'abord (rapide), puis fetchAll séquentiel
-      await fetchESPNLiveScores();
-      if(Math.random()<0.2)await fetchAll(); // fetchAll complet ~1x/5 = toutes les 2,5min
-    } else {
-      await fetchAll(); // Hors match : refresh complet toutes les 5min
+      await fetchESPNLiveScores();          // ESPN live toutes les 30s
+      if(_refreshTick%5===0)await fetchAll(); // fetchAll complet toutes les 2,5min
+    } else if(_refreshTick%10===0){
+      await fetchAll();                       // fetchAll toutes les 5min hors match
     }
     scheduleRefresh();
-  },delay);
+  },30000);
 }
 
 // ─── INITIALISATION ───────────────────────────────────────────────────────────
