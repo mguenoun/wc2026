@@ -131,7 +131,7 @@ function openLineupESPN(espnId){
   document.getElementById('modal-overlay').className='open';
   document.getElementById('modal-title').textContent='Compositions';
   document.getElementById('modal-body').innerHTML='<div style="text-align:center;padding:20px;color:#475569">⏳ Chargement…</div>';
-  fetch(ESPN_BASE+'/summary?event='+espnId)
+  fetch(PROXY_BASE+'/data/summary/'+espnId)
     .then(function(r){return r.json();})
     .then(function(d){
       var rosters=d.rosters||[];

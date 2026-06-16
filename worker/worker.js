@@ -636,6 +636,34 @@ export default {
     }
     if (path === '/data/refresh') return jsonResp(await step0_refreshData(env), cors);
 
+    if (path.startsWith('/data/summary/')) {
+      const espnId = path.split('/')[3];
+      if (!espnId) return new Response('Missing espnId', { status: 400, headers: cors });
+      const cached = await kv.get(env, 'cache:summary:' + espnId);
+      // Retourner le cache si : match terminé (permanent) ou match live < 60s
+      if (cached) {
+        if (cached.state === 'post') return jsonResp(cached.data, cors);
+        if (cached.state === 'in' && (Date.now() - (cached.lastUpdate || 0)) < 60_000) return jsonResp(cached.data, cors);
+      }
+      try {
+        const r = await fetch(`${ESPN_BASE}/summary?event=${espnId}`);
+        if (!r.ok) return new Response('ESPN error', { status: r.status, headers: cors });
+        const data = await r.json();
+        const state = data?.header?.competitions?.[0]?.status?.type?.state || 'pre';
+        if (state === 'post' || state === 'in') {
+          await kv.put(env, 'cache:summary:' + espnId, { data, state, lastUpdate: Date.now() });
+        }
+        return jsonResp(data, cors);
+      } catch (e) { return new Response('Fetch error', { status: 502, headers: cors }); }
+    }
+
+    if (path.startsWith('/data/stats/')) {
+      const espnId = path.split('/')[3];
+      if (!espnId) return new Response('Missing espnId', { status: 400, headers: cors });
+      const m = await kv.get(env, 'match:' + espnId);
+      return jsonResp(m ? { stats: m.stats, cachedAt: m.cachedAt } : { stats: null }, cors);
+    }
+
     if (path === '/data/live') {
       // Cache ESPN 30s — réduit les appels directs browser→ESPN à 0
       const LIVE_TTL = 30_000;

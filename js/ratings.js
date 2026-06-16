@@ -153,6 +153,16 @@ function ratingColor(r){
 
 // Charger les stats de tous les joueurs d'un match via ESPN Core API
 async function loadMatchPlayerStats(eid, rosters){
+  // Essai 1 : stats pré-calculées en KV par le pipeline Worker (rapide)
+  try{
+    var rc=await fetch(PROXY_BASE+'/data/stats/'+eid);
+    if(rc.ok){
+      var dc=await rc.json();
+      if(dc.stats&&Object.keys(dc.stats).length>0)return dc.stats;
+    }
+  }catch(_){}
+
+  // Fallback : calcul à la volée depuis ESPN Core (~25-50 requêtes, lent)
   var namesByTeam=[];
   rosters.forEach(function(team){
     var map={};

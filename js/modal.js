@@ -41,7 +41,7 @@ function openMatchInfo(m){
   openModal('Chargement…','<div style="text-align:center;padding:20px;color:#475569">⏳</div>');
   if(espnId){
     var doFetch = function(){
-      fetch(ESPN_BASE+'/summary?event='+espnId)
+      fetch(PROXY_BASE+'/data/summary/'+espnId)
         .then(function(r){ return r.json(); })
         .then(function(d){ renderESPNStats(m,d,espnId); })
         .catch(function(){ openMatchInfoFD(m); });
