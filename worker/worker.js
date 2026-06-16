@@ -39,7 +39,7 @@ const TEAM_NORM = {
   'Japan':'Japon','Senegal':'Sénégal','Ghana':'Ghana','Cameroon':'Cameroun',
   'Nigeria':'Nigéria','Ivory Coast':'Côte d\'Ivoire',"Côte d'Ivoire":"Côte d'Ivoire",
   'Tunisia':'Tunisie','Algeria':'Algérie','Egypt':'Égypte',
-  'Saudi Arabia':'Arabie Saoudite','Iran':'Iran','South Korea':'Corée du Sud',
+  'Saudi Arabia':'Arabie Saoudite','Iran':'Iran',
   'New Zealand':'Nv-Zélande','Ecuador':'Équateur','Uruguay':'Uruguay',
   'Colombia':'Colombie','Chile':'Chili','Peru':'Pérou','Venezuela':'Venezuela',
   'Jamaica':'Jamaïque','Costa Rica':'Costa Rica','Panama':'Panama','Honduras':'Honduras',
@@ -48,9 +48,9 @@ const TEAM_NORM = {
   'Norway':'Norvège','Austria':'Autriche','Hungary':'Hongrie','Slovakia':'Slovaquie',
   'Romania':'Roumanie','Albania':'Albanie','Slovenia':'Slovénie','Georgia':'Géorgie',
   'Wales':'Pays de Galles','Northern Ireland':'Irlande du Nord','Ireland':'Irlande',
-  'Finland':'Finlande','Greece':'Grèce','Turkey':'Turquie',
+  'Finland':'Finlande','Greece':'Grèce',
   'Russia':'Russie','Czech Republic':'Tchéquie',
-  'Curaçao':'Curaçao','Iraq':'Irak','Norway':'Norvège',
+  'Curaçao':'Curaçao','Iraq':'Irak',
 };
 
 function normTeam(name) {
