@@ -104,19 +104,21 @@ async function fetchAll(){
     }catch(e){console.warn('[WC2026] FD matches fallback:',e.message);}
   }
 
-  // ── 2. ESPN : hier + aujourd'hui pour couvrir scores récents + live ──────────
-  // Hier nécessaire car certains matchs "00h00 heure fr" ont utcDate la veille (décalage UTC)
-  // et ne matchent pas via FD seul. Max 2 appels ESPN (vs 7+ avant).
+  // ── 2. ESPN : 3 derniers jours (avant-hier / hier / aujourd'hui) ─────────────
+  // Les matchs "00h00 heure fr" (ex : M26) sont à 22h UTC la veille → ESPN les
+  // range sous J-2 côté US/UTC. On couvre jusqu'à 3 jours en arrière, en
+  // ne fetchant que les dates où des matchs sont réellement prévus. Max 3 appels.
   var espnOk=false;
   var _now=new Date();
-  function _dk(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-  var todayKey=_dk(_now);
-  var _yd=new Date(_now);_yd.setDate(_yd.getDate()-1);var yesterdayKey=_dk(_yd);
+  function _dkFmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  var todayKey=_dkFmt(_now);
   var espnDates=[];
-  if(allMatches.some(function(m){return m.dayKey===todayKey&&(m.isFT||m.isLive);}))
-    espnDates.push(todayKey.replace(/-/g,''));
-  if(allMatches.some(function(m){return m.dayKey===yesterdayKey&&m.isFT;}))
-    espnDates.push(yesterdayKey.replace(/-/g,''));
+  for(var _di=-2;_di<=0;_di++){
+    var _dd=new Date(_now);_dd.setDate(_dd.getDate()+_di);
+    var _dk=_dkFmt(_dd);
+    if(allMatches.some(function(m){return m.dayKey===_dk;}))
+      espnDates.push(_dk.replace(/-/g,''));
+  }
   for(var _i=0;_i<espnDates.length;_i++){
     try{
       var rE=await fetch(ESPN_BASE+'/scoreboard?dates='+espnDates[_i]);
