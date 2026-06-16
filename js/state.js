@@ -27,32 +27,23 @@ function scheduleRefresh(){
   var hasLive=allMatches.some(function(m){return m.isLive;});
   var delay=hasLive?30000:300000;
   setTimeout(async function(){
-    // ESPN refresh rapide pour les scores en direct
-    fetchESPNLiveScores();
-    // football-data.org refresh complet (moins fréquent si pas de match en direct)
-    if(!hasLive || Math.random() < 0.2){ // toutes les ~5 refreshes ESPN
-      await fetchAll();
+    if(hasLive){
+      // Match en cours : ESPN live d'abord (rapide), puis fetchAll séquentiel
+      await fetchESPNLiveScores();
+      if(Math.random()<0.2)await fetchAll(); // fetchAll complet ~1x/5 = toutes les 2,5min
+    } else {
+      await fetchAll(); // Hors match : refresh complet toutes les 5min
     }
     scheduleRefresh();
   },delay);
 }
 
-// Refresh ESPN toutes les 30s quand match en cours
-function startESPNLiveRefresh(){
-  setInterval(function(){
-    if(allMatches.some(function(m){return m.isLive;})){
-      fetchESPNLiveScores();
-    }
-  },30000);
-}
-
 // ─── INITIALISATION ───────────────────────────────────────────────────────────
 loadFallback();
-fetchAll();
+fetchAll().then(function(){ fetchESPNIds(); }); // fetchESPNIds une seule fois après le premier fetchAll
 scheduleRefresh();
-startESPNLiveRefresh();
 
-// Refresh du minuteur sur la liste toutes les 60s
+// Refresh du minuteur sur la liste toutes les 30s (seulement si match en cours)
 setInterval(function(){
   if(allMatches.some(function(m){return m.isLive;})){
     renderGroupsTimeline();

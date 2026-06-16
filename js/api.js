@@ -78,7 +78,10 @@ function processESPNScores(events){
   return mapped>0;
 }
 
+var _fetchAllActive=false;
 async function fetchAll(){
+  if(_fetchAllActive)return; // éviter les appels concurrent
+  _fetchAllActive=true;
   setStatus('loading','Actualisation…');
   document.getElementById('refresh-btn').textContent='蘵 …';
   if(PROXY_BASE.includes('REMPLACER')){setStatus('error','Proxy non configuré');loadFallback();renderAll();document.getElementById('loading').classList.add('hidden');showView(activeView);document.getElementById('refresh-btn').textContent='蘵 Actualiser';return;}
@@ -148,10 +151,11 @@ async function fetchAll(){
   setStatus('ok','En ligne ✓ ('+src+')');
   var now=new Date();
   document.getElementById('last-update').textContent='Mis à jour '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  renderAll();fetchScorers();fetchESPNIds();
+  renderAll();fetchScorers();
   document.getElementById('loading').classList.add('hidden');
   showView(activeView);
   document.getElementById('refresh-btn').textContent='蘵 Actualiser';
+  _fetchAllActive=false;
 }
 function setStatus(state,label){
   var dot=document.getElementById('conn-dot'),lbl=document.getElementById('conn-label');
@@ -264,7 +268,7 @@ function fetchESPNIds(){
 }
 
 // Mise à jour des scores en direct via ESPN (plus rapide que football-data.org)
-function fetchESPNLiveScores(){
+async function fetchESPNLiveScores(){
   var today = new Date();
   var y=today.getFullYear(),mo=String(today.getMonth()+1).padStart(2,'0'),dy=String(today.getDate()).padStart(2,'0');
   var dateStr=''+y+mo+dy;
