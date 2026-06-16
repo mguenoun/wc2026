@@ -25,7 +25,13 @@ function renderMatchRow(m){
   var tim=document.createElement('span');tim.className='match-time';tim.textContent=m.time||'';
 
   var teams=document.createElement('span');teams.className='match-teams';
-  teams.innerHTML=m.t1+'<span class="vs">\u2013</span>'+m.t2;
+  var _t1=m.t1||'?',_t2=m.t2||'?';
+  if(m.ko){
+    var _r1=resolveKOTeam(m.t1),_r2=resolveKOTeam(m.t2);
+    if(_r1)_t1+=' <span class="ko-res">('+_r1+')</span>';
+    if(_r2)_t2+=' <span class="ko-res">('+_r2+')</span>';
+  }
+  teams.innerHTML=_t1+'<span class="vs">\u2013</span>'+_t2;
 
   var sc=document.createElement('span');sc.className='match-score';sc.style.color=m.color;
   if(m.isLive){
