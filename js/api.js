@@ -104,18 +104,24 @@ async function fetchAll(){
     }catch(e){console.warn('[WC2026] FD matches fallback:',e.message);}
   }
 
-  // ── 2. ESPN live : seulement si un match est en cours ou a lieu aujourd'hui ─
-  // (le cache KV couvre les données historiques ; ESPN reste pour le score/minutage en direct)
+  // ── 2. ESPN : hier + aujourd'hui pour couvrir scores récents + live ──────────
+  // Hier nécessaire car certains matchs "00h00 heure fr" ont utcDate la veille (décalage UTC)
+  // et ne matchent pas via FD seul. Max 2 appels ESPN (vs 7+ avant).
   var espnOk=false;
-  var today=new Date();
-  var todayKey=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-  var hasLiveOrToday=allMatches.some(function(m){return m.isLive||(m.dayKey===todayKey&&m.isFT);});
-  if(hasLiveOrToday){
+  var _now=new Date();
+  function _dk(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  var todayKey=_dk(_now);
+  var _yd=new Date(_now);_yd.setDate(_yd.getDate()-1);var yesterdayKey=_dk(_yd);
+  var espnDates=[];
+  if(allMatches.some(function(m){return m.dayKey===todayKey&&(m.isFT||m.isLive);}))
+    espnDates.push(todayKey.replace(/-/g,''));
+  if(allMatches.some(function(m){return m.dayKey===yesterdayKey&&m.isFT;}))
+    espnDates.push(yesterdayKey.replace(/-/g,''));
+  for(var _i=0;_i<espnDates.length;_i++){
     try{
-      var dateStr=todayKey.replace(/-/g,'');
-      var rE=await fetch(ESPN_BASE+'/scoreboard?dates='+dateStr);
+      var rE=await fetch(ESPN_BASE+'/scoreboard?dates='+espnDates[_i]);
       if(rE.ok){var dE=await rE.json();if(dE.events&&dE.events.length){processESPNScores(dE.events);espnOk=true;}}
-    }catch(e){console.warn('[WC2026] ESPN live:',e.message);}
+    }catch(e){console.warn('[WC2026] ESPN '+espnDates[_i]+':',e.message);}
   }
 
   // ── 3. Classements depuis cache KV worker ─────────────────────────────────

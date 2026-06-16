@@ -44,11 +44,28 @@ function resolveMatchWinner(matchId, wantLoser){
 
 function resolveKOTeam(teamStr){
   if(!teamStr)return null;
+
+  // "1er Gr.X" ou "2e Gr.X"
   var m1=teamStr.match(/^(1er|2e) Gr\.([A-L])$/);
   if(m1){
     var pos=m1[1]==='1er'?0:1;
     return(standings&&standings[m1[2]]&&standings[m1[2]][pos])?standings[m1[2]][pos].team:null;
   }
+
+  // "3e A/B/C/D/F" — meilleur 3e parmi les groupes listés (pts → diff buts → buts marqués)
+  var m5=teamStr.match(/^3e ([A-L](?:\/[A-L])+)$/);
+  if(m5){
+    var candidates=[];
+    m5[1].split('/').forEach(function(g){
+      if(standings&&standings[g]&&standings[g][2]&&standings[g][2].played>0)
+        candidates.push(standings[g][2]);
+    });
+    if(!candidates.length)return null;
+    candidates.sort(function(a,b){return(b.pts-a.pts)||(b.gd-a.gd)||(b.gf-a.gf);});
+    return candidates[0].team;
+  }
+
+  // "V M73", "V QF1", "V SF1" etc.
   var m2=teamStr.match(/^V\s+(\S+)$/);
   if(m2)return resolveMatchWinner(m2[1],false);
   var m3=teamStr.match(/^Vainq\.\s+(\S+)$/);
