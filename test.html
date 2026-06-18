@@ -119,6 +119,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
   <div id="tabs">
     <button class="tab-btn active" onclick="switchView('groups')">&#128203; Phase de Groupes</button>
     <button class="tab-btn" onclick="switchView('standings')">&#128202; Classements</button>
+    <button class="tab-btn" onclick="switchView('thirds')">&#129351; Meilleurs 3&egrave;mes</button>
     <button class="tab-btn" onclick="switchView('knockout')">&#127942; &Eacute;limination Directe</button>
     <button class="tab-btn" onclick="switchView('scorers')">&#9917; Buteurs</button>
     <button class="tab-btn" onclick="switchView('keepers')">&#129354; Gardiens</button>
@@ -138,8 +139,12 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <div id="groups-timeline"></div>
   </div>
   <div id="view-standings" class="hidden">
-    <div class="info-bar"><span>&#128994; Qualifi&eacute; direct</span><span class="sep">&middot;</span><span>Pts &middot; J jou&eacute;s &middot; DB diff. buts</span></div>
+    <div class="info-bar"><span>&#128994; Qualifi&eacute; direct</span><span class="sep">&middot;</span><span>Pts &middot; J jou&eacute;s &middot; DB diff. buts &middot; BP buts pour</span></div>
     <div class="standings-grid" id="standings-grid"></div>
+  </div>
+  <div id="view-thirds" class="hidden">
+    <div class="info-bar"><span>&#129351; Top 8 qualifi&eacute;s pour les 32&egrave;mes</span><span class="sep">&middot;</span><span>Pts &middot; DB diff. buts &middot; BP buts pour</span></div>
+    <div id="thirds-list" style="padding:8px 0"></div>
   </div>
   <div id="view-knockout" class="hidden">
     <div id="ko-legend"></div>
@@ -172,9 +177,9 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 <script src="js/modal.js?v=7"></script>
 <script src="js/pitch.js?v=4"></script>
 <script src="js/map.js?v=4"></script>
-<script src="js/render.js?v=3"></script>
+<script src="js/render.js?v=4"></script>
 <script src="js/rankings.js?v=2"></script>
-<script src="js/state.js?v=5"></script>
+<script src="js/state.js?v=6"></script>
 
 </body>
 </html>

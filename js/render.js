@@ -33,38 +33,127 @@ var KO_PHASES=[
 var koBracketView='list'; // 'list' ou 'bracket'
 var _thirdAssign = null;  // Map : "3e X/Y/Z" → team, recalculée à chaque render KO
 
-// Construit l'assignation globale des 3e places : top 8 qualifiés → un slot unique chacun
-function buildThirdAssign() {
-  var assign = new Map();
-  if (!standings || !allMatches) return assign;
+// Collecte et trie les 3e places de tous les groupes ayant joué au moins 1 match
+function getAll3rd() {
   var all3rd = [];
   Object.keys(standings).forEach(function(g) {
     var s = standings[g];
     if (s && s[2] && s[2].played > 0)
-      all3rd.push({ group: g, team: s[2].team, pts: s[2].pts, gd: s[2].gd, gf: s[2].gf });
+      all3rd.push({ group: g, team: s[2].team, pts: s[2].pts, gd: s[2].gd, gf: s[2].gf, played: s[2].played });
   });
   all3rd.sort(function(a, b) { return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf); });
-  var top8 = new Set(all3rd.slice(0, 8).map(function(t) { return t.group; }));
-  var usedGroups = new Set();
-  allMatches
-    .filter(function(m) { return m.ko; })
-    .sort(function(a, b) { return (a.dayKey || '').localeCompare(b.dayKey || '') || (a.time || '').localeCompare(b.time || ''); })
-    .forEach(function(m) {
-      [m.t1, m.t2].forEach(function(teamStr) {
-        if (!teamStr || assign.has(teamStr)) return;
-        var rx = teamStr.match(/^3e ([A-L](?:\/[A-L])+)$/);
-        if (!rx) return;
-        var groups = rx[1].split('/');
-        var candidates = all3rd.filter(function(t) {
-          return groups.includes(t.group) && top8.has(t.group) && !usedGroups.has(t.group);
-        });
-        if (candidates.length > 0) {
-          assign.set(teamStr, candidates[0].team);
-          usedGroups.add(candidates[0].group);
-        }
-      });
+  return all3rd;
+}
+
+// Construit l'assignation globale des 3e places via matching bipartite
+// Garantit que chaque équipe va dans un slot dont son groupe fait partie
+function buildThirdAssign() {
+  var assign = new Map();
+  if (!standings || !allMatches) return assign;
+  var all3rd = getAll3rd();
+  var top8groups = all3rd.slice(0, 8).map(function(t) { return t.group; });
+  var qualified = all3rd.filter(function(t) { return top8groups.indexOf(t.group) >= 0; });
+
+  // Collecter tous les slots "3e X/Y/Z..." uniques dans les matchs KO
+  var slots = [];
+  allMatches.filter(function(m) { return m.ko; }).forEach(function(m) {
+    [m.t1, m.t2].forEach(function(ts) {
+      if (!ts) return;
+      var rx = ts.match(/^3e ([A-L](?:\/[A-L])+)$/);
+      if (rx && !slots.find(function(s) { return s.key === ts; }))
+        slots.push({ key: ts, groups: rx[1].split('/') });
     });
+  });
+
+  // Matching bipartite (chemin augmentant) : slot → groupe qualifié
+  var slotToGroup = {}, groupToSlot = {};
+  function augment(slotKey, visited) {
+    var slot = slots.find(function(s) { return s.key === slotKey; });
+    if (!slot) return false;
+    for (var i = 0; i < qualified.length; i++) {
+      var g = qualified[i].group;
+      if (slot.groups.indexOf(g) < 0 || visited[g]) continue;
+      visited[g] = true;
+      if (!groupToSlot[g] || augment(groupToSlot[g], visited)) {
+        slotToGroup[slotKey] = g; groupToSlot[g] = slotKey; return true;
+      }
+    }
+    return false;
+  }
+  slots.forEach(function(slot) { if (!slotToGroup[slot.key]) augment(slot.key, {}); });
+
+  // Construire la Map finale slot → nom d'équipe
+  Object.keys(slotToGroup).forEach(function(slotKey) {
+    var team = all3rd.find(function(t) { return t.group === slotToGroup[slotKey]; });
+    if (team) assign.set(slotKey, team.team);
+  });
   return assign;
+}
+
+// Onglet Meilleurs 3èmes
+function renderThirds() {
+  var c = document.getElementById('thirds-list');
+  if (!c) return;
+  if (!Object.keys(standings).length) {
+    c.innerHTML = '<p style="color:#475569;font-size:11px;padding:12px">Disponible dès le début du tournoi.</p>';
+    return;
+  }
+  var all3rd = getAll3rd();
+  if (!all3rd.length) {
+    c.innerHTML = '<p style="color:#475569;font-size:11px;padding:12px">Aucun match de groupe joué.</p>';
+    return;
+  }
+
+  // Statut définitif : tous les matchs du groupe terminés
+  var groupDone = {};
+  Object.keys(standings).forEach(function(g) {
+    var gMatches = allMatches.filter(function(m) { return m.grp === g && !m.ko; });
+    groupDone[g] = gMatches.length >= 3 && gMatches.every(function(m) { return m.isFT; });
+  });
+  var allDone = all3rd.length === 12 && all3rd.every(function(t) { return groupDone[t.group]; });
+
+  var html = '<div style="margin-bottom:6px;font-size:9px;color:' + (allDone ? '#22c55e' : '#f59e0b') + ';font-weight:700">' +
+    (allDone ? '✓ Classement définitif' : '⏳ Classement provisoire — ' + all3rd.length + '/12 groupes joués') + '</div>';
+
+  html += '<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;padding:4px 12px">';
+  html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:#475569;font-weight:700">' +
+    '<span style="min-width:20px">#</span>' +
+    '<span style="min-width:22px">Gr.</span>' +
+    '<span style="flex:1">Équipe</span>' +
+    '<span style="min-width:28px;text-align:center">MJ</span>' +
+    '<span style="min-width:28px;text-align:center;color:#e2e8f0">Pts</span>' +
+    '<span style="min-width:36px;text-align:center;color:#22c55e">DB</span>' +
+    '<span style="min-width:28px;text-align:center;color:#0ea5e9">BP</span>' +
+    '</div>';
+
+  var sepInserted = false;
+  all3rd.forEach(function(t, i) {
+    var rank = i + 1;
+    var qualified = rank <= 8;
+    if (!qualified && !sepInserted) {
+      html += '<div style="text-align:center;font-size:8px;color:#ef4444;padding:4px 0;letter-spacing:1px;border-bottom:1px solid rgba(255,255,255,0.04)">— Non qualifiés —</div>';
+      sepInserted = true;
+    }
+    var rankColor = rank === 1 ? '#fbbf24' : rank === 2 ? '#94a3b8' : rank === 3 ? '#cd7f32' : qualified ? '#22c55e' : '#475569';
+    var grpColor = GC[t.group] || '#64748b';
+    var isDone = groupDone[t.group];
+    html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);' +
+      (qualified ? 'background:rgba(34,197,94,0.04)' : '') + '">' +
+      '<span style="min-width:20px;font-size:9px;font-weight:700;color:' + rankColor + '">' + rank + '</span>' +
+      '<span style="min-width:22px;font-size:8px;font-weight:700;color:' + grpColor + '">Gr.' + t.group + '</span>' +
+      '<span style="flex:1;font-size:10px;color:#e2e8f0">' + t.team +
+        (qualified ? '<span style="font-size:8px;color:#22c55e;margin-left:4px">✓</span>' : '') +
+        (!isDone ? '<span style="font-size:7px;color:#f59e0b;margin-left:3px">prov.</span>' : '') +
+      '</span>' +
+      '<span style="min-width:28px;text-align:center;font-size:9px;color:#475569">' + t.played + '</span>' +
+      '<span style="min-width:28px;text-align:center;font-size:11px;font-weight:800;color:#e2e8f0">' + t.pts + '</span>' +
+      '<span style="min-width:36px;text-align:center;font-size:10px;font-weight:700;color:#22c55e">' + (t.gd > 0 ? '+' : '') + t.gd + '</span>' +
+      '<span style="min-width:28px;text-align:center;font-size:10px;font-weight:700;color:#0ea5e9">' + t.gf + '</span>' +
+      '</div>';
+  });
+
+  html += '</div>';
+  c.innerHTML = html;
 }
 
 // Résout le nom d'équipe réel pour un placeholder KO (standings ou résultat)
@@ -355,7 +444,7 @@ function renderStandings(){
       var pos=document.createElement('span');pos.className='standing-pos';pos.style.color=qualified?col:'#475569';pos.textContent=r.pos+'.';
       var team=document.createElement('span');team.className='standing-team';team.textContent=r.team;
       var pts=document.createElement('span');pts.className='standing-pts';pts.style.color=qualified?col:'#64748b';pts.textContent=r.pts;
-      var stats=document.createElement('span');stats.className='standing-stats';stats.textContent=r.played+'J '+(r.gd>0?'+':'')+r.gd;
+      var stats=document.createElement('span');stats.className='standing-stats';stats.textContent=r.played+'J '+(r.gd>0?'+':'')+r.gd+' ('+r.gf+'B)';
       row.appendChild(dot);row.appendChild(pos);row.appendChild(team);row.appendChild(pts);row.appendChild(stats);card.appendChild(row);
     });
     grid.appendChild(card);

@@ -1,13 +1,15 @@
+var VIEWS=['groups','standings','thirds','knockout','scorers','keepers','players'];
+
 function renderAll(){
   renderGrpFilters();renderGroupsTimeline();renderKOLegend();
-  // Ne reconstruire le timeline KO que si on est en vue liste (évite d'écraser le bracket)
   if(koBracketView!=='bracket'){renderKOTimeline();}
   renderStandings();
+  if(activeView==='thirds')renderThirds();
 }
 
 function showView(v){
-  ['groups','standings','knockout','scorers','keepers','players'].forEach(function(id){document.getElementById('view-'+id).classList.toggle('hidden',id!==v);});
-  document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',['groups','standings','knockout','scorers','keepers','players'][i]===v);});
+  VIEWS.forEach(function(id){document.getElementById('view-'+id).classList.toggle('hidden',id!==v);});
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',VIEWS[i]===v);});
 }
 
 function switchView(v){
@@ -15,7 +17,7 @@ function switchView(v){
   if(v==='scorers')renderScorers();
   if(v==='keepers'&&!keepersLoaded)fetchKeepers();
   if(v==='players'&&!playersLoaded)fetchPlayerRankings();
-  // Si retour sur KO en mode bracket → re-rendre le bracket
+  if(v==='thirds')renderThirds();
   if(v==='knockout'&&koBracketView==='bracket'){
     var c=document.getElementById('knockout-timeline');
     c.innerHTML='';
