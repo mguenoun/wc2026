@@ -20,8 +20,8 @@ function closeModal(e){
   }
 }
 
-function ytSearchBtn(playerName, t1, t2) {
-  var q = (playerName ? playerName + ' ' : '') + 'goal FIFA World Cup 2026' + (t1 ? ' ' + t1 : '') + (t2 ? ' ' + t2 : '');
+function ytSearchBtn(playerName, t1, t2, minute) {
+  var q = (playerName ? playerName + ' ' : '') + 'goal FIFA World Cup 2026' + (t1 ? ' ' + t1 : '') + (t2 ? ' ' + t2 : '') + (minute ? ' ' + minute : '');
   var href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
   var btn = document.createElement('a');
   btn.href = href;
@@ -149,7 +149,7 @@ function renderESPNStats(m,d,espnId){
       html+='<div style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
         '<span style="color:#64748b;min-width:28px;font-size:9px">'+(g.clock&&g.clock.displayValue||'')+'</span>'+
         '<span style="flex:1;color:#e2e8f0">'+icon+playerName+teamHtml+assistHtml+'</span>'+
-        '<span class="yt-btn-slot" data-player="'+encodeURIComponent(playerName2)+'" data-t1="'+encodeURIComponent(m.t1)+'" data-t2="'+encodeURIComponent(m.t2)+'"></span>'+
+        '<span class="yt-btn-slot" data-player="'+encodeURIComponent(playerName2)+'" data-t1="'+encodeURIComponent(m.t1)+'" data-t2="'+encodeURIComponent(m.t2)+'" data-min="'+encodeURIComponent(g.clock&&g.clock.displayValue||'')+'"></span>'+
         '</div>';
     });
     html+='</div>';
@@ -160,7 +160,8 @@ function renderESPNStats(m,d,espnId){
         var pn = decodeURIComponent(slot.dataset.player || '');
         var t1 = decodeURIComponent(slot.dataset.t1 || '');
         var t2 = decodeURIComponent(slot.dataset.t2 || '');
-        slot.appendChild(ytSearchBtn(pn, t1, t2));
+        var mn = decodeURIComponent(slot.dataset.min || '');
+        slot.appendChild(ytSearchBtn(pn, t1, t2, mn));
       });
     }, 0);
 
