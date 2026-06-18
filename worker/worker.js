@@ -778,6 +778,47 @@ export default {
       return jsonResp({ stats: null }, cors);
     }
 
+    if (path === '/data/youtube/rss') {
+      const q = url.searchParams.get('q') || '';
+      if (!q) return jsonResp({ videoId: null }, cors);
+      const cacheKey = 'yt:' + q.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 150);
+      const cached = await kv.get(env, cacheKey);
+      if (cached) return jsonResp(cached, cors);
+
+      // Feeds RSS publics FIFA — pas de clé, pas bloqués depuis CF Workers
+      const feeds = [
+        'https://www.youtube.com/feeds/videos.xml?user=FIFA',
+        'https://www.youtube.com/feeds/videos.xml?user=FIFAWorldCup',
+        'https://www.youtube.com/feeds/videos.xml?channel_id=UCpcTrCXblq78GZrTUTLWeBw',
+      ];
+
+      const terms = q.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      let bestId = null, bestTitle = null, bestScore = -1;
+      const errors = [];
+
+      for (const feed of feeds) {
+        try {
+          const r = await fetch(feed, { signal: AbortSignal.timeout(5000) });
+          if (!r.ok) { errors.push(feed + ':' + r.status); continue; }
+          const xml = await r.text();
+          // Extraire paires videoId / title depuis le XML Atom
+          const entries = [...xml.matchAll(/<yt:videoId>([^<]+)<\/yt:videoId>[\s\S]*?<title>([^<]+)<\/title>/g)];
+          for (const [, videoId, rawTitle] of entries) {
+            const title = rawTitle.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'");
+            const low = title.toLowerCase();
+            const score = terms.reduce((s, t) => s + (low.includes(t) ? 1 : 0), 0);
+            if (score > bestScore) { bestScore = score; bestId = videoId; bestTitle = title; }
+          }
+          if (bestScore >= 2) break; // assez bon → on s'arrête
+        } catch (e) { errors.push(feed + ':' + e.message.slice(0, 30)); }
+      }
+
+      const fallbackUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+      const result = { videoId: bestScore >= 1 ? bestId : null, title: bestTitle, score: bestScore, fallbackUrl, errors, cachedAt: Date.now() };
+      if (result.videoId) await env.STATS_KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 24 * 3600 });
+      return jsonResp(result, cors);
+    }
+
     if (path.startsWith('/fd/')) {
       const token = env.API_TOKEN_FD || env.API_TOKEN;
       if (!token) return new Response('API_TOKEN_FD not set', { status: 500, headers: cors });

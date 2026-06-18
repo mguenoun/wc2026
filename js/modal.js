@@ -37,36 +37,27 @@ function ytSearchBtn(query, playerDiv) {
     btn.disabled = true;
     playerDiv.style.display = 'block';
     playerDiv.innerHTML = '<div style="text-align:center;padding:8px;font-size:10px;color:#475569">Recherche en cours…</div>';
-    var pipedInstances = [
-      'https://pipedapi.kavin.rocks',
-      'https://pipedapi.adminforge.de',
-      'https://piped-api.garudalinux.org',
-    ];
-    var fallbackUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
-    function tryPiped(i) {
-      if (i >= pipedInstances.length) {
-        playerDiv.innerHTML = '<div style="text-align:center;padding:8px"><a href="' + fallbackUrl + '" target="_blank" style="color:#0ea5e9;font-size:10px">Ouvrir dans YouTube ↗</a></div>';
+    fetch(PROXY_BASE + '/data/youtube/rss?q=' + encodeURIComponent(query))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.videoId) {
+          playerDiv.innerHTML =
+            '<iframe width="100%" height="185" src="https://www.youtube-nocookie.com/embed/' + d.videoId + '?autoplay=1" ' +
+            'frameborder="0" allow="autoplay;encrypted-media" allowfullscreen ' +
+            'style="border-radius:6px;margin:4px 0 6px;display:block"></iframe>';
+          btn.textContent = '▼';
+        } else {
+          playerDiv.innerHTML = '<div style="text-align:center;padding:8px">' +
+            '<a href="' + d.fallbackUrl + '" target="_blank" style="color:#0ea5e9;font-size:10px">Ouvrir dans YouTube ↗</a></div>';
+          btn.textContent = '▶';
+        }
+        btn.disabled = false;
+      })
+      .catch(function() {
+        playerDiv.style.display = 'none';
         btn.textContent = '▶';
         btn.disabled = false;
-        return;
-      }
-      fetch(pipedInstances[i] + '/search?q=' + encodeURIComponent(query) + '&filter=videos')
-        .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
-        .then(function(d) {
-          var first = d.items && d.items[0];
-          if (first && first.url) {
-            var vid = first.url.replace('/watch?v=', '').split('&')[0];
-            playerDiv.innerHTML =
-              '<iframe width="100%" height="185" src="https://www.youtube-nocookie.com/embed/' + vid + '?autoplay=1" ' +
-              'frameborder="0" allow="autoplay;encrypted-media" allowfullscreen ' +
-              'style="border-radius:6px;margin:4px 0 6px;display:block"></iframe>';
-            btn.textContent = '▼';
-            btn.disabled = false;
-          } else { tryPiped(i + 1); }
-        })
-        .catch(function() { tryPiped(i + 1); });
-    }
-    tryPiped(0);
+      });
   });
   return btn;
 }
