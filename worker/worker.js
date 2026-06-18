@@ -281,8 +281,14 @@ async function step1_discover(env) {
   let queueChanged = false;
   for (const espnId of Object.keys(espnMap)) {
     if (queue.done.includes(espnId) || queue.pending.includes(espnId) || queue.processing.includes(espnId)) continue;
-    const cached = await env.STATS_KV.get('match:' + espnId);
-    if (cached) { queue.done.push(espnId); queueChanged = true; continue; }
+    const cachedRaw = await env.STATS_KV.get('match:' + espnId);
+    if (cachedRaw) {
+      try {
+        const parsed = JSON.parse(cachedRaw);
+        // startersOnly → le pipeline doit compléter les remplaçants
+        if (!parsed.startersOnly) { queue.done.push(espnId); queueChanged = true; continue; }
+      } catch (_) { queue.done.push(espnId); queueChanged = true; continue; }
+    }
     queue.pending.push(espnId);
     added++;
     queueChanged = true;
@@ -479,6 +485,102 @@ async function assemble(env, espnId, urlData, queue, totalGroups) {
   return { step: 3, espnId, assembled: true, players: Object.keys(stats).length };
 }
 
+// ─── ON-DEMAND : titulaires uniquement (<30 sous-requêtes) ───────────────────
+// Déclenché quand le frontend demande /data/stats/:espnId et que le KV est vide.
+// Calcule et stocke les notes des 22 titulaires, flagge startersOnly:true.
+// Le pipeline cron complètera les remplaçants lors de la prochaine exécution.
+
+async function computeOnDemand(env, espnId) {
+  // 1. ESPN summary → noms/postes/starter flag (1 sous-requête)
+  const summary = await fetch(`${ESPN_BASE}/summary?event=${espnId}`).then(r => r.json());
+  const state = summary.header?.competitions?.[0]?.status?.type?.state || 'pre';
+  if (state !== 'post') return null; // uniquement pour les matchs terminés
+
+  if (!summary.rosters?.length) return null;
+
+  const namesByTeam = summary.rosters.map(team => {
+    const map = {};
+    (team.roster || []).forEach(p => {
+      map[p.jersey] = { fullName: p.athlete?.displayName || '', pos: p.position?.abbreviation || '' };
+    });
+    return { teamName: normTeam(team.team?.displayName || ''), map };
+  });
+
+  const hdr   = summary.header?.competitions?.[0];
+  const hComp = hdr?.competitors?.find(c => c.homeAway === 'home') || {};
+  const aComp = hdr?.competitors?.find(c => c.homeAway === 'away') || {};
+  const home  = normTeam(hComp.team?.displayName || '');
+  const away  = normTeam(aComp.team?.displayName || '');
+  const score = `${hComp.score || '0'} – ${aComp.score || '0'}`;
+
+  // 2. ESPN Core → URLs stats (1 + 2 + 2 = 5 sous-requêtes)
+  const d1 = await fetch(`${ESPN_CORE}/events/${espnId}/competitions/${espnId}/competitors`).then(r => r.json());
+  const players = [];
+  let teamIdx = 0;
+
+  for (const item of d1.items) {
+    const comp   = await fetch(item.$ref.replace('http://', 'https://')).then(r => r.json());
+    const roster = await fetch(comp.roster.$ref.replace('http://', 'https://')).then(r => r.json());
+    const teamInfo = namesByTeam[teamIdx++] || { teamName: '?', map: {} };
+    for (const e of (roster.entries || [])) {
+      const info = teamInfo.map[e.jersey] || { fullName: '', pos: '' };
+      if (!info.fullName) continue;
+      players.push({
+        statsUrl:  e.statistics.$ref.replace('http://', 'https://'),
+        fullName:  info.fullName, pos: info.pos, team: teamInfo.teamName,
+        starter: e.starter || false, subbedIn: e.subbedIn || false, subbedOut: e.subbedOut || false,
+      });
+    }
+  }
+
+  // 3. Stats titulaires seulement (~22 sous-requêtes)
+  const stats = {};
+  for (const p of players.filter(p => p.starter)) {
+    try {
+      const s = await fetch(p.statsUrl).then(r => r.json());
+      const gs = (cat, name) => {
+        const c = (s.splits?.categories || []).find(x => x.name === cat);
+        return c?.stats?.find(x => x.name === name)?.value || 0;
+      };
+      const minutes = gs('general', 'minutes');
+      const role    = getRole(p.pos);
+      const raw = {
+        goals: gs('offensive','totalGoals'), assists: gs('offensive','goalAssists'),
+        passes: gs('offensive','accuratePasses'), totalPass: gs('offensive','totalPasses'),
+        shotsOnTarget: gs('offensive','shotsOnTarget'),
+        progCarries: gs('offensive','progressiveCarries'),
+        crosses: gs('offensive','accurateCrosses'),
+        duelsWon: gs('general','duelsWon') || gs('general','groundDuelsWon'),
+        duels: gs('general','duels') || gs('general','groundDuels'),
+        saves: gs('goalKeeping','saves'), cleanSheet: gs('goalKeeping','cleanSheet'),
+        tackles: gs('defensive','effectiveTackles'),
+        interceptions: gs('defensive','interceptions'),
+        clearances: gs('defensive','effectiveClearance'),
+        ballRecovery: gs('defensive','ballRecovery'),
+        yellow: gs('general','yellowCards'), red: gs('general','redCards'),
+      };
+      stats[p.fullName] = {
+        rating: calcRating(raw, role, minutes),
+        minutes, goals: raw.goals, assists: raw.assists,
+        saves: raw.saves, yellow: raw.yellow, red: raw.red,
+        starter: p.starter, subbedIn: p.subbedIn, subbedOut: p.subbedOut,
+        team: p.team, pos: p.pos, role,
+      };
+    } catch (_) {}
+  }
+
+  if (!Object.keys(stats).length) return null;
+
+  // 4. Stocker en KV — startersOnly:true signale au pipeline de compléter les remplaçants
+  await kv.put(env, 'match:' + espnId, {
+    stats, espnId, matchKey: '', home, away, score,
+    cachedAt: Date.now(), startersOnly: true,
+  });
+
+  console.log(`[ondemand] ${espnId} ${home} ${away} — ${Object.keys(stats).length} titulaires mis en cache`);
+  return stats;
+}
+
 // ─── LECTURE KV ───────────────────────────────────────────────────────────────
 
 async function handlePlayers(env, cors) {
@@ -661,7 +763,15 @@ export default {
       const espnId = path.split('/')[3];
       if (!espnId) return new Response('Missing espnId', { status: 400, headers: cors });
       const m = await kv.get(env, 'match:' + espnId);
-      return jsonResp(m ? { stats: m.stats, cachedAt: m.cachedAt } : { stats: null }, cors);
+      if (m?.stats) return jsonResp({ stats: m.stats, cachedAt: m.cachedAt, startersOnly: m.startersOnly || false }, cors);
+      // KV miss → calcul on-demand des titulaires
+      try {
+        const stats = await computeOnDemand(env, espnId);
+        if (stats) return jsonResp({ stats, cachedAt: Date.now(), startersOnly: true }, cors);
+      } catch (e) {
+        console.warn('[ondemand]', espnId, e.message);
+      }
+      return jsonResp({ stats: null }, cors);
     }
 
     if (path.startsWith('/fd/')) {
