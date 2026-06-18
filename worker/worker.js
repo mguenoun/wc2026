@@ -785,21 +785,26 @@ export default {
       const cached = await kv.get(env, cacheKey);
       if (cached) return jsonResp(cached, cors);
       const instances = [
+        'https://invidious.privacyredirect.com',
         'https://inv.nadeko.net',
         'https://invidious.fdn.fr',
-        'https://yt.cdaut.de',
+        'https://iv.datura.network',
+        'https://invidious.nerdvpn.de',
       ];
       let videoId = null, title = null;
+      const errors = [];
       for (const inst of instances) {
         try {
-          const r = await fetch(`${inst}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId,title`, { signal: AbortSignal.timeout(4000) });
-          if (!r.ok) continue;
+          const r = await fetch(`${inst}/api/v1/search?q=${encodeURIComponent(q)}&type=video`, { signal: AbortSignal.timeout(5000) });
+          if (!r.ok) { errors.push(inst + ':' + r.status); continue; }
           const data = await r.json();
           const first = Array.isArray(data) ? data[0] : null;
           if (first?.videoId) { videoId = first.videoId; title = first.title; break; }
-        } catch (_) { continue; }
+          errors.push(inst + ':no_results');
+        } catch (e) { errors.push(inst + ':' + e.message.slice(0, 30)); continue; }
       }
-      const result = { videoId, title, cachedAt: Date.now() };
+      const fallbackUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+      const result = { videoId, title, fallbackUrl, errors, cachedAt: Date.now() };
       if (videoId) await env.STATS_KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 7 * 24 * 3600 });
       return jsonResp(result, cors);
     }

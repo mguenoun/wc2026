@@ -47,7 +47,11 @@ function ytSearchBtn(query, playerDiv) {
             'style="border-radius:6px;margin:4px 0 6px;display:block"></iframe>';
           btn.textContent = '▼';
         } else {
-          playerDiv.innerHTML = '<div style="text-align:center;padding:8px;font-size:10px;color:#ef4444">Vidéo non trouvée</div>';
+          var fbLink = d.fallbackUrl
+            ? '<a href="' + d.fallbackUrl + '" target="_blank" style="color:#0ea5e9;font-size:10px">Ouvrir dans YouTube ↗</a>'
+            : '';
+          playerDiv.innerHTML = '<div style="text-align:center;padding:8px">' + fbLink + '</div>';
+          playerDiv.style.display = fbLink ? 'block' : 'none';
           btn.textContent = '▶';
         }
         btn.disabled = false;
