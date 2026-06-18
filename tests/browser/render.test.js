@@ -181,12 +181,40 @@ describe('resolveKOTeam', () => {
     expect(g.resolveKOTeam('1er Gr.A')).toBe('France');
   });
 
-  it('"2e Gr.A" → 2e du groupe A', () => {
+  it('"2e Gr.A" → 2e du groupe A (pas d\'ex æquo)', () => {
     expect(g.resolveKOTeam('2e Gr.A')).toBe('Brésil');
   });
 
   it('"1er Gr.Z" (groupe inconnu) → null', () => {
     expect(g.resolveKOTeam('1er Gr.Z')).toBeNull();
+  });
+
+  it('"2e Gr.C" ex æquo → retourne les deux équipes (scénario Brésil/Maroc)', () => {
+    g.standings = {
+      C: [
+        { pos: 1, team: 'Écosse', pts: 3, gd:  1, gf: 1, played: 1 },
+        { pos: 2, team: 'Maroc',  pts: 1, gd:  0, gf: 1, played: 1 },
+        { pos: 3, team: 'Brésil', pts: 1, gd:  0, gf: 1, played: 1 },
+        { pos: 4, team: 'Haïti',  pts: 0, gd: -1, gf: 0, played: 1 },
+      ],
+    };
+    expect(g.resolveKOTeam('2e Gr.C')).toBe('Maroc / Brésil');
+  });
+
+  it('"1er Gr.C" ex æquo 1er/2e → retourne les deux équipes', () => {
+    g.standings = {
+      C: [
+        { pos: 1, team: 'France',   pts: 4, gd: 1, gf: 2, played: 2 },
+        { pos: 2, team: 'Espagne',  pts: 4, gd: 1, gf: 2, played: 2 },
+        { pos: 3, team: 'Brésil',   pts: 1, gd: -1, gf: 1, played: 2 },
+        { pos: 4, team: 'Haïti',    pts: 0, gd: -1, gf: 0, played: 2 },
+      ],
+    };
+    expect(g.resolveKOTeam('1er Gr.C')).toBe('France / Espagne');
+  });
+
+  it('"2e Gr.A" sans ex æquo → retourne une seule équipe', () => {
+    expect(g.resolveKOTeam('2e Gr.A')).toBe('Brésil');
   });
 
   it('"3e A/B/C" → lit _thirdAssign', () => {

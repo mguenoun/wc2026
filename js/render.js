@@ -183,7 +183,13 @@ function resolveKOTeam(teamStr){
   var m1=teamStr.match(/^(1er|2e) Gr\.([A-L])$/);
   if(m1){
     var pos=m1[1]==='1er'?0:1;
-    return(standings&&standings[m1[2]]&&standings[m1[2]][pos])?standings[m1[2]][pos].team:null;
+    var grp=standings&&standings[m1[2]];
+    if(!grp||!grp[pos])return null;
+    var t=grp[pos];
+    // Ex æquo : l'équipe adjacente (2e vs 3e, ou 1er vs 2e) a les mêmes stats
+    var adj=grp[pos+1];
+    if(adj&&adj.pts===t.pts&&adj.gd===t.gd&&adj.gf===t.gf)return t.team+' / '+adj.team;
+    return t.team;
   }
 
   // "3e A/B/C/D/F" — résolution globale via _thirdAssign (évite doublons)
@@ -447,12 +453,21 @@ function renderStandings(){
     var card=document.createElement('div');card.className='standing-card';card.style.borderColor=hex2rgba(col,.3);
     var hdr=document.createElement('div');hdr.className='standing-card-header';hdr.style.background=hex2rgba(col,.15);hdr.style.color=col;hdr.textContent='GROUPE '+g;card.appendChild(hdr);
     var grpPlayed=standings[g].some(function(r){return r.played>0;});
+    // Calcul des rangs d'affichage (ex æquo : même rang, puis saut)
+    var dispRanks=[];
+    standings[g].forEach(function(r,i){
+      if(i===0){dispRanks[0]=1;return;}
+      var p=standings[g][i-1];
+      dispRanks[i]=(p.pts===r.pts&&p.gd===r.gd&&p.gf===r.gf)?dispRanks[i-1]:i+1;
+    });
     standings[g].forEach(function(r,i){
       var qualified=grpPlayed&&i<2;
+      var isExAequo=i>0&&dispRanks[i]===dispRanks[i-1];
       var row=document.createElement('div');row.className='standing-row';
       var dot=document.createElement('div');dot.className='qualified-dot';dot.style.background=qualified?col:i===2&&grpPlayed?hex2rgba(col,.4):'#1e3a5f';
-      var pos=document.createElement('span');pos.className='standing-pos';pos.style.color=qualified?col:'#475569';pos.textContent=r.pos+'.';
+      var pos=document.createElement('span');pos.className='standing-pos';pos.style.color=qualified?col:'#475569';pos.textContent=dispRanks[i]+'.';
       var team=document.createElement('span');team.className='standing-team';team.textContent=r.team;
+      if(isExAequo){var eq=document.createElement('span');eq.style.cssText='font-size:7px;color:#f59e0b;margin-left:3px';eq.textContent='ex æq.';team.appendChild(eq);}
       var pts=document.createElement('span');pts.className='standing-pts';pts.style.color=qualified?col:'#64748b';pts.textContent=r.pts;
       var stats=document.createElement('span');stats.className='standing-stats';stats.textContent=r.played+'J '+(r.gd>0?'+':'')+r.gd+' ('+r.gf+'B)';
       row.appendChild(dot);row.appendChild(pos);row.appendChild(team);row.appendChild(pts);row.appendChild(stats);card.appendChild(row);
