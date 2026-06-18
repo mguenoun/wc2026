@@ -20,6 +20,18 @@ function closeModal(e){
   }
 }
 
+function ytSearchBtn(query) {
+  var btn = document.createElement('button');
+  btn.title = 'Voir sur FIFA YouTube';
+  btn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.7;flex-shrink:0';
+  btn.textContent = '▶';
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    window.open('https://www.youtube.com/@FIFAWorldCup/search?query=' + encodeURIComponent(query), '_blank');
+  });
+  return btn;
+}
+
 function infoBlock(label,value,color){
   return '<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:8px 10px;margin-bottom:6px">'+
     '<div style="font-size:8px;color:'+(color||'#475569')+';font-weight:700;letter-spacing:1px;margin-bottom:4px">'+label.toUpperCase()+'</div>'+
@@ -132,11 +144,24 @@ function renderESPNStats(m,d,espnId){
       var assistHtml=am?'<span style="color:#475569;font-size:8px"> \u2192 '+am[1].trim()+'</span>':'';
       // Équipe
       var teamHtml=teamName?'<span style="color:'+gColor+';font-size:8px;margin-left:3px">('+teamName+')</span>':'';
-      html+='<div style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
+      var gIdx='yt-goal-'+goals.indexOf(g);
+      html+='<div id="'+gIdx+'" style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
         '<span style="color:#64748b;min-width:28px;font-size:9px">'+(g.clock&&g.clock.displayValue||'')+'</span>'+
         '<span style="flex:1;color:#e2e8f0">'+icon+playerName+teamHtml+assistHtml+'</span></div>';
     });
     html+='</div>';
+
+    // Attacher les boutons YouTube après injection HTML (évite innerHTML sur éléments DOM)
+    setTimeout(function() {
+      goals.forEach(function(g, i) {
+        var row = document.getElementById('yt-goal-'+i);
+        if (!row) return;
+        var playerName2 = (g.shortText||'').replace(/\s+Own\s+Goal$/i,'').replace(/\s+Goal\s*-\s*Header$/i,'').replace(/\s+Goal$/i,'');
+        var eventType = /own\s+goal/i.test(g.shortText||'') ? 'own goal' : 'goal';
+        var q = playerName2 + ' ' + eventType + ' ' + m.t1 + ' ' + m.t2;
+        row.appendChild(ytSearchBtn(q));
+      });
+    }, 0);
 
     // Assists
     var assistEntries=Object.entries(assistCount).sort(function(a,b){return b[1]-a[1];});
@@ -166,12 +191,24 @@ function renderESPNStats(m,d,espnId){
       var cardIcon=isRed
         ?'<span style="font-size:11px">🟥</span>'
         :'<span style="font-size:11px">🟨</span>';
-      html+='<div style="font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px;color:#e2e8f0">'+
+      var cIdx='yt-card-'+cards.indexOf(c);
+      html+='<div id="'+cIdx+'" style="font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px;color:#e2e8f0">'+
         '<span style="color:#64748b;min-width:28px;font-size:9px">'+(c.clock&&c.clock.displayValue||'')+'</span>'+
         cardIcon+
         '<span style="flex:1">'+playerName+'</span></div>';
     });
     html+='</div>';
+
+    setTimeout(function() {
+      cards.forEach(function(c, i) {
+        var row = document.getElementById('yt-card-'+i);
+        if (!row) return;
+        var playerName2 = (c.shortText||'').replace(/\s+Red\s+Card$/i,'').replace(/\s+Yellow\s+Card$/i,'');
+        var cardType = c.type.type === 'red-card' ? 'red card' : 'yellow card';
+        var q = playerName2 + ' ' + cardType + ' ' + m.t1 + ' ' + m.t2;
+        row.appendChild(ytSearchBtn(q));
+      });
+    }, 0);
   }
   // Remplacements
   var subs=events.filter(function(e){return e.type&&e.type.type==='substitution';});
