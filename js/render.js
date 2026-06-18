@@ -38,8 +38,13 @@ function getAll3rd() {
   var all3rd = [];
   Object.keys(standings).forEach(function(g) {
     var s = standings[g];
-    if (s && s[2] && s[2].played > 0)
-      all3rd.push({ group: g, team: s[2].team, pts: s[2].pts, gd: s[2].gd, gf: s[2].gf, played: s[2].played });
+    if (!s || !s.length) return;
+    // Inclure dès qu'au moins 1 match du groupe est joué (même si la 3e n'a pas encore joué)
+    var grpHasPlayed = s.some(function(r) { return r.played > 0; });
+    if (!grpHasPlayed) return;
+    var third = s.find(function(r) { return r.pos === 3; }) || s[2];
+    if (!third) return;
+    all3rd.push({ group: g, team: third.team, pts: third.pts, gd: third.gd, gf: third.gf, played: third.played });
   });
   all3rd.sort(function(a, b) { return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf); });
   return all3rd;
