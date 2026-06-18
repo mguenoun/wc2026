@@ -778,41 +778,6 @@ export default {
       return jsonResp({ stats: null }, cors);
     }
 
-    if (path === '/data/youtube/search') {
-      const q = url.searchParams.get('q') || '';
-      if (!q) return jsonResp({ videoId: null }, cors);
-      const cacheKey = 'yt:' + q.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 150);
-      const cached = await kv.get(env, cacheKey);
-      if (cached) return jsonResp(cached, cors);
-      // Piped : alternative YouTube open-source, API plus accessible depuis CF Workers
-      const instances = [
-        'https://pipedapi.kavin.rocks',
-        'https://pipedapi.adminforge.de',
-        'https://piped-api.garudalinux.org',
-        'https://watchapi.whatever.social',
-      ];
-      let videoId = null, title = null;
-      const errors = [];
-      for (const inst of instances) {
-        try {
-          const r = await fetch(`${inst}/search?q=${encodeURIComponent(q)}&filter=videos`, { signal: AbortSignal.timeout(5000) });
-          if (!r.ok) { errors.push(inst + ':' + r.status); continue; }
-          const data = await r.json();
-          const first = data.items?.[0];
-          if (first?.url) {
-            videoId = first.url.replace('/watch?v=', '').split('&')[0];
-            title = first.title;
-            break;
-          }
-          errors.push(inst + ':no_results');
-        } catch (e) { errors.push(inst + ':' + e.message.slice(0, 30)); continue; }
-      }
-      const fallbackUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
-      const result = { videoId, title, fallbackUrl, errors, cachedAt: Date.now() };
-      if (videoId) await env.STATS_KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 7 * 24 * 3600 });
-      return jsonResp(result, cors);
-    }
-
     if (path.startsWith('/fd/')) {
       const token = env.API_TOKEN_FD || env.API_TOKEN;
       if (!token) return new Response('API_TOKEN_FD not set', { status: 500, headers: cors });
