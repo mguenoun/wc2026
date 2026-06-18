@@ -27,7 +27,7 @@ function ytSearchBtn(query) {
   btn.textContent = '▶';
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
-    window.open('https://www.youtube.com/@FIFAWorldCup/search?query=' + encodeURIComponent(query), '_blank');
+    window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent('FIFA WC2026 ' + query), '_blank');
   });
   return btn;
 }
