@@ -72,6 +72,17 @@ function renderMatchRow(m){
       });
       actions.appendChild(btnLineup);
     }
+    // YouTube highlights link (matchs termin\u00e9s uniquement)
+    if(m.isFT){
+      var ytQ=m.t1+' '+m.t2+' FIFA World Cup 2026 highlights';
+      var btnYt=document.createElement('a');
+      btnYt.href='https://www.youtube.com/results?search_query='+encodeURIComponent(ytQ);
+      btnYt.target='_blank';btnYt.rel='noopener';
+      btnYt.title='R\u00e9sum\u00e9 du match sur YouTube';
+      btnYt.style.cssText='font-size:13px;padding:2px 4px;color:#22c55e;text-decoration:none;line-height:1;flex-shrink:0';
+      btnYt.textContent='\u25b6';
+      actions.appendChild(btnYt);
+    }
   }
   if(m.venue&&VENUE_COORDS[m.venue]){
     var btnMap=document.createElement('button');btnMap.className='action-btn';btnMap.title='Voir le stade';btnMap.textContent='\ud83d\uddfa\ufe0f';
