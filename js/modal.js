@@ -21,9 +21,8 @@ function closeModal(e){
 }
 
 function ytSearchBtn(playerName, t1, t2, minute) {
-  // Recherche dans le canal officiel FIFA World Cup pour éviter les fan videos
-  var q = (playerName ? playerName + ' ' : '') + 'goal' + (minute ? ' ' + minute : '') + (t1 ? ' ' + t1 : '') + (t2 ? ' ' + t2 : '');
-  var href = 'https://www.youtube.com/@FIFAWorldCup/search?query=' + encodeURIComponent(q);
+  var q = (playerName ? playerName + ' ' : '') + 'goal' + (minute ? ' ' + minute : '') + ' FIFA World Cup 2026' + (t1 ? ' ' + t1 : '') + (t2 ? ' ' + t2 : '');
+  var href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
   var btn = document.createElement('a');
   btn.href = href;
   btn.target = '_blank';
