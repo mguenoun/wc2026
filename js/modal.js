@@ -23,7 +23,7 @@ function closeModal(e){
 function ytSearchBtn(query, playerDiv) {
   var btn = document.createElement('button');
   btn.title = 'Voir le but';
-  btn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.7;flex-shrink:0';
+  btn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;color:#22c55e;flex-shrink:0';
   btn.textContent = '▶';
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
