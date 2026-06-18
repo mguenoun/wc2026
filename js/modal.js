@@ -20,14 +20,43 @@ function closeModal(e){
   }
 }
 
-function ytSearchBtn(query) {
+function ytSearchBtn(query, playerDiv) {
   var btn = document.createElement('button');
-  btn.title = 'Voir sur FIFA YouTube';
+  btn.title = 'Voir le but';
   btn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.7;flex-shrink:0';
   btn.textContent = '▶';
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
-    window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent('FIFA WC2026 ' + query), '_blank');
+    if (playerDiv.style.display !== 'none') {
+      playerDiv.style.display = 'none';
+      playerDiv.innerHTML = '';
+      btn.textContent = '▶';
+      return;
+    }
+    btn.textContent = '⏳';
+    btn.disabled = true;
+    playerDiv.style.display = 'block';
+    playerDiv.innerHTML = '<div style="text-align:center;padding:8px;font-size:10px;color:#475569">Recherche en cours…</div>';
+    fetch(PROXY_BASE + '/data/youtube/search?q=' + encodeURIComponent(query))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.videoId) {
+          playerDiv.innerHTML =
+            '<iframe width="100%" height="185" src="https://www.youtube-nocookie.com/embed/' + d.videoId + '?autoplay=1" ' +
+            'frameborder="0" allow="autoplay;encrypted-media" allowfullscreen ' +
+            'style="border-radius:6px;margin:4px 0 6px;display:block"></iframe>';
+          btn.textContent = '▼';
+        } else {
+          playerDiv.innerHTML = '<div style="text-align:center;padding:8px;font-size:10px;color:#ef4444">Vidéo non trouvée</div>';
+          btn.textContent = '▶';
+        }
+        btn.disabled = false;
+      })
+      .catch(function() {
+        playerDiv.style.display = 'none';
+        btn.textContent = '▶';
+        btn.disabled = false;
+      });
   });
   return btn;
 }
@@ -144,10 +173,11 @@ function renderESPNStats(m,d,espnId){
       var assistHtml=am?'<span style="color:#475569;font-size:8px"> \u2192 '+am[1].trim()+'</span>':'';
       // Équipe
       var teamHtml=teamName?'<span style="color:'+gColor+';font-size:8px;margin-left:3px">('+teamName+')</span>':'';
-      var gIdx='yt-goal-'+goals.indexOf(g);
-      html+='<div id="'+gIdx+'" style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
+      var gi=goals.indexOf(g);
+      html+='<div id="yt-goal-'+gi+'" style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
         '<span style="color:#64748b;min-width:28px;font-size:9px">'+(g.clock&&g.clock.displayValue||'')+'</span>'+
-        '<span style="flex:1;color:#e2e8f0">'+icon+playerName+teamHtml+assistHtml+'</span></div>';
+        '<span style="flex:1;color:#e2e8f0">'+icon+playerName+teamHtml+assistHtml+'</span></div>'+
+        '<div id="yt-player-'+gi+'" style="display:none"></div>';
     });
     html+='</div>';
 
@@ -155,11 +185,12 @@ function renderESPNStats(m,d,espnId){
     setTimeout(function() {
       goals.forEach(function(g, i) {
         var row = document.getElementById('yt-goal-'+i);
-        if (!row) return;
+        var playerDiv = document.getElementById('yt-player-'+i);
+        if (!row || !playerDiv) return;
         var playerName2 = (g.shortText||'').replace(/\s+Own\s+Goal$/i,'').replace(/\s+Goal\s*-\s*Header$/i,'').replace(/\s+Goal$/i,'');
         var eventType = /own\s+goal/i.test(g.shortText||'') ? 'own goal' : 'goal';
-        var q = playerName2 + ' ' + eventType + ' ' + m.t1 + ' ' + m.t2;
-        row.appendChild(ytSearchBtn(q));
+        var q = 'FIFA WC2026 ' + playerName2 + ' ' + eventType + ' ' + m.t1 + ' ' + m.t2;
+        row.appendChild(ytSearchBtn(q, playerDiv));
       });
     }, 0);
 

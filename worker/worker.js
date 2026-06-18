@@ -778,6 +778,32 @@ export default {
       return jsonResp({ stats: null }, cors);
     }
 
+    if (path === '/data/youtube/search') {
+      const q = url.searchParams.get('q') || '';
+      if (!q) return jsonResp({ videoId: null }, cors);
+      const cacheKey = 'yt:' + q.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 150);
+      const cached = await kv.get(env, cacheKey);
+      if (cached) return jsonResp(cached, cors);
+      const instances = [
+        'https://inv.nadeko.net',
+        'https://invidious.fdn.fr',
+        'https://yt.cdaut.de',
+      ];
+      let videoId = null, title = null;
+      for (const inst of instances) {
+        try {
+          const r = await fetch(`${inst}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId,title`, { signal: AbortSignal.timeout(4000) });
+          if (!r.ok) continue;
+          const data = await r.json();
+          const first = Array.isArray(data) ? data[0] : null;
+          if (first?.videoId) { videoId = first.videoId; title = first.title; break; }
+        } catch (_) { continue; }
+      }
+      const result = { videoId, title, cachedAt: Date.now() };
+      if (videoId) await env.STATS_KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 7 * 24 * 3600 });
+      return jsonResp(result, cors);
+    }
+
     if (path.startsWith('/fd/')) {
       const token = env.API_TOKEN_FD || env.API_TOKEN;
       if (!token) return new Response('API_TOKEN_FD not set', { status: 500, headers: cors });
