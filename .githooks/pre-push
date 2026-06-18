@@ -1,0 +1,8 @@
+#!/bin/sh
+echo "[pre-push] Running tests..."
+npm test
+if [ $? -ne 0 ]; then
+  echo "[pre-push] Tests failed — push aborted."
+  exit 1
+fi
+echo "[pre-push] Tests passed."

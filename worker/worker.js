@@ -16,10 +16,13 @@
 
 const ALLOWED_ORIGINS = [
   'https://mguenoun.github.io',
+  'https://wc2026.pages.dev',        // Cloudflare Pages prod (si migration future)
   'http://localhost',
   'http://127.0.0.1',
   'null',
 ];
+// *.pages.dev couvre toutes les preview URLs Cloudflare Pages (staging, PR previews)
+const PAGES_DEV_RE = /\.pages\.dev$/;
 
 const FD_BASE   = 'https://api.football-data.org/v4';
 const AS_BASE   = 'https://v3.football.api-sports.io';
@@ -60,8 +63,9 @@ function normTeam(name) {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 function isAllowed(o) {
+  if (!o) return false;
   return ALLOWED_ORIGINS.some(x => o === x || o.startsWith(x))
-    || o.includes('mguenoun.github.io') || o.includes('localhost');
+    || PAGES_DEV_RE.test(new URL(o).hostname);
 }
 
 function makeCors(origin) {

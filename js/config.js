@@ -1,5 +1,17 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const PROXY_BASE = 'https://wc2026.mguenoun.workers.dev';
+const WORKER_PROD    = 'https://wc2026.mguenoun.workers.dev';
+const WORKER_STAGING = 'https://wc2026-staging.mguenoun.workers.dev';
+
+// Auto-détection par hostname — aucun build step requis
+// localhost / *.pages.dev → staging   |   github.io → prod
+const PROXY_BASE = (function() {
+  if (typeof location === 'undefined') return WORKER_PROD;
+  var h = location.hostname;
+  if (h === 'mguenoun.github.io')           return WORKER_PROD;
+  if (h.endsWith('.pages.dev'))             return WORKER_STAGING;
+  if (h === 'localhost' || h === '127.0.0.1') return WORKER_STAGING;
+  return WORKER_PROD;
+})();
 const DISPLAY_TZ = 'Africa/Casablanca';
 const TODAY_STR  = new Date().toLocaleDateString('en-CA', {timeZone: DISPLAY_TZ});
 
