@@ -40,15 +40,23 @@ function ytSearchBtn(query, playerDiv) {
     fetch(PROXY_BASE + '/data/youtube/rss?q=' + encodeURIComponent(query))
       .then(function(r) { return r.json(); })
       .then(function(d) {
+        var ytUrl = d.videoId
+          ? 'https://www.youtube.com/watch?v=' + d.videoId
+          : d.fallbackUrl;
         if (d.videoId) {
+          var thumb = 'https://img.youtube.com/vi/' + d.videoId + '/mqdefault.jpg';
           playerDiv.innerHTML =
-            '<iframe width="100%" height="185" src="https://www.youtube-nocookie.com/embed/' + d.videoId + '?autoplay=1" ' +
-            'frameborder="0" allow="autoplay;encrypted-media" allowfullscreen ' +
-            'style="border-radius:6px;margin:4px 0 6px;display:block"></iframe>';
+            '<a href="' + ytUrl + '" target="_blank" style="display:block;position:relative;margin:4px 0 6px;border-radius:6px;overflow:hidden">' +
+              '<img src="' + thumb + '" style="width:100%;display:block;border-radius:6px">' +
+              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3)">' +
+                '<span style="font-size:36px;opacity:0.9">▶</span>' +
+              '</div>' +
+            '</a>' +
+            '<div style="text-align:center;margin-bottom:4px"><a href="' + ytUrl + '" target="_blank" style="color:#0ea5e9;font-size:9px">Regarder sur YouTube ↗</a></div>';
           btn.textContent = '▼';
         } else {
           playerDiv.innerHTML = '<div style="text-align:center;padding:8px">' +
-            '<a href="' + d.fallbackUrl + '" target="_blank" style="color:#0ea5e9;font-size:10px">Ouvrir dans YouTube ↗</a></div>';
+            '<a href="' + ytUrl + '" target="_blank" style="color:#0ea5e9;font-size:10px">Ouvrir dans YouTube ↗</a></div>';
           btn.textContent = '▶';
         }
         btn.disabled = false;
