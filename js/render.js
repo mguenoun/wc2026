@@ -44,7 +44,11 @@ function getAll3rd() {
     if (!grpHasPlayed) return;
     var third = s.find(function(r) { return r.pos === 3; }) || s[2];
     if (!third) return;
-    all3rd.push({ group: g, team: third.team, pts: third.pts, gd: third.gd, gf: third.gf, played: third.played });
+    // Si le 2e a exactement les mêmes stats que le 3e → ex æquo, on les affiche ensemble
+    var second = s.find(function(r) { return r.pos === 2; }) || s[1];
+    var coTeam = (second && second.pts === third.pts && second.gd === third.gd && second.gf === third.gf)
+      ? second.team : null;
+    all3rd.push({ group: g, team: third.team, pts: third.pts, gd: third.gd, gf: third.gf, played: Math.max(third.played, coTeam && second ? second.played : 0), coTeam: coTeam });
   });
   all3rd.sort(function(a, b) { return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf); });
   return all3rd;
@@ -147,6 +151,7 @@ function renderThirds() {
       '<span style="min-width:20px;font-size:9px;font-weight:700;color:' + rankColor + '">' + rank + '</span>' +
       '<span style="min-width:22px;font-size:8px;font-weight:700;color:' + grpColor + '">Gr.' + t.group + '</span>' +
       '<span style="flex:1;font-size:10px;color:#e2e8f0">' + t.team +
+        (t.coTeam ? '<span style="font-size:8px;color:#94a3b8;margin-left:3px">/ ' + t.coTeam + '</span><span style="font-size:7px;color:#f59e0b;margin-left:3px">ex æq.</span>' : '') +
         (qualified ? '<span style="font-size:8px;color:#22c55e;margin-left:4px">✓</span>' : '') +
         (!isDone ? '<span style="font-size:7px;color:#f59e0b;margin-left:3px">prov.</span>' : '') +
       '</span>' +
