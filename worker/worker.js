@@ -784,22 +784,26 @@ export default {
       const cacheKey = 'yt:' + q.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 150);
       const cached = await kv.get(env, cacheKey);
       if (cached) return jsonResp(cached, cors);
+      // Piped : alternative YouTube open-source, API plus accessible depuis CF Workers
       const instances = [
-        'https://invidious.privacyredirect.com',
-        'https://inv.nadeko.net',
-        'https://invidious.fdn.fr',
-        'https://iv.datura.network',
-        'https://invidious.nerdvpn.de',
+        'https://pipedapi.kavin.rocks',
+        'https://pipedapi.adminforge.de',
+        'https://piped-api.garudalinux.org',
+        'https://watchapi.whatever.social',
       ];
       let videoId = null, title = null;
       const errors = [];
       for (const inst of instances) {
         try {
-          const r = await fetch(`${inst}/api/v1/search?q=${encodeURIComponent(q)}&type=video`, { signal: AbortSignal.timeout(5000) });
+          const r = await fetch(`${inst}/search?q=${encodeURIComponent(q)}&filter=videos`, { signal: AbortSignal.timeout(5000) });
           if (!r.ok) { errors.push(inst + ':' + r.status); continue; }
           const data = await r.json();
-          const first = Array.isArray(data) ? data[0] : null;
-          if (first?.videoId) { videoId = first.videoId; title = first.title; break; }
+          const first = data.items?.[0];
+          if (first?.url) {
+            videoId = first.url.replace('/watch?v=', '').split('&')[0];
+            title = first.title;
+            break;
+          }
           errors.push(inst + ':no_results');
         } catch (e) { errors.push(inst + ':' + e.message.slice(0, 30)); continue; }
       }
