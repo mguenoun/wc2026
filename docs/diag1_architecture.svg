@@ -4,21 +4,18 @@
 <path d="M2 1L8 5L2 9" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </marker>
 </defs>
-<!-- GitHub Pages -->
+<!-- Cloudflare Pages -->
 <rect x="30" y="20" width="300" height="220" rx="14" fill="#e6f1fb" stroke="#378ADD" stroke-width="1"/>
-<text x="180" y="46" text-anchor="middle" font-size="13" font-weight="bold" fill="#0C447C">GitHub Pages</text>
-<text x="180" y="62" text-anchor="middle" font-size="10" fill="#185FA5">mguenoun.github.io/wc2026</text>
-<rect x="50" y="76" width="120" height="36" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
-<text x="110" y="93" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">index.html</text>
-<text x="110" y="106" text-anchor="middle" font-size="9" fill="#3C3489">Page principale</text>
-<rect x="190" y="76" width="120" height="36" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
-<text x="250" y="93" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">test.html</text>
-<text x="250" y="106" text-anchor="middle" font-size="9" fill="#3C3489">Dev/test (sync)</text>
+<text x="180" y="46" text-anchor="middle" font-size="13" font-weight="bold" fill="#0C447C">Cloudflare Pages</text>
+<text x="180" y="62" text-anchor="middle" font-size="10" fill="#185FA5">wc2026.pages.dev  ·  branches main / staging</text>
+<rect x="50" y="76" width="260" height="36" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
+<text x="180" y="93" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">index.html</text>
+<text x="180" y="106" text-anchor="middle" font-size="9" fill="#3C3489">main → prod  ·  staging → recette</text>
 <rect x="50" y="128" width="260" height="94" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
 <text x="180" y="148" text-anchor="middle" font-size="11" font-weight="bold" fill="#26215C">js/ (10 fichiers)</text>
 <text x="180" y="166" text-anchor="middle" font-size="9" fill="#3C3489">config v2 · fallback v3 · api v7 · ratings v4</text>
-<text x="180" y="182" text-anchor="middle" font-size="9" fill="#3C3489">modal v3 · pitch v4 · map v3 · render v3</text>
-<text x="180" y="198" text-anchor="middle" font-size="9" fill="#3C3489">rankings v2 · state v5</text>
+<text x="180" y="182" text-anchor="middle" font-size="9" fill="#3C3489">modal v7 · pitch v4 · map v4 · render v6</text>
+<text x="180" y="198" text-anchor="middle" font-size="9" fill="#3C3489">rankings v2 · state v6</text>
 <!-- Cloudflare Worker -->
 <rect x="30" y="268" width="300" height="280" rx="14" fill="#e1f5ee" stroke="#1D9E75" stroke-width="1"/>
 <text x="180" y="294" text-anchor="middle" font-size="13" font-weight="bold" fill="#085041">Cloudflare Worker v7</text>

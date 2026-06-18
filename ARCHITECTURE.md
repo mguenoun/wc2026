@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-Dashboard de suivi de la Coupe du Monde 2026 (USA/Canada/Mexique), déployé en tant que site statique sur **GitHub Pages** avec un backend serverless sur **Cloudflare Workers** (v7) et un cache persistant **Cloudflare KV**.
+Dashboard de suivi de la Coupe du Monde 2026 (USA/Canada/Mexique), déployé en tant que site statique sur **Cloudflare Pages** (branches `main` → prod, `staging` → recette) avec un backend serverless sur **Cloudflare Workers** (v7) et un cache persistant **Cloudflare KV**.
 
 ---
 
@@ -10,10 +10,10 @@ Dashboard de suivi de la Coupe du Monde 2026 (USA/Canada/Mexique), déployé en 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     GitHub Pages                                 │
-│   https://mguenoun.github.io/wc2026/                           │
+│                   Cloudflare Pages                               │
+│   wc2026.pages.dev  ·  branches main (prod) / staging (recette)│
 │                                                                  │
-│   index.html / test.html (page principale)                      │
+│   index.html (page principale)                                  │
 │   js/                                                           │
 │     config.js   fallback.js   api.js      ratings.js           │
 │     modal.js    pitch.js      map.js      render.js             │
@@ -80,19 +80,18 @@ Dashboard de suivi de la Coupe du Monde 2026 (USA/Canada/Mexique), déployé en 
 
 ```
 wc2026/
-├── index.html             # Page principale (sync avec test.html)
-├── test.html              # Page dev/test (identique à index.html)
+├── index.html             # Page principale (Cloudflare Pages)
 └── js/
     ├── config.js    v2    # Constantes, maps, utilitaires
     ├── fallback.js  v3    # Données statiques matchs (63 matchs + KO)
     ├── api.js       v7    # Fetch Worker, traitement scores live
     ├── ratings.js   v4    # Algo rating joueurs v8 (sans xG/xA)
-    ├── modal.js     v3    # Modales stats match
+    ├── modal.js     v7    # Modales stats match + lien YouTube par but
     ├── pitch.js     v4    # Terrain SVG, compositions, openLineupESPN
-    ├── map.js       v3    # Vue liste matchs (noms équipes KO résolus)
-    ├── render.js    v3    # renderGrpFilters, timelines, bracket KO
+    ├── map.js       v4    # Vue liste matchs + bouton ▶ YouTube résumé
+    ├── render.js    v6    # Timelines, bracket KO, Meilleurs 3èmes
     ├── rankings.js  v2    # Gardiens, buteurs, classement joueurs
-    └── state.js     v5    # renderAll, switchView, scheduleRefresh
+    └── state.js     v6    # renderAll, switchView (7 vues), scheduleRefresh
 ```
 
 ### Ordre de chargement des scripts (critique)
@@ -102,12 +101,12 @@ wc2026/
 <script src="js/fallback.js?v=3"></script>  <!-- 2. Données statiques -->
 <script src="js/api.js?v=7"></script>       <!-- 3. Fetch Worker/FD -->
 <script src="js/ratings.js?v=4"></script>   <!-- 4. Algo rating v8 -->
-<script src="js/modal.js?v=3"></script>     <!-- 5. Modales -->
+<script src="js/modal.js?v=7"></script>     <!-- 5. Modales + YouTube par but -->
 <script src="js/pitch.js?v=4"></script>     <!-- 6. Terrain SVG -->
-<script src="js/map.js?v=3"></script>       <!-- 7. Vue liste -->
-<script src="js/render.js?v=3"></script>    <!-- 8. Rendu groupes + KO -->
+<script src="js/map.js?v=4"></script>       <!-- 7. Vue liste + ▶ YouTube résumé -->
+<script src="js/render.js?v=6"></script>    <!-- 8. Rendu groupes + KO + Meilleurs 3èmes -->
 <script src="js/rankings.js?v=2"></script>  <!-- 9. Classements -->
-<script src="js/state.js?v=5"></script>     <!-- 10. Init + orchestration -->
+<script src="js/state.js?v=6"></script>     <!-- 10. Init + orchestration (7 vues) -->
 ```
 
 ### Variables globales clés (config.js)
@@ -265,12 +264,15 @@ Tick N :
 
 ---
 
-## Bracket KO (render.js / fallback.js)
+## Bracket KO et Meilleurs 3èmes (render.js / fallback.js)
 
 - `fallback.js` : données statiques des 63 matchs (GS + KO), placeholders `1er Gr.X`, `2e Gr.X`, `3e A/B/C/D`, `V Mxx`, `Vainq./Perdant`
 - `resolveKOTeam(placeholder)` : résout les placeholders depuis `allMatches` et `standings`
 - Noms résolus affichés entre parenthèses dans la vue liste (`map.js`) et dans le bracket (`render.js`)
-- 3e de groupe : notation officielle FIFA — un même groupe peut apparaître dans plusieurs slots 3e (c'est voulu)
+- **`getAll3rd()`** : collecte le 3e de chaque groupe ayant joué ≥ 1 match, trié par pts/DB/BP. Détecte les cas ex æquo (2e et 3e avec stats identiques) et renseigne un champ `coTeam`.
+- **`buildThirdAssign()`** : matching bipartite (chemin augmentant) pour assigner chaque 3e qualifié à un slot KO. Chaque slot liste les groupes éligibles selon la règle FIFA ; l'algo garantit un matching maximal même quand le greedy simple échouerait.
+- **`renderThirds()`** : onglet dédié affichant les 12 troisièmes classés, top 8 qualifiés mis en évidence (✓), badge `prov.` si le groupe n'a pas fini, badge `ex æq.` si deux équipes sont parfaitement à égalité.
+- En cas d'ex æquo, la valeur dans la Map `_thirdAssign` contient les deux noms (ex: "Maroc / Brésil") → affiché tel quel dans la parenthèse du bracket/liste KO.
 
 ---
 
@@ -344,25 +346,32 @@ Cloudflare Dashboard → worker `wc2026` → **Observability** → **Logs** : fi
 
 ```
 mguenoun/wc2026 (repo)
-├── index.html
-├── test.html
+├── index.html             # Cloudflare Pages (main → prod, staging → recette)
 ├── js/
 │   ├── config.js    v2
 │   ├── fallback.js  v3
 │   ├── api.js       v7
 │   ├── ratings.js   v4
-│   ├── modal.js     v3
+│   ├── modal.js     v7   # Lien YouTube par but
 │   ├── pitch.js     v4
-│   ├── map.js       v3
-│   ├── render.js    v3
+│   ├── map.js       v4   # Bouton ▶ YouTube résumé sur lignes FT
+│   ├── render.js    v6   # Meilleurs 3èmes + matching bipartite + ex æquo
 │   ├── rankings.js  v2
-│   └── state.js     v5
+│   └── state.js     v6   # 7 vues : groups/standings/thirds/knockout/scorers/keepers/players
 ├── worker/
 │   └── worker.js    v7   # Deploye via wrangler deploy
+├── tests/
+│   ├── browser/
+│   │   ├── processMatches.test.js   # normTeam, processMatches, computeStandings + pos
+│   │   └── render.test.js           # getAll3rd (ex aequo), resolveKOTeam, buildThirdAssign
+│   └── worker/
+│       └── calcRating.test.js
 ├── docs/
-│   ├── diag1_architecture.png
-│   ├── diag2_sequence.png
-│   └── diag3_interactions.png
+│   ├── diag1_architecture.{svg,png}
+│   ├── diag2_sequence.{svg,png}
+│   ├── diag3_interactions.{svg,png}
+│   ├── ARCHITECTURE.pdf
+│   └── gen_pdf.js           # node docs/gen_pdf.js → ARCHITECTURE.pdf
 └── ARCHITECTURE.md
 ```
 
@@ -400,7 +409,8 @@ wrangler secret put API_TOKEN_FD
 
 | Service | URL |
 |---|---|
-| Dashboard | https://mguenoun.github.io/wc2026/ |
+| Dashboard (prod) | https://wc2026.pages.dev |
+| Dashboard (staging) | https://staging.wc2026.pages.dev |
 | Worker | https://wc2026.mguenoun.workers.dev |
 | Status pipeline | https://wc2026.mguenoun.workers.dev/stats/status |
 | Classement joueurs | https://wc2026.mguenoun.workers.dev/stats/players |
@@ -428,19 +438,16 @@ wrangler secret put API_TOKEN_FD
 </defs>
 <!-- GitHub Pages -->
 <rect x="30" y="20" width="300" height="220" rx="14" fill="#e6f1fb" stroke="#378ADD" stroke-width="1"/>
-<text x="180" y="46" text-anchor="middle" font-size="13" font-weight="bold" fill="#0C447C">GitHub Pages</text>
-<text x="180" y="62" text-anchor="middle" font-size="10" fill="#185FA5">mguenoun.github.io/wc2026</text>
-<rect x="50" y="76" width="120" height="36" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
-<text x="110" y="93" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">index.html</text>
-<text x="110" y="106" text-anchor="middle" font-size="9" fill="#3C3489">Page principale</text>
-<rect x="190" y="76" width="120" height="36" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
-<text x="250" y="93" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">test.html</text>
-<text x="250" y="106" text-anchor="middle" font-size="9" fill="#3C3489">Dev/test (sync)</text>
+<text x="180" y="46" text-anchor="middle" font-size="13" font-weight="bold" fill="#0C447C">Cloudflare Pages</text>
+<text x="180" y="62" text-anchor="middle" font-size="10" fill="#185FA5">wc2026.pages.dev  ·  branches main / staging</text>
+<rect x="50" y="76" width="260" height="36" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
+<text x="180" y="93" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">index.html</text>
+<text x="180" y="106" text-anchor="middle" font-size="9" fill="#3C3489">main → prod  ·  staging → recette</text>
 <rect x="50" y="128" width="260" height="94" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
 <text x="180" y="148" text-anchor="middle" font-size="11" font-weight="bold" fill="#26215C">js/ (10 fichiers)</text>
 <text x="180" y="166" text-anchor="middle" font-size="9" fill="#3C3489">config v2 · fallback v3 · api v7 · ratings v4</text>
-<text x="180" y="182" text-anchor="middle" font-size="9" fill="#3C3489">modal v3 · pitch v4 · map v3 · render v3</text>
-<text x="180" y="198" text-anchor="middle" font-size="9" fill="#3C3489">rankings v2 · state v5</text>
+<text x="180" y="182" text-anchor="middle" font-size="9" fill="#3C3489">modal v7 · pitch v4 · map v4 · render v6</text>
+<text x="180" y="198" text-anchor="middle" font-size="9" fill="#3C3489">rankings v2 · state v6</text>
 <!-- Cloudflare Worker -->
 <rect x="30" y="268" width="300" height="280" rx="14" fill="#e1f5ee" stroke="#1D9E75" stroke-width="1"/>
 <text x="180" y="294" text-anchor="middle" font-size="13" font-weight="bold" fill="#085041">Cloudflare Worker v7</text>
