@@ -610,7 +610,7 @@ async function handlePlayers(env, cors) {
       rating:  Math.round(a.totalRating / a.totalMinutes * 10) / 10,
       minutes: a.totalMinutes, goals: a.goals, assists: a.assists, matches: a.matches,
     }))
-    .sort((a, b) => b.rating - a.rating);
+    .sort((a, b) => (b.rating - a.rating) || (b.goals - a.goals) || (b.assists - a.assists));
   return jsonResp({ ranking, cachedAt: Date.now() }, cors);
 }
 

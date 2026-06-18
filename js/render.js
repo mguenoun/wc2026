@@ -31,6 +31,41 @@ var KO_PHASES=[
 ];
 
 var koBracketView='list'; // 'list' ou 'bracket'
+var _thirdAssign = null;  // Map : "3e X/Y/Z" → team, recalculée à chaque render KO
+
+// Construit l'assignation globale des 3e places : top 8 qualifiés → un slot unique chacun
+function buildThirdAssign() {
+  var assign = new Map();
+  if (!standings || !allMatches) return assign;
+  var all3rd = [];
+  Object.keys(standings).forEach(function(g) {
+    var s = standings[g];
+    if (s && s[2] && s[2].played > 0)
+      all3rd.push({ group: g, team: s[2].team, pts: s[2].pts, gd: s[2].gd, gf: s[2].gf });
+  });
+  all3rd.sort(function(a, b) { return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf); });
+  var top8 = new Set(all3rd.slice(0, 8).map(function(t) { return t.group; }));
+  var usedGroups = new Set();
+  allMatches
+    .filter(function(m) { return m.ko; })
+    .sort(function(a, b) { return (a.dayKey || '').localeCompare(b.dayKey || '') || (a.time || '').localeCompare(b.time || ''); })
+    .forEach(function(m) {
+      [m.t1, m.t2].forEach(function(teamStr) {
+        if (!teamStr || assign.has(teamStr)) return;
+        var rx = teamStr.match(/^3e ([A-L](?:\/[A-L])+)$/);
+        if (!rx) return;
+        var groups = rx[1].split('/');
+        var candidates = all3rd.filter(function(t) {
+          return groups.includes(t.group) && top8.has(t.group) && !usedGroups.has(t.group);
+        });
+        if (candidates.length > 0) {
+          assign.set(teamStr, candidates[0].team);
+          usedGroups.add(candidates[0].group);
+        }
+      });
+    });
+  return assign;
+}
 
 // Résout le nom d'équipe réel pour un placeholder KO (standings ou résultat)
 function resolveMatchWinner(matchId, wantLoser){
@@ -52,18 +87,9 @@ function resolveKOTeam(teamStr){
     return(standings&&standings[m1[2]]&&standings[m1[2]][pos])?standings[m1[2]][pos].team:null;
   }
 
-  // "3e A/B/C/D/F" — meilleur 3e parmi les groupes listés (pts → diff buts → buts marqués)
+  // "3e A/B/C/D/F" — résolution globale via _thirdAssign (évite doublons)
   var m5=teamStr.match(/^3e ([A-L](?:\/[A-L])+)$/);
-  if(m5){
-    var candidates=[];
-    m5[1].split('/').forEach(function(g){
-      if(standings&&standings[g]&&standings[g][2]&&standings[g][2].played>0)
-        candidates.push(standings[g][2]);
-    });
-    if(!candidates.length)return null;
-    candidates.sort(function(a,b){return(b.pts-a.pts)||(b.gd-a.gd)||(b.gf-a.gf);});
-    return candidates[0].team;
-  }
+  if(m5) return (_thirdAssign && _thirdAssign.get(teamStr)) || null;
 
   // "V M73", "V QF1", "V SF1" etc.
   var m2=teamStr.match(/^V\s+(\S+)$/);
@@ -76,6 +102,7 @@ function resolveKOTeam(teamStr){
 }
 
 function renderKOTimeline(){
+  _thirdAssign = buildThirdAssign();
   var c=document.getElementById('knockout-timeline');
   c.innerHTML='';
   var koMatches=allMatches.filter(function(m){return m.ko;});

@@ -2,7 +2,7 @@
 // Consomme les endpoints /stats/players et /stats/keepers du Cloudflare Worker
 // Les données sont pré-calculées côté serveur et mises en cache dans KV
 
-var WORKER_BASE = 'https://wc2026.mguenoun.workers.dev';
+var WORKER_BASE = (typeof PROXY_BASE !== 'undefined') ? PROXY_BASE : 'https://wc2026.mguenoun.workers.dev';
 
 // ─── GARDIENS ────────────────────────────────────────────────────────────────
 
