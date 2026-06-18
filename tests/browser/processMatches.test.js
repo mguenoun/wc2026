@@ -177,4 +177,22 @@ describe('computeStandingsFromMatches', () => {
     g.computeStandingsFromMatches();
     expect(g.standings['A']).toBeDefined();
   });
+
+  it('assigne pos=1,2,3,4 dans l\'ordre décroissant de pts/gd/gf', () => {
+    const result = g.computeStandingsFromMatches(matches);
+    const grpA = result['A'];
+    // France : 4pts (1V 1N), Brésil : 3pts (1V 1D), Espagne : 2pts (2N), Argentine : 1pt (1N 1D)
+    const byPos = {};
+    grpA.forEach(function(r) { byPos[r.pos] = r.team; });
+    expect(byPos[1]).toBe('France');
+    expect(byPos[2]).toBe('Brésil');
+    expect(byPos[3]).toBe('Espagne');
+    expect(byPos[4]).toBe('Argentine');
+  });
+
+  it('les valeurs pos forment bien la suite 1,2,3,4', () => {
+    const result = g.computeStandingsFromMatches(matches);
+    const positions = result['A'].map(r => r.pos).sort((a, b) => a - b);
+    expect(positions).toEqual([1, 2, 3, 4]);
+  });
 });
