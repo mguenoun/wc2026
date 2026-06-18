@@ -49,6 +49,21 @@ function processESPNScores(events){
   return mapped>0;
 }
 
+// Fetch ESPN scoreboard J-1 + aujourd'hui directement depuis le browser (pas de KV)
+async function fetchESPNEvents(){
+  var allEvents=[];
+  var today=new Date();
+  for(var i=-1;i<=0;i++){
+    var d=new Date(today);d.setDate(d.getDate()+i);
+    var ds=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+    try{
+      var r=await fetch(ESPN_BASE+'/scoreboard?dates='+ds);
+      if(r.ok){var data=await r.json();if(data.events)allEvents.push.apply(allEvents,data.events);}
+    }catch(_){}
+  }
+  return allEvents;
+}
+
 var _fetchAllActive=false;
 async function fetchAll(){
   if(_fetchAllActive)return; // éviter les appels concurrent
@@ -78,12 +93,12 @@ async function fetchAll(){
     }catch(e){console.warn('[WC2026] FD matches fallback:',e.message);}
   }
 
-  // ── 2. ESPN via Worker /data/live (cache KV 30s, zéro appel direct ESPN) ────
+  // ── 2. ESPN direct depuis le browser (J-1 + aujourd'hui, pas de KV) ─────────
   var espnOk=false;
   try{
-    var rL=await fetch(PROXY_BASE+'/data/live');
-    if(rL.ok){var dL=await rL.json();if(dL.events&&dL.events.length){processESPNScores(dL.events);espnOk=true;}}
-  }catch(e){console.warn('[WC2026] /data/live:',e.message);}
+    var espnEvents=await fetchESPNEvents();
+    if(espnEvents.length){processESPNScores(espnEvents);espnOk=true;}
+  }catch(e){console.warn('[WC2026] ESPN direct:',e.message);}
 
   // ── 3. Classements depuis cache KV worker ─────────────────────────────────
   var standOk=false;
@@ -103,7 +118,7 @@ async function fetchAll(){
 
   if(!Object.keys(standings).length)computeStandingsFromMatches();
 
-  var src=espnOk?'KV+ESPN':(fdOk?'KV':'statique');
+  var src=espnOk?'KV+ESPN direct':(fdOk?'KV':'statique');
   setStatus('ok','En ligne ✓ ('+src+')');
   var now=new Date();
   document.getElementById('last-update').textContent='Mis à jour '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
@@ -194,11 +209,10 @@ function computeStandingsFromMatches(){
 // Mise à jour des scores en direct via ESPN (plus rapide que football-data.org)
 async function fetchESPNLiveScores(){
   try{
-    var r=await fetch(PROXY_BASE+'/data/live');
-    var data=await r.json();
-    if(!data.events||!data.events.length)return;
+    var events=await fetchESPNEvents();
+    if(!events.length)return;
     var updated=false;
-    data.events.forEach(function(e){
+    events.forEach(function(e){
       var status=e.status&&e.status.type&&e.status.type.state;
       if(status!=='in'&&status!=='post')return;
       var matchId=null;

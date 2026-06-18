@@ -278,15 +278,17 @@ async function step1_discover(env) {
   if (newIds > 0) await kv.put(env, 'espn_map', espnMap);
 
   // Ajouter les matchs non traités à la queue
+  let queueChanged = false;
   for (const espnId of Object.keys(espnMap)) {
     if (queue.done.includes(espnId) || queue.pending.includes(espnId) || queue.processing.includes(espnId)) continue;
     const cached = await env.STATS_KV.get('match:' + espnId);
-    if (cached) { queue.done.push(espnId); continue; }
+    if (cached) { queue.done.push(espnId); queueChanged = true; continue; }
     queue.pending.push(espnId);
     added++;
+    queueChanged = true;
   }
 
-  await kv.put(env, 'pipeline_queue', queue);
+  if (queueChanged) await kv.put(env, 'pipeline_queue', queue);
   return { step: 1, newIds, added, pending: queue.pending.length, processing: queue.processing.length, done: queue.done.length };
 }
 
@@ -660,29 +662,6 @@ export default {
       if (!espnId) return new Response('Missing espnId', { status: 400, headers: cors });
       const m = await kv.get(env, 'match:' + espnId);
       return jsonResp(m ? { stats: m.stats, cachedAt: m.cachedAt } : { stats: null }, cors);
-    }
-
-    if (path === '/data/live') {
-      // Cache ESPN 30s — réduit les appels directs browser→ESPN à 0
-      const LIVE_TTL = 30_000;
-      const cached = await kv.get(env, 'cache:live');
-      if (cached && (Date.now() - (cached.lastUpdate || 0)) < LIVE_TTL) {
-        return jsonResp(cached, cors);
-      }
-      // Fetch ESPN hier + aujourd'hui UTC (couvre minuit heure locale = veille UTC)
-      const allEvents = [];
-      const today = new Date();
-      for (let i = -1; i <= 0; i++) {
-        const d = new Date(today); d.setDate(d.getDate() + i);
-        const ds = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
-        try {
-          const r = await fetch(`${ESPN_BASE}/scoreboard?dates=${ds}`);
-          if (r.ok) { const data = await r.json(); if (data.events) allEvents.push(...data.events); }
-        } catch (_) {}
-      }
-      const live = { events: allEvents, lastUpdate: Date.now() };
-      await kv.put(env, 'cache:live', live);
-      return jsonResp(live, cors);
     }
 
     if (path.startsWith('/fd/')) {
