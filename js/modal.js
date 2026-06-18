@@ -191,24 +191,12 @@ function renderESPNStats(m,d,espnId){
       var cardIcon=isRed
         ?'<span style="font-size:11px">🟥</span>'
         :'<span style="font-size:11px">🟨</span>';
-      var cIdx='yt-card-'+cards.indexOf(c);
-      html+='<div id="'+cIdx+'" style="font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px;color:#e2e8f0">'+
+      html+='<div style="font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px;color:#e2e8f0">'+
         '<span style="color:#64748b;min-width:28px;font-size:9px">'+(c.clock&&c.clock.displayValue||'')+'</span>'+
         cardIcon+
         '<span style="flex:1">'+playerName+'</span></div>';
     });
     html+='</div>';
-
-    setTimeout(function() {
-      cards.forEach(function(c, i) {
-        var row = document.getElementById('yt-card-'+i);
-        if (!row) return;
-        var playerName2 = (c.shortText||'').replace(/\s+Red\s+Card$/i,'').replace(/\s+Yellow\s+Card$/i,'');
-        var cardType = c.type.type === 'red-card' ? 'red card' : 'yellow card';
-        var q = playerName2 + ' ' + cardType + ' ' + m.t1 + ' ' + m.t2;
-        row.appendChild(ytSearchBtn(q));
-      });
-    }, 0);
   }
   // Remplacements
   var subs=events.filter(function(e){return e.type&&e.type.type==='substitution';});
