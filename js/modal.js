@@ -20,53 +20,16 @@ function closeModal(e){
   }
 }
 
-function ytSearchBtn(query, playerDiv) {
-  var btn = document.createElement('button');
-  btn.title = 'Voir le but';
-  btn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;color:#22c55e;flex-shrink:0';
+function ytSearchBtn(playerName, t1, t2) {
+  var q = (playerName ? playerName + ' ' : '') + 'goal FIFA World Cup 2026' + (t1 ? ' ' + t1 : '') + (t2 ? ' ' + t2 : '');
+  var href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+  var btn = document.createElement('a');
+  btn.href = href;
+  btn.target = '_blank';
+  btn.rel = 'noopener';
+  btn.title = 'Rechercher le but sur YouTube';
+  btn.style.cssText = 'font-size:13px;padding:2px 4px;color:#22c55e;flex-shrink:0;text-decoration:none;line-height:1';
   btn.textContent = '▶';
-  btn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    if (playerDiv.style.display !== 'none') {
-      playerDiv.style.display = 'none';
-      playerDiv.innerHTML = '';
-      btn.textContent = '▶';
-      return;
-    }
-    btn.textContent = '⏳';
-    btn.disabled = true;
-    playerDiv.style.display = 'block';
-    playerDiv.innerHTML = '<div style="text-align:center;padding:8px;font-size:10px;color:#475569">Recherche en cours…</div>';
-    fetch(PROXY_BASE + '/data/youtube/rss?q=' + encodeURIComponent(query))
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        var ytUrl = d.videoId
-          ? 'https://www.youtube.com/watch?v=' + d.videoId
-          : d.fallbackUrl;
-        if (d.videoId) {
-          var thumb = 'https://img.youtube.com/vi/' + d.videoId + '/mqdefault.jpg';
-          playerDiv.innerHTML =
-            '<a href="' + ytUrl + '" target="_blank" style="display:block;position:relative;margin:4px 0 6px;border-radius:6px;overflow:hidden">' +
-              '<img src="' + thumb + '" style="width:100%;display:block;border-radius:6px">' +
-              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3)">' +
-                '<span style="font-size:36px;opacity:0.9">▶</span>' +
-              '</div>' +
-            '</a>' +
-            '<div style="text-align:center;margin-bottom:4px"><a href="' + ytUrl + '" target="_blank" style="color:#0ea5e9;font-size:9px">Regarder sur YouTube ↗</a></div>';
-          btn.textContent = '▼';
-        } else {
-          playerDiv.innerHTML = '<div style="text-align:center;padding:8px">' +
-            '<a href="' + ytUrl + '" target="_blank" style="color:#0ea5e9;font-size:10px">Ouvrir dans YouTube ↗</a></div>';
-          btn.textContent = '▶';
-        }
-        btn.disabled = false;
-      })
-      .catch(function() {
-        playerDiv.style.display = 'none';
-        btn.textContent = '▶';
-        btn.disabled = false;
-      });
-  });
   return btn;
 }
 
@@ -182,24 +145,22 @@ function renderESPNStats(m,d,espnId){
       var assistHtml=am?'<span style="color:#475569;font-size:8px"> \u2192 '+am[1].trim()+'</span>':'';
       // Équipe
       var teamHtml=teamName?'<span style="color:'+gColor+';font-size:8px;margin-left:3px">('+teamName+')</span>':'';
-      var gi=goals.indexOf(g);
-      html+='<div id="yt-goal-'+gi+'" style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
+      var playerName2 = (g.shortText||'').replace(/\s+Own\s+Goal$/i,'').replace(/\s+Goal\s*-\s*Header$/i,'').replace(/\s+Goal$/i,'');
+      html+='<div style="font-size:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px">'+
         '<span style="color:#64748b;min-width:28px;font-size:9px">'+(g.clock&&g.clock.displayValue||'')+'</span>'+
-        '<span style="flex:1;color:#e2e8f0">'+icon+playerName+teamHtml+assistHtml+'</span></div>'+
-        '<div id="yt-player-'+gi+'" style="display:none"></div>';
+        '<span style="flex:1;color:#e2e8f0">'+icon+playerName+teamHtml+assistHtml+'</span>'+
+        '<span class="yt-btn-slot" data-player="'+encodeURIComponent(playerName2)+'" data-t1="'+encodeURIComponent(m.t1)+'" data-t2="'+encodeURIComponent(m.t2)+'"></span>'+
+        '</div>';
     });
     html+='</div>';
 
-    // Attacher les boutons YouTube après injection HTML (évite innerHTML sur éléments DOM)
+    // Attacher les liens YouTube après injection HTML
     setTimeout(function() {
-      goals.forEach(function(g, i) {
-        var row = document.getElementById('yt-goal-'+i);
-        var playerDiv = document.getElementById('yt-player-'+i);
-        if (!row || !playerDiv) return;
-        var playerName2 = (g.shortText||'').replace(/\s+Own\s+Goal$/i,'').replace(/\s+Goal\s*-\s*Header$/i,'').replace(/\s+Goal$/i,'');
-        var eventType = /own\s+goal/i.test(g.shortText||'') ? 'own goal' : 'goal';
-        var q = 'FIFA WC2026 ' + playerName2 + ' ' + eventType + ' ' + m.t1 + ' ' + m.t2;
-        row.appendChild(ytSearchBtn(q, playerDiv));
+      document.querySelectorAll('.yt-btn-slot').forEach(function(slot) {
+        var pn = decodeURIComponent(slot.dataset.player || '');
+        var t1 = decodeURIComponent(slot.dataset.t1 || '');
+        var t2 = decodeURIComponent(slot.dataset.t2 || '');
+        slot.appendChild(ytSearchBtn(pn, t1, t2));
       });
     }, 0);
 
