@@ -299,6 +299,22 @@ describe('buildThirdAssign', () => {
     expect(m.get('3e A/B')).toBe('TeamA3');
   });
 
+  it('inclut le coTeam dans la valeur Map quand ex æquo (affichage bracket)', () => {
+    // Groupe C : Maroc (pos=3) et Brésil (pos=2) à égalité parfaite
+    g.standings = {
+      C: [
+        { pos: 1, team: 'Écosse', pts: 3, gd:  1, gf: 1, played: 1 },
+        { pos: 2, team: 'Brésil', pts: 1, gd:  0, gf: 1, played: 1 },
+        { pos: 3, team: 'Maroc',  pts: 1, gd:  0, gf: 1, played: 1 },
+        { pos: 4, team: 'Haïti',  pts: 0, gd: -1, gf: 0, played: 1 },
+      ],
+    };
+    g.allMatches = [{ ko: true, id: 'M73', phase: '32es', t1: '3e A/C', t2: 'X' }];
+    const m = g.buildThirdAssign();
+    // Le slot doit afficher les deux équipes ex æquo
+    expect(m.get('3e A/C')).toBe('Maroc / Brésil');
+  });
+
   it('retourne Map vide si standings vide', () => {
     g.standings = {};
     g.allMatches = [{ ko: true, id: 'M73', phase: '32es', t1: '3e A/B', t2: 'X' }];

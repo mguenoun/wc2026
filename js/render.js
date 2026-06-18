@@ -91,10 +91,10 @@ function buildThirdAssign() {
   }
   slots.forEach(function(slot) { if (!slotToGroup[slot.key]) augment(slot.key, {}); });
 
-  // Construire la Map finale slot → nom d'équipe
+  // Construire la Map finale slot → nom d'équipe (inclut le coTeam si ex æquo)
   Object.keys(slotToGroup).forEach(function(slotKey) {
-    var team = all3rd.find(function(t) { return t.group === slotToGroup[slotKey]; });
-    if (team) assign.set(slotKey, team.team);
+    var entry = all3rd.find(function(t) { return t.group === slotToGroup[slotKey]; });
+    if (entry) assign.set(slotKey, entry.coTeam ? entry.team + ' / ' + entry.coTeam : entry.team);
   });
   return assign;
 }
