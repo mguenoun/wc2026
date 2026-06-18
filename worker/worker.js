@@ -814,3 +814,5 @@ export default {
     }
   },
 };
+
+export { calcRating, getRole };

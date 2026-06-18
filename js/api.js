@@ -137,7 +137,7 @@ function setStatus(state,label){
   lbl.textContent=label;
 }
 
-function processMatches(matches){
+function processMatches(matches, inputMatches){
   var apiByKey={};
   matches.forEach(function(m){
     var d=m.utcDate?m.utcDate.slice(0,10):'';
@@ -146,7 +146,8 @@ function processMatches(matches){
     apiByKey[d+'|'+home]=m;
     apiByKey[d+'|'+away]=m;
   });
-  allMatches=allMatches.map(function(sm){
+  var base=inputMatches||allMatches;
+  var result=base.map(function(sm){
     var apiM=apiByKey[sm.dayKey+'|'+sm.t1]||apiByKey[sm.dayKey+'|'+sm.t2];
     // Fallback J-1 : matchs "00h00 heure locale" dont utcDate FD est la veille
     if(!apiM){
@@ -164,6 +165,8 @@ function processMatches(matches){
     var t2u=sm.ko?normTeam((apiM.awayTeam&&(apiM.awayTeam.shortName||apiM.awayTeam.name))||sm.t2):sm.t2;
     return Object.assign({},sm,{t1:t1u,t2:t2u,score:score,status:apiM.status,isLive:isLive,isFT:isFT,apiId:apiM.id});
   });
+  if(!inputMatches) allMatches=result;
+  return result;
 }
 
 function processStandings(data){
@@ -180,13 +183,13 @@ function processStandings(data){
 function humanPhase(s){var m={'GROUP_STAGE':'Groupe','ROUND_OF_32':'32es','ROUND_OF_16':'16es','QUARTER_FINALS':'Quarts','SEMI_FINALS':'Demis','THIRD_PLACE':'3e Place','FINAL':'Finale'};return m[s]||s;}
 function phaseColor(s){var m={'ROUND_OF_32':'#8b5cf6','ROUND_OF_16':'#f59e0b','QUARTER_FINALS':'#ef4444','SEMI_FINALS':'#f97316','THIRD_PLACE':'#64748b','FINAL':'#fbbf24'};return m[s]||'#94a3b8';}
 
-function computeStandingsFromMatches(){
-  standings={};
+function computeStandingsFromMatches(inputMatches){
+  var src=inputMatches||allMatches;
   var byGrp={};
-  allMatches.filter(function(m){return !m.ko;}).forEach(function(m){if(!byGrp[m.grp])byGrp[m.grp]=new Set();byGrp[m.grp].add(m.t1);byGrp[m.grp].add(m.t2);});
+  src.filter(function(m){return !m.ko;}).forEach(function(m){if(!byGrp[m.grp])byGrp[m.grp]=new Set();byGrp[m.grp].add(m.t1);byGrp[m.grp].add(m.t2);});
   var stats={};
   Object.entries(byGrp).forEach(function(e){var g=e[0],teams=e[1];stats[g]={};teams.forEach(function(t){stats[g][t]={played:0,won:0,draw:0,lost:0,gf:0,ga:0,pts:0};});});
-  allMatches.filter(function(m){return !m.ko&&m.isFT&&m.score;}).forEach(function(m){
+  src.filter(function(m){return !m.ko&&m.isFT&&m.score;}).forEach(function(m){
     var parts=m.score.split(' \u2013 ');if(parts.length!==2)return;
     var g1=parseInt(parts[0]),g2=parseInt(parts[1]);if(isNaN(g1)||isNaN(g2))return;
     var g=m.grp;if(!stats[g]||!stats[g][m.t1]||!stats[g][m.t2])return;
@@ -196,13 +199,16 @@ function computeStandingsFromMatches(){
     else if(g1<g2){stats[g][m.t2].won++;stats[g][m.t2].pts+=3;stats[g][m.t1].lost++;}
     else{stats[g][m.t1].draw++;stats[g][m.t1].pts++;stats[g][m.t2].draw++;stats[g][m.t2].pts++;}
   });
+  var result={};
   Object.entries(stats).forEach(function(e){
     var grp=e[0],teams=e[1];
     var table=Object.entries(teams).map(function(te){var t=te[0],s=te[1];return Object.assign({team:t},s,{gd:s.gf-s.ga});});
     table.sort(function(a,b){return(b.pts-a.pts)||(b.gd-a.gd)||(b.gf-a.gf);});
     table.forEach(function(r,i){r.pos=i+1;});
-    standings[grp]=table;
+    result[grp]=table;
   });
+  if(!inputMatches) standings=result;
+  return result;
 }
 
 

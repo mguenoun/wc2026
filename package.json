@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "test":          "vitest run",
+    "test:watch":    "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@vitest/coverage-v8": "^4.1.9",
+    "marked": "^18.0.5",
+    "vitest": "^4.1.9"
+  }
+}
