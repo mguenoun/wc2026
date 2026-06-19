@@ -162,9 +162,8 @@ describe('getAll3rd', () => {
     expect(g.getAll3rd()).toHaveLength(0);
   });
 
-  it('deux 3es de groupes différents à stats identiques → même rang (1,1,3)', () => {
-    // A3 et B3 : mêmes pts/gd/gf → renderThirds leur assignera rang 1 pour les deux
-    // C3 inférieur → rang 3 (pas 2)
+  it('deux 3es sans coTeam à stats identiques → même rang, le suivant est +2 (1,1,3)', () => {
+    // A3 et B3 : mêmes stats, aucun coTeam → chacun pèse 1 → prochain rang = 1+2 = 3
     g.standings = {
       A: mkGroup(
         { team: 'A1', pts: 9, gd: 5, gf: 6 },
@@ -175,7 +174,7 @@ describe('getAll3rd', () => {
       B: mkGroup(
         { team: 'B1', pts: 9, gd: 4, gf: 5 },
         { team: 'B2', pts: 6, gd: 1, gf: 3 },
-        { team: 'B3', pts: 4, gd: 1, gf: 3 }, // identique à A3
+        { team: 'B3', pts: 4, gd: 1, gf: 3 }, // même stats que A3
         { team: 'B4', pts: 0, gd: -5, gf: 0 },
       ),
       C: mkGroup(
@@ -186,16 +185,39 @@ describe('getAll3rd', () => {
       ),
     };
     const r = g.getAll3rd();
-    // A3 et B3 sont en tête avec les mêmes stats — l'un ou l'autre en [0]/[1]
-    expect(r[0].pts).toBe(4);
-    expect(r[0].gd).toBe(1);
-    expect(r[0].gf).toBe(3);
-    expect(r[1].pts).toBe(4);
-    expect(r[1].gd).toBe(1);
-    expect(r[1].gf).toBe(3);
-    // Les deux ont des stats identiques → dispRanks[0]=1, dispRanks[1]=1, dispRanks[2]=3
+    expect(r[0].pts).toBe(4); expect(r[0].gd).toBe(1); expect(r[0].gf).toBe(3);
+    expect(r[1].pts).toBe(4); expect(r[1].gd).toBe(1); expect(r[1].gf).toBe(3);
+    // Stats identiques → même rang (1) ; C3 inférieur sera au rang 3 (pas 2)
     expect(r[0].pts === r[1].pts && r[0].gd === r[1].gd && r[0].gf === r[1].gf).toBe(true);
     expect(r[2].team).toBe('C3');
+  });
+
+  it('coTeam pèse 2 dans le saut de rang : [coTeam, simple] → rangs 1, 3', () => {
+    // F3 a un coTeam (ex æquo intra-groupe) → compte pour 2 slots → prochain rang = 3
+    // A3 sans coTeam et stats inférieures → rang 3
+    g.standings = {
+      F: [
+        { pos: 1, team: 'F1', pts: 9, gd: 5, gf: 6, played: 1 },
+        { pos: 2, team: 'Japon',       pts: 1, gd: 0, gf: 2, played: 1 },
+        { pos: 3, team: 'Netherlands', pts: 1, gd: 0, gf: 2, played: 1 }, // ex æquo intra
+        { pos: 4, team: 'F4', pts: 0, gd: -5, gf: 0, played: 1 },
+      ],
+      A: mkGroup(
+        { team: 'A1', pts: 9, gd: 4, gf: 5 },
+        { team: 'A2', pts: 6, gd: 1, gf: 3 },
+        { team: 'A3', pts: 1, gd: 0, gf: 1 }, // inférieur (BP=1 < 2)
+        { team: 'A4', pts: 0, gd: -5, gf: 0 },
+      ),
+    };
+    const r = g.getAll3rd();
+    // Netherlands (F) est la 3e, Japon est le coTeam → coTeam=Japon
+    expect(r[0].coTeam).toBe('Japon');   // ou Japon selon ordre
+    expect(r[0].pts).toBe(1); expect(r[0].gd).toBe(0); expect(r[0].gf).toBe(2);
+    // A3 a BP=1 < BP=2 → inférieur → rang 3 dans renderThirds (pas 2)
+    expect(r[1].team).toBe('A3');
+    expect(r[1].coTeam).toBeNull();
+    // Vérification des stats : F3 (BP=2) > A3 (BP=1)
+    expect(r[0].gf > r[1].gf).toBe(true);
   });
 });
 

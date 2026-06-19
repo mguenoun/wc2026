@@ -135,12 +135,25 @@ function renderThirds() {
     '<span style="min-width:28px;text-align:center;color:#0ea5e9">BP</span>' +
     '</div>';
 
-  // Rangs d'affichage compétition (1,1,3,3...) — la sélection top-8 reste sur i < 8
+  // Rangs d'affichage compétition — une entrée avec coTeam compte pour 2 équipes.
+  // Ex : Netherlands/Japan (coTeam) = slots 1+2 → rang suivant = 3 ; pas 2.
+  // La sélection top-8 reste sur l'index (i < 8), indépendamment des rangs affichés.
   var dispRanks = [];
+  var _prevCumul = 0;   // somme des largeurs effectives des groupes déjà clôturés
+  var _grpStart  = 0;   // index du début du groupe de lignes ex æquo courant
   all3rd.forEach(function(t, i) {
-    if (i === 0) { dispRanks[0] = 1; return; }
-    var p = all3rd[i - 1];
-    dispRanks[i] = (p.pts === t.pts && p.gd === t.gd && p.gf === t.gf) ? dispRanks[i - 1] : i + 1;
+    var tied = i > 0 &&
+      all3rd[i-1].pts === t.pts &&
+      all3rd[i-1].gd  === t.gd  &&
+      all3rd[i-1].gf  === t.gf;
+    if (!tied) {
+      // Clôturer le groupe précédent : ajouter ses largeurs effectives
+      for (var j = _grpStart; j < i; j++) _prevCumul += all3rd[j].coTeam ? 2 : 1;
+      _grpStart  = i;
+      dispRanks[i] = _prevCumul + 1;
+    } else {
+      dispRanks[i] = dispRanks[i - 1];
+    }
   });
 
   var sepInserted = false;
