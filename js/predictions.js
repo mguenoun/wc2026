@@ -1,11 +1,11 @@
-// Prédictions de score — Modèle de Poisson v1
+// Prédictions de score — Modèle de Poisson v2
 //
-// Utilise les statistiques de phase de groupes (standings) déjà en mémoire :
-//   λA = (gf_A/played_A) × (ga_B/played_B) / avgGoals
-//   λB = (gf_B/played_B) × (ga_A/played_A) / avgGoals
+// λA = attackStrength(A) × defWeakness(B) × avgGF
+//    avec régression vers la moyenne (prior K=3 matchs fantômes) pour
+//    éviter que 1 seul match ne domine la prédiction.
 //
-// Score prédit  = argmax P(A=i, B=j)
-// V/N/D %       = Σ P(i>j) / P(i=j) / P(i<j) normalisés sur 0..7
+// Après 1 match joué : ~25% stats propres / 75% moyenne tournoi
+// Après 3 matchs     : ~50% stats propres / 50% moyenne tournoi
 //
 // buildPredictions() est appelé depuis api.js après chaque mise à jour des
 // standings. renderMatchRow() lit la map `predictions` globale.
@@ -27,12 +27,11 @@ function computeMatchPrediction(t1, t2) {
     });
   });
 
-  // Moyenne du tournoi : buts marqués par équipe par match
   var totalGF = 0, totalGA = 0, totalPlayed = 0;
   Object.keys(standings).forEach(function(g) {
     standings[g].forEach(function(r) {
-      totalGF    += r.gf   || 0;
-      totalGA    += r.ga   || 0;
+      totalGF     += r.gf     || 0;
+      totalGA     += r.ga     || 0;
       totalPlayed += r.played || 0;
     });
   });
@@ -41,14 +40,26 @@ function computeMatchPrediction(t1, t2) {
 
   var hasStats = !!(s1 && s1.played > 0 && s2 && s2.played > 0);
 
-  var gf1 = (s1 && s1.played > 0) ? s1.gf / s1.played : avgGF;
-  var ga1 = (s1 && s1.played > 0) ? (s1.ga || 0) / s1.played : avgGA;
-  var gf2 = (s2 && s2.played > 0) ? s2.gf / s2.played : avgGF;
-  var ga2 = (s2 && s2.played > 0) ? (s2.ga || 0) / s2.played : avgGA;
+  // Régression vers la moyenne : K = nb de matchs "fantômes" au niveau moyen
+  // Plus K est grand, plus on reste proche de la moyenne avec peu de matchs joués.
+  var K = 3;
+  var p1 = s1 && s1.played > 0 ? s1.played : 0;
+  var p2 = s2 && s2.played > 0 ? s2.played : 0;
+  var w1 = p1 / (p1 + K);
+  var w2 = p2 / (p2 + K);
 
-  // Paramètres Poisson (clampés à [0.3, 3.5])
-  var lambdaA = Math.max(0.3, Math.min(3.5, gf1 * ga2 / avgGF));
-  var lambdaB = Math.max(0.3, Math.min(3.5, gf2 * ga1 / avgGF));
+  var rawGF1 = p1 > 0 ? s1.gf / p1 : avgGF;
+  var rawGA1 = p1 > 0 ? (s1.ga || 0) / p1 : avgGA;
+  var rawGF2 = p2 > 0 ? s2.gf / p2 : avgGF;
+  var rawGA2 = p2 > 0 ? (s2.ga || 0) / p2 : avgGA;
+
+  var gf1 = w1 * rawGF1 + (1 - w1) * avgGF;
+  var ga1 = w1 * rawGA1 + (1 - w1) * avgGA;
+  var gf2 = w2 * rawGF2 + (1 - w2) * avgGF;
+  var ga2 = w2 * rawGA2 + (1 - w2) * avgGA;
+
+  var lambdaA = Math.max(0.2, Math.min(4.0, gf1 * ga2 / avgGF));
+  var lambdaB = Math.max(0.2, Math.min(4.0, gf2 * ga1 / avgGF));
 
   var MAX_G = 7;
   var bestP = -1, bestI = 1, bestJ = 0;
@@ -67,12 +78,12 @@ function computeMatchPrediction(t1, t2) {
 
   var tot = probW + probD + probL;
   return {
-    score:   bestI + '-' + bestJ,
-    probW:   Math.round(probW / tot * 100),
-    probD:   Math.round(probD / tot * 100),
-    probL:   Math.round(probL / tot * 100),
-    lambdaA: Math.round(lambdaA * 10) / 10,
-    lambdaB: Math.round(lambdaB * 10) / 10,
+    score:    bestI + '-' + bestJ,
+    probW:    Math.round(probW / tot * 100),
+    probD:    Math.round(probD / tot * 100),
+    probL:    Math.round(probL / tot * 100),
+    lambdaA:  Math.round(lambdaA * 10) / 10,
+    lambdaB:  Math.round(lambdaB * 10) / 10,
     hasStats: hasStats,
   };
 }
