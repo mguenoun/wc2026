@@ -192,31 +192,30 @@ describe('getAll3rd', () => {
     expect(r[2].team).toBe('C3');
   });
 
-  it('coTeam pèse 2 dans le saut de rang : [coTeam, simple] → rangs 1, 3', () => {
-    // F3 a un coTeam (ex æquo intra-groupe) → compte pour 2 slots → prochain rang = 3
-    // A3 sans coTeam et stats inférieures → rang 3
+  it('entrée coTeam = 1 ligne (pas 2 positions) : [coTeam(BP=2), simple(BP=1)] → rangs 1, 2', () => {
+    // Un couple coTeam occupe 1 ligne → la ligne suivante est rang 2, pas rang 3
     g.standings = {
       F: [
         { pos: 1, team: 'F1', pts: 9, gd: 5, gf: 6, played: 1 },
         { pos: 2, team: 'Japon',       pts: 1, gd: 0, gf: 2, played: 1 },
-        { pos: 3, team: 'Netherlands', pts: 1, gd: 0, gf: 2, played: 1 }, // ex æquo intra
+        { pos: 3, team: 'Netherlands', pts: 1, gd: 0, gf: 2, played: 1 }, // ex æquo intra-groupe
         { pos: 4, team: 'F4', pts: 0, gd: -5, gf: 0, played: 1 },
       ],
       A: mkGroup(
         { team: 'A1', pts: 9, gd: 4, gf: 5 },
         { team: 'A2', pts: 6, gd: 1, gf: 3 },
-        { team: 'A3', pts: 1, gd: 0, gf: 1 }, // inférieur (BP=1 < 2)
+        { team: 'A3', pts: 1, gd: 0, gf: 1 }, // BP=1 < BP=2 → inférieur
         { team: 'A4', pts: 0, gd: -5, gf: 0 },
       ),
     };
     const r = g.getAll3rd();
-    // Netherlands (F) est la 3e, Japon est le coTeam → coTeam=Japon
-    expect(r[0].coTeam).toBe('Japon');   // ou Japon selon ordre
-    expect(r[0].pts).toBe(1); expect(r[0].gd).toBe(0); expect(r[0].gf).toBe(2);
-    // A3 a BP=1 < BP=2 → inférieur → rang 3 dans renderThirds (pas 2)
+    // F3 (Netherlands) a un coTeam=Japon, stats supérieures (BP=2 > BP=1)
+    expect(r[0].coTeam).toBe('Japon');
+    expect(r[0].gf).toBe(2);
+    // A3 sans coTeam, stats inférieures → deuxième entry
     expect(r[1].team).toBe('A3');
     expect(r[1].coTeam).toBeNull();
-    // Vérification des stats : F3 (BP=2) > A3 (BP=1)
+    // Stats différentes → dispRanks [1, 2] dans renderThirds (couple = 1 ligne = 1 position)
     expect(r[0].gf > r[1].gf).toBe(true);
   });
 });
@@ -245,6 +244,20 @@ describe('resolveKOTeam', () => {
 
   it('"1er Gr.Z" (groupe inconnu) → null', () => {
     expect(g.resolveKOTeam('1er Gr.Z')).toBeNull();
+  });
+
+  it('"2e Gr.C" ex æquo 1er/2e → retourne le même couple que "1er Gr.C"', () => {
+    // Si 1er et 2e ont les mêmes stats, les slots "1er" ET "2e" affichent le même couple
+    g.standings = {
+      C: [
+        { pos: 1, team: 'France',  pts: 4, gd: 1, gf: 2, played: 2 },
+        { pos: 2, team: 'Espagne', pts: 4, gd: 1, gf: 2, played: 2 }, // ex æquo avec 1er
+        { pos: 3, team: 'Brésil',  pts: 1, gd: -1, gf: 1, played: 2 },
+        { pos: 4, team: 'Haïti',   pts: 0, gd: -1, gf: 0, played: 2 },
+      ],
+    };
+    expect(g.resolveKOTeam('1er Gr.C')).toBe('France / Espagne');
+    expect(g.resolveKOTeam('2e Gr.C')).toBe('France / Espagne'); // même couple dans les 2 slots
   });
 
   it('"2e Gr.C" ex æquo → retourne les deux équipes (scénario Brésil/Maroc)', () => {

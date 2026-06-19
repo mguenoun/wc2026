@@ -135,25 +135,14 @@ function renderThirds() {
     '<span style="min-width:28px;text-align:center;color:#0ea5e9">BP</span>' +
     '</div>';
 
-  // Rangs d'affichage compétition — une entrée avec coTeam compte pour 2 équipes.
-  // Ex : Netherlands/Japan (coTeam) = slots 1+2 → rang suivant = 3 ; pas 2.
+  // Rangs d'affichage : standard compétition (1,1,3,3...) par LIGNES — un couple
+  // coTeam n'occupe qu'une ligne car un seul des deux qualifiants restera.
   // La sélection top-8 reste sur l'index (i < 8), indépendamment des rangs affichés.
   var dispRanks = [];
-  var _prevCumul = 0;   // somme des largeurs effectives des groupes déjà clôturés
-  var _grpStart  = 0;   // index du début du groupe de lignes ex æquo courant
   all3rd.forEach(function(t, i) {
-    var tied = i > 0 &&
-      all3rd[i-1].pts === t.pts &&
-      all3rd[i-1].gd  === t.gd  &&
-      all3rd[i-1].gf  === t.gf;
-    if (!tied) {
-      // Clôturer le groupe précédent : ajouter ses largeurs effectives
-      for (var j = _grpStart; j < i; j++) _prevCumul += all3rd[j].coTeam ? 2 : 1;
-      _grpStart  = i;
-      dispRanks[i] = _prevCumul + 1;
-    } else {
-      dispRanks[i] = dispRanks[i - 1];
-    }
+    if (i === 0) { dispRanks[0] = 1; return; }
+    var p = all3rd[i - 1];
+    dispRanks[i] = (p.pts === t.pts && p.gd === t.gd && p.gf === t.gf) ? dispRanks[i - 1] : i + 1;
   });
 
   var sepInserted = false;
@@ -210,7 +199,13 @@ function resolveKOTeam(teamStr){
     var grp=standings&&standings[m1[2]];
     if(!grp||!grp[pos])return null;
     var t=grp[pos];
-    // Ex æquo : l'équipe adjacente (2e vs 3e, ou 1er vs 2e) a les mêmes stats
+    // Pour "2e Gr.X" : si 1er et 2e sont ex æquo, le slot "2e" montre le même couple que "1er"
+    if(pos===1){
+      var above=grp[0];
+      if(above&&above.pts===t.pts&&above.gd===t.gd&&above.gf===t.gf)
+        return above.team+' / '+t.team;
+    }
+    // Ex æquo vers le bas : 1er/2e (pos=0) ou 2e/3e (pos=1) ont les mêmes stats
     var adj=grp[pos+1];
     if(adj&&adj.pts===t.pts&&adj.gd===t.gd&&adj.gf===t.gf)return t.team+' / '+adj.team;
     return t.team;
