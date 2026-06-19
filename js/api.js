@@ -117,7 +117,6 @@ async function fetchAll(){
   }
 
   if(!Object.keys(standings).length)computeStandingsFromMatches();
-  buildPredictions();
 
   var src=espnOk?'KV+ESPN direct':(fdOk?'KV':'statique');
   setStatus('ok','En ligne ✓ ('+src+')');
@@ -247,7 +246,7 @@ async function fetchESPNLiveScores(){
       }
     });
     if(allMatches.some(function(m){return m.isLive;})){renderGroupsTimeline();renderKOTimeline();}
-    if(updated){computeStandingsFromMatches();buildPredictions();renderStandings();}
+    if(updated){computeStandingsFromMatches();renderStandings();}
   }catch(e){console.warn('[WC2026] fetchESPNLiveScores:',e.message);}
 }
 

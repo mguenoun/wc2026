@@ -39,27 +39,7 @@ function renderMatchRow(m){
       (m.clockDisplay?'<span style="font-size:8px;color:#22c55e;display:block;text-align:center;line-height:1.2">'+m.clockDisplay+'</span>':'');
   }
   else if(m.isFT&&m.score){sc.textContent=m.score;sc.style.color='#e2e8f0';}
-  else {
-    var pred = predictions && predictions[m.id];
-    if (pred) {
-      var _scoreColor = pred.hasStats ? '#f59e0b' : '#64748b';
-      var _wc = pred.probW >= pred.probL ? '#22c55e' : '#94a3b8';
-      var _lc = pred.probL >= pred.probW ? '#f87171' : '#94a3b8';
-      if (!pred.hasStats) { _wc = '#94a3b8'; _lc = '#94a3b8'; }
-      sc.innerHTML =
-        '<span style="display:block;font-size:10px;font-weight:700;color:' + _scoreColor + ';text-align:center;white-space:nowrap">\ud83c\udfaf\u00a0' + pred.score + '</span>' +
-        '<span style="display:block;font-size:7px;text-align:center;letter-spacing:.02em;white-space:nowrap">' +
-          '<span style="color:' + _wc + '">V' + pred.probW + '%</span>' +
-          '<span style="color:#475569">\u00b7</span>' +
-          '<span style="color:#64748b">N' + pred.probD + '%</span>' +
-          '<span style="color:#475569">\u00b7</span>' +
-          '<span style="color:' + _lc + '">D' + pred.probL + '%</span>' +
-        '</span>';
-      sc.title = (pred.hasStats ? 'Poisson' : 'Poisson (pas encore de stats)') + ' \u03bb=' + pred.lambdaA + ' / ' + pred.lambdaB;
-    } else {
-      sc.innerHTML = '<span class="status-ns">\u2013</span>';
-    }
-  }
+  else sc.innerHTML='<span class="status-ns">\u2013</span>';
 
   var city=document.createElement('span');city.className='match-city';
   city.textContent=m.city?(m.venue?'\ud83d\udccd'+m.venue+' \u00b7 '+m.city:'\ud83d\udccd'+m.city):'';
