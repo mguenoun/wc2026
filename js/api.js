@@ -176,7 +176,7 @@ function processStandings(data){
     if(s.type==='TOTAL'&&s.group&&s.table&&s.table.length){
       var grp=s.group.replace('GROUP_','').replace('Group ','').trim();
       if(!GC[grp])return;
-      standings[grp]=s.table.map(function(r){return{pos:r.position,team:r.team.shortName||r.team.name,played:r.playedGames,won:r.won,draw:r.draw,lost:r.lost,gf:r.goalsFor,ga:r.goalsAgainst,gd:r.goalDifference,pts:r.points};});
+      standings[grp]=s.table.map(function(r){return{pos:r.position,team:normTeam(r.team.shortName||r.team.name),played:r.playedGames,won:r.won,draw:r.draw,lost:r.lost,gf:r.goalsFor,ga:r.goalsAgainst,gd:r.goalDifference,pts:r.points};});
     }
   });
 }
