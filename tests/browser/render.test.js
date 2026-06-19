@@ -161,6 +161,42 @@ describe('getAll3rd', () => {
     g.standings = {};
     expect(g.getAll3rd()).toHaveLength(0);
   });
+
+  it('deux 3es de groupes différents à stats identiques → même rang (1,1,3)', () => {
+    // A3 et B3 : mêmes pts/gd/gf → renderThirds leur assignera rang 1 pour les deux
+    // C3 inférieur → rang 3 (pas 2)
+    g.standings = {
+      A: mkGroup(
+        { team: 'A1', pts: 9, gd: 5, gf: 6 },
+        { team: 'A2', pts: 6, gd: 2, gf: 4 },
+        { team: 'A3', pts: 4, gd: 1, gf: 3 },
+        { team: 'A4', pts: 0, gd: -6, gf: 0 },
+      ),
+      B: mkGroup(
+        { team: 'B1', pts: 9, gd: 4, gf: 5 },
+        { team: 'B2', pts: 6, gd: 1, gf: 3 },
+        { team: 'B3', pts: 4, gd: 1, gf: 3 }, // identique à A3
+        { team: 'B4', pts: 0, gd: -5, gf: 0 },
+      ),
+      C: mkGroup(
+        { team: 'C1', pts: 9, gd: 3, gf: 4 },
+        { team: 'C2', pts: 6, gd: 1, gf: 2 },
+        { team: 'C3', pts: 2, gd: 0, gf: 1 }, // inférieur
+        { team: 'C4', pts: 0, gd: -4, gf: 0 },
+      ),
+    };
+    const r = g.getAll3rd();
+    // A3 et B3 sont en tête avec les mêmes stats — l'un ou l'autre en [0]/[1]
+    expect(r[0].pts).toBe(4);
+    expect(r[0].gd).toBe(1);
+    expect(r[0].gf).toBe(3);
+    expect(r[1].pts).toBe(4);
+    expect(r[1].gd).toBe(1);
+    expect(r[1].gf).toBe(3);
+    // Les deux ont des stats identiques → dispRanks[0]=1, dispRanks[1]=1, dispRanks[2]=3
+    expect(r[0].pts === r[1].pts && r[0].gd === r[1].gd && r[0].gf === r[1].gf).toBe(true);
+    expect(r[2].team).toBe('C3');
+  });
 });
 
 // ── resolveKOTeam ─────────────────────────────────────────────────────────────

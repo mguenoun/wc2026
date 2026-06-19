@@ -135,10 +135,20 @@ function renderThirds() {
     '<span style="min-width:28px;text-align:center;color:#0ea5e9">BP</span>' +
     '</div>';
 
+  // Rangs d'affichage compétition (1,1,3,3...) — la sélection top-8 reste sur i < 8
+  var dispRanks = [];
+  all3rd.forEach(function(t, i) {
+    if (i === 0) { dispRanks[0] = 1; return; }
+    var p = all3rd[i - 1];
+    dispRanks[i] = (p.pts === t.pts && p.gd === t.gd && p.gf === t.gf) ? dispRanks[i - 1] : i + 1;
+  });
+
   var sepInserted = false;
   all3rd.forEach(function(t, i) {
-    var rank = i + 1;
-    var qualified = rank <= 8;
+    var rank = dispRanks[i];
+    var qualified = i < 8;
+    var isInterExAequo = (i > 0 && dispRanks[i] === dispRanks[i - 1]) ||
+                         (i < all3rd.length - 1 && dispRanks[i] === dispRanks[i + 1]);
     if (!qualified && !sepInserted) {
       html += '<div style="text-align:center;font-size:8px;color:#ef4444;padding:4px 0;letter-spacing:1px;border-bottom:1px solid rgba(255,255,255,0.04)">— Non qualifiés —</div>';
       sepInserted = true;
@@ -151,6 +161,7 @@ function renderThirds() {
       '<span style="min-width:20px;font-size:9px;font-weight:700;color:' + rankColor + '">' + rank + '</span>' +
       '<span style="min-width:22px;font-size:8px;font-weight:700;color:' + grpColor + '">Gr.' + t.group + '</span>' +
       '<span style="flex:1;font-size:10px;color:#e2e8f0">' + t.team +
+        (isInterExAequo && !t.coTeam ? '<span style="font-size:7px;color:#f59e0b;margin-left:3px">ex æq.</span>' : '') +
         (t.coTeam ? '<span style="font-size:8px;color:#94a3b8;margin-left:3px">/ ' + t.coTeam + '</span><span style="font-size:7px;color:#f59e0b;margin-left:3px">ex æq.</span>' : '') +
         (qualified ? '<span style="font-size:8px;color:#22c55e;margin-left:4px">✓</span>' : '') +
         (!isDone ? '<span style="font-size:7px;color:#f59e0b;margin-left:3px">prov.</span>' : '') +
