@@ -1,4 +1,4 @@
-// Applique les données ESPN aux allMatches (scores, statuts, clock)
+﻿// Applique les données ESPN aux allMatches (scores, statuts, clock)
 function processESPNScores(events){
   if(!events||!events.length)return false;
   var mapped=0;
@@ -248,7 +248,10 @@ async function fetchESPNLiveScores(){
         updated=true;
       }
     });
-    if(allMatches.some(function(m){return m.isLive;})){renderGroupsTimeline();renderKOTimeline();}
+    if(allMatches.some(function(m){return m.isLive;})){
+      if(activeView==='groups'&&typeof grpCalView!=='undefined'&&grpCalView==='calendar'){patchCalendarLive();}else{renderGroupsTimeline();}
+      renderKOTimeline();
+    }
     if(updated){computeStandingsFromMatches();buildPredictions();renderStandings();}
   }catch(e){console.warn('[WC2026] fetchESPNLiveScores:',e.message);}
 }

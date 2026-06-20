@@ -159,47 +159,122 @@ function renderGroupsTimeline(){
 
 // ─── VUE CALENDRIER GROUPES ──────────────────────────────────────────────────
 
+// ─── CALENDRIER GROUPES ───────────────────────────────────────────────────────
+
+function _setCalScore(el,m){
+  el.innerHTML='';
+  el.style.cssText='font-size:7px;color:'+(m.isLive?'#22c55e':m.isFT?'#94a3b8':'#475569')+';display:flex;align-items:center;gap:2px;flex-shrink:0;';
+  if(m.isLive&&m.score){
+    var bolt=document.createElement('span');bolt.className='live-lightning';bolt.textContent='⚡';
+    el.appendChild(bolt);
+    el.appendChild(document.createTextNode(m.score));
+    if(m.clockDisplay){var clk=document.createElement('span');clk.style.cssText='font-size:6px;color:#64748b;';clk.textContent=m.clockDisplay;el.appendChild(clk);}
+  } else {
+    el.textContent=(m.score&&m.isFT)?m.score:localTime(m);
+  }
+}
+
+function _buildCalCard(m){
+  var card=document.createElement('div');
+  card.dataset.mid=m.id;
+  card.style.cssText='background:'+(m.isLive?'rgba(239,68,68,0.08)':'rgba(255,255,255,0.02)')+';'
+    +'border:1px solid '+(m.isLive?'rgba(239,68,68,0.2)':'rgba(255,255,255,0.06)')+';'
+    +'border-left:2px solid '+(m.color||'#334155')+';'
+    +'border-radius:5px;padding:3px 4px;cursor:pointer;margin-bottom:2px;';
+  var top=document.createElement('div');
+  top.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:2px;';
+  var badge=document.createElement('span');
+  badge.style.cssText='font-size:7px;font-weight:800;color:'+(m.color||'#475569')+';white-space:nowrap;';
+  badge.textContent='Gr.'+m.grp;
+  var scoreEl=document.createElement('span');
+  scoreEl.dataset.score=m.id;
+  _setCalScore(scoreEl,m);
+  top.appendChild(badge);top.appendChild(scoreEl);
+  card.appendChild(top);
+  var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
+  var t1=document.createElement('div');
+  t1.style.cssText='font-size:9px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
+  t1.innerHTML=(f1?f1+' ':'')+m.t1;
+  var t2=document.createElement('div');
+  t2.style.cssText='font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
+  t2.innerHTML=(f2?f2+' ':'')+m.t2;
+  card.appendChild(t1);card.appendChild(t2);
+  var acts=document.createElement('div');
+  acts.style.cssText='display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;';
+  acts.onclick=function(e){e.stopPropagation();};
+  if(m.isLive||m.isFT){
+    var bs=document.createElement('button');bs.className='bkt-ico action-btn';bs.title='Stats';bs.textContent='📊';
+    bs.onclick=(function(_m){return function(){openMatchInfo(_m);};})(m);
+    acts.appendChild(bs);
+    if(typeof ESPN_ID_MAP!=='undefined'&&ESPN_ID_MAP[m.id]){
+      var eid=ESPN_ID_MAP[m.id];
+      var bl=document.createElement('button');bl.className='bkt-ico action-btn';bl.title='Compos';bl.textContent='👕';
+      bl.onclick=(function(_m,_e){return function(){_currentMatch=_m;openLineupESPN(_e);};})(m,eid);
+      acts.appendChild(bl);
+    }
+    if(m.isFT){
+      var ba=document.createElement('a');
+      ba.href='https://www.youtube.com/results?search_query='+encodeURIComponent(m.t1+' '+m.t2+' FIFA World Cup 2026 highlights');
+      ba.target='_blank';ba.rel='noopener';ba.title='Resume YouTube';
+      ba.style.cssText='font-size:10px;padding:1px 3px;color:#22c55e;text-decoration:none;line-height:1;display:flex;align-items:center;';
+      ba.textContent='▶';acts.appendChild(ba);
+    }
+  }
+  if(m.venue&&typeof VENUE_COORDS!=='undefined'&&VENUE_COORDS[m.venue]){
+    var bm=document.createElement('button');bm.className='bkt-ico action-btn';bm.title='Stade';bm.textContent='📍';
+    bm.onclick=(function(_m){return function(){openMap(_m);};})(m);
+    acts.appendChild(bm);
+  }
+  if(acts.childNodes.length)card.appendChild(acts);
+  card.addEventListener('click',function(){selectedId=selectedId===m.id?null:m.id;renderAll();if(selectedId)openMatchInfo(m);});
+  return card;
+}
+
+function patchCalendarLive(){
+  allMatches.forEach(function(m){
+    if(!m.isLive&&!m.isFT)return;
+    var scoreEl=document.querySelector('[data-score="'+m.id+'"]');
+    if(scoreEl)_setCalScore(scoreEl,m);
+    var card=document.querySelector('[data-mid="'+m.id+'"]');
+    if(!card)return;
+    if(m.isLive){card.style.background='rgba(239,68,68,0.08)';card.style.borderColor='rgba(239,68,68,0.2)';}
+    if((m.isLive||m.isFT)&&!card.querySelector('.bkt-ico')){
+      var td=card.parentElement;
+      if(td){var nc=_buildCalCard(m);td.replaceChild(nc,card);}
+    }
+  });
+}
+
 function renderGroupsCalendar(){
   var c=document.getElementById('groups-timeline');c.innerHTML='';
   var filtered=activeFilter==='all'
     ?allMatches.filter(function(m){return !m.ko;})
     :allMatches.filter(function(m){return m.grp===activeFilter;});
-
-  // Dates uniques triees
   var daySet={},days=[];
   filtered.forEach(function(m){if(m.dayKey&&!daySet[m.dayKey]){daySet[m.dayKey]=true;days.push(m.dayKey);}});
   days.sort();
-
-  // Stades uniques dans l ordre chronologique de leur premier match
   var venueSet={},venues=[];
   filtered.slice().sort(function(a,b){return (a.dayKey||'')>(b.dayKey||'')?1:-1;})
     .forEach(function(m){if(m.venue&&!venueSet[m.venue]){venueSet[m.venue]=true;venues.push(m.venue);}});
-
-  // Index [venue][dayKey]->[matches]
   var idx={};
   filtered.forEach(function(m){
     if(!idx[m.venue])idx[m.venue]={};
     if(!idx[m.venue][m.dayKey])idx[m.venue][m.dayKey]=[];
     idx[m.venue][m.dayKey].push(m);
   });
-
   var CW=108,VW=118;
   var DAY=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   var MON=['Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
   var todayColIdx=-1;
-
   var wrap=document.createElement('div');
   wrap.style.cssText='overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;';
-
   var tbl=document.createElement('table');
   tbl.style.cssText='border-collapse:collapse;table-layout:fixed;min-width:'+(VW+days.length*CW)+'px;';
-
-  // En-tete : coin + colonnes dates
   var thead=document.createElement('thead');
   var hrow=document.createElement('tr');
   var corner=document.createElement('th');
   corner.style.cssText='position:sticky;left:0;z-index:3;background:#07101f;width:'+VW+'px;min-width:'+VW+'px;padding:3px 6px;font-size:8px;color:#334155;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.08);text-align:left;';
-  corner.textContent='Stade · Ville';
+  corner.textContent='Ville · Stade';
   hrow.appendChild(corner);
   days.forEach(function(dk,i){
     var th=document.createElement('th');
@@ -214,47 +289,24 @@ function renderGroupsCalendar(){
   });
   thead.appendChild(hrow);
   tbl.appendChild(thead);
-
-  // Corps : une ligne par stade
   var tbody=document.createElement('tbody');
   venues.forEach(function(venue){
     var vc=VENUE_COORDS[venue];
     var city=vc?vc.city:(filtered.find(function(m){return m.venue===venue;})||{}).city||venue;
     var shortV=venue.replace(/^Estadio /,'').replace(/ Stadium$/,'').replace(/ Field$/,'').trim();
     var tr=document.createElement('tr');
-
     var vTd=document.createElement('td');
     vTd.style.cssText='position:sticky;left:0;z-index:2;background:#08101f;width:'+VW+'px;min-width:'+VW+'px;'
       +'padding:4px 6px;border-bottom:1px solid rgba(255,255,255,0.05);border-right:1px solid rgba(255,255,255,0.07);vertical-align:middle;';
     vTd.innerHTML='<div style="font-size:9px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(VW-14)+'px">'+city+'</div>'
       +'<div style="font-size:8px;color:#475569;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+venue+'">'+shortV+'</div>';
     tr.appendChild(vTd);
-
     days.forEach(function(dk){
       var td=document.createElement('td');
       var isToday=dk===TODAY_STR;
       var matches=(idx[venue]&&idx[venue][dk])||[];
       td.style.cssText='width:'+CW+'px;min-width:'+CW+'px;padding:2px 3px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top;'+(isToday?'background:rgba(251,191,36,0.03);':'');
-      matches.forEach(function(m){
-        var card=document.createElement('div');
-        var isLive=m.isLive;
-        var scoreStr=(m.score&&(m.isFT||isLive))?m.score:localTime(m);
-        var scoreCol=isLive?'#22c55e':m.isFT?'#94a3b8':'#475569';
-        var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
-        card.style.cssText='background:'+(isLive?'rgba(239,68,68,0.08)':'rgba(255,255,255,0.02)')+';'
-          +'border:1px solid '+(isLive?'rgba(239,68,68,0.2)':'rgba(255,255,255,0.06)')+';'
-          +'border-left:2px solid '+(m.color||'#334155')+';'
-          +'border-radius:5px;padding:3px 4px;cursor:pointer;margin-bottom:2px;';
-        card.innerHTML=
-          '<div style="display:flex;justify-content:space-between;margin-bottom:2px;">'
-            +'<span style="font-size:7px;font-weight:800;color:'+(m.color||'#475569')+'">Gr.'+m.grp+'</span>'
-            +'<span style="font-size:7px;color:'+scoreCol+'">'+scoreStr+'</span>'
-          +'</div>'
-          +'<div style="font-size:9px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(f1?f1+' ':'')+m.t1+'</div>'
-          +'<div style="font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(f2?f2+' ':'')+m.t2+'</div>';
-        card.addEventListener('click',function(){selectedId=selectedId===m.id?null:m.id;renderAll();if(selectedId)openMatchInfo(m);});
-        td.appendChild(card);
-      });
+      matches.forEach(function(m){td.appendChild(_buildCalCard(m));});
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
@@ -262,13 +314,10 @@ function renderGroupsCalendar(){
   tbl.appendChild(tbody);
   wrap.appendChild(tbl);
   c.appendChild(wrap);
-
-  // Scroll vers aujourd hui
   if(todayColIdx>=0){
     setTimeout(function(){wrap.scrollLeft=Math.max(0,VW+todayColIdx*CW-80);},50);
   }
 }
-
 // Ordre des phases KO et couleurs associées
 var KO_PHASES=[
   {key:'16es', label:'16es de fin.', color:'#8b5cf6'},

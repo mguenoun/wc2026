@@ -1,4 +1,4 @@
-// ─── MAP STADE ───────────────────────────────────────────────────────────────
+﻿// ─── MAP STADE ───────────────────────────────────────────────────────────────
 // Affichage OpenStreetMap + lien Google Maps pour un stade (modal)
 
 // ─── VUE STADES ──────────────────────────────────────────────────────────────
@@ -31,7 +31,8 @@ function renderStadesMap(){
         radius:8,fillColor:'#0ea5e9',color:'#fff',weight:1.5,opacity:1,fillOpacity:.85
       }).addTo(_stadesMap);
       _stadesMarkers[name]=marker;
-      marker.bindTooltip('<b>'+v.city+'</b><br><span style="font-size:10px;color:#94a3b8">'+name+'</span>',{direction:'top',offset:[0,-8],className:'stade-lbl'});
+      var mc=allMatches.filter(function(x){return x.venue===name;}).length;
+      marker.bindTooltip('<b>'+v.city+'</b><br><span style="font-size:10px;color:#94a3b8">'+name+'</span><br><span style="font-size:9px;color:#475569">'+v.cap.toLocaleString('fr-FR')+' places · '+mc+' matchs</span>',{direction:'top',offset:[0,-8],className:'stade-lbl'});
       marker.on('click',function(){_showStadeInfo(name,v,panel);});
     });
   } else {
