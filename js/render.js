@@ -1,4 +1,4 @@
-﻿// ─── LISTE DES MATCHS ────────────────────────────────────────────────────────
+// ─── LISTE DES MATCHS ────────────────────────────────────────────────────────
 
 function renderMatchRow(m){
   var sel=selectedId===m.id;
@@ -459,7 +459,7 @@ function renderThirds() {
       (qualified ? 'background:rgba(34,197,94,0.04)' : '') + '">' +
       '<span style="min-width:20px;font-size:9px;font-weight:700;color:' + rankColor + '">' + rank + '</span>' +
       '<span style="min-width:22px;font-size:8px;font-weight:700;color:' + grpColor + '">Gr.' + t.group + '</span>' +
-      '<span style="flex:1;font-size:10px;color:#e2e8f0">' + t.team +
+      '<span style="flex:1;font-size:10px;color:#e2e8f0">' + (flagEmoji(t.team)||'') + ' ' + t.team +
         (isInterExAequo && !t.coTeam ? '<span style="font-size:7px;color:#f59e0b;margin-left:3px">ex æq.</span>' : '') +
         (t.coTeam ? '<span style="font-size:8px;color:#94a3b8;margin-left:3px">/ ' + t.coTeam + '</span><span style="font-size:7px;color:#f59e0b;margin-left:3px">ex æq.</span>' : '') +
         (qualified ? '<span style="font-size:8px;color:#22c55e;margin-left:4px">✓</span>' : '') +
@@ -673,7 +673,7 @@ function makeBracketCard(m, phase){
   var row1=document.createElement('div');
   row1.className='bkt-team'+(w1?' bkt-win':'')+(tbd1?' bkt-tbd':'');
   var left1=document.createElement('div');left1.className='bkt-left';
-  var tn1=document.createElement('span');tn1.className='bkt-tn';tn1.textContent=m.t1||'?';
+  var tn1=document.createElement('span');tn1.className='bkt-tn';if(!tbd1){tn1.innerHTML=(flagEmoji(m.t1)||'')+' ';tn1.appendChild(document.createTextNode(m.t1||'?'));}else{tn1.textContent=m.t1||'?';}
   left1.appendChild(tn1);
   if(res1){var r1el=document.createElement('span');r1el.className='bkt-res';r1el.textContent='('+res1+')';left1.appendChild(r1el);}
   var sc1=document.createElement('span');sc1.className='bkt-sc';sc1.textContent=(isFT||isLive)?s1:'';
@@ -683,7 +683,7 @@ function makeBracketCard(m, phase){
   var row2=document.createElement('div');
   row2.className='bkt-team'+(w2?' bkt-win':'')+(tbd2?' bkt-tbd':'');
   var left2=document.createElement('div');left2.className='bkt-left';
-  var tn2=document.createElement('span');tn2.className='bkt-tn';tn2.textContent=m.t2||'?';
+  var tn2=document.createElement('span');tn2.className='bkt-tn';if(!tbd2){tn2.innerHTML=(flagEmoji(m.t2)||'')+' ';tn2.appendChild(document.createTextNode(m.t2||'?'));}else{tn2.textContent=m.t2||'?';}
   left2.appendChild(tn2);
   if(res2){var r2el=document.createElement('span');r2el.className='bkt-res';r2el.textContent='('+res2+')';left2.appendChild(r2el);}
   var sc2=document.createElement('span');sc2.className='bkt-sc';sc2.textContent=(isFT||isLive)?s2:'';
@@ -782,7 +782,7 @@ function renderStandings(){
       var row=document.createElement('div');row.className='standing-row';
       var dot=document.createElement('div');dot.className='qualified-dot';dot.style.background=qualified?col:i===2&&grpPlayed?hex2rgba(col,.4):'#1e3a5f';
       var pos=document.createElement('span');pos.className='standing-pos';pos.style.color=qualified?col:'#475569';pos.textContent=dispRanks[i]+'.';
-      var team=document.createElement('span');team.className='standing-team';team.textContent=r.team;
+      var team=document.createElement('span');team.className='standing-team';var _fl=flagEmoji(r.team);if(_fl){team.innerHTML=_fl+' ';}team.appendChild(document.createTextNode(r.team));
       if(isExAequo){var eq=document.createElement('span');eq.style.cssText='font-size:7px;color:#f59e0b;margin-left:3px';eq.textContent='ex æq.';team.appendChild(eq);}
       var pts=document.createElement('span');pts.className='standing-pts';pts.style.color=qualified?col:'#64748b';pts.textContent=r.pts;
       var stats=document.createElement('span');stats.className='standing-stats';stats.textContent=r.played+'J '+(r.gd>0?'+':'')+r.gd+' ('+r.gf+'B)';
@@ -826,14 +826,47 @@ function renderKPIBar(){
   var cardSubRC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgRC+'/m</span>';
   el.innerHTML=
     '<div class="kpi-grid">'+
-    (live>0?'<div class="kpi-card kpi-live"><div class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite">⚡ '+live+'</div><div class="kpi-lbl">EN DIRECT</div></div>':'')+
+    (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;flex:2;max-width:320px;padding:8px 14px;"><div class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite">⚡ '+live+'</div><div class="kpi-lbl">EN DIRECT</div><div id="kpi-live-matches"></div></div>':'')+
     '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div></div>'+
     '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24">🟨 '+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
     '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444">🟥 '+totalRC+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
     '</div>';
+  // Mini-matchs en cours cliquables dans la KPI live
+  if(live>0){
+    var _liveMs=src.filter(function(m){return m.isLive;});
+    var _lmc=document.getElementById('kpi-live-matches');
+    if(_lmc){
+      _liveMs.forEach(function(m){
+        var row=document.createElement('div');
+        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:3px 0;display:flex;align-items:center;gap:3px;flex-wrap:wrap;justify-content:center;';
+        row.innerHTML='<span style="font-size:9px;color:#e2e8f0;white-space:nowrap">'+(flagEmoji(m.t1)||'')+' '+m.t1+'</span>'
+          +'<span style="font-size:10px;font-weight:900;color:#22c55e;padding:0 4px">'+(m.score||'–')+'</span>'
+          +'<span style="font-size:9px;color:#e2e8f0;white-space:nowrap">'+m.t2+' '+(flagEmoji(m.t2)||'')+'</span>'
+          +(m.clockDisplay?'<span style="font-size:7px;color:#64748b;width:100%;text-align:center">'+m.clockDisplay+'</span>':'');
+        row.addEventListener('click',function(e){e.stopPropagation();scrollToMatch(m.id);});
+        _lmc.appendChild(row);
+      });
+      var _kpiCard=document.getElementById('kpi-live-card');
+      if(_kpiCard)_kpiCard.addEventListener('click',function(){scrollToMatch(_liveMs[0].id);});
+    }
+  }
 }
+
+function scrollToMatch(matchId){
+  if(activeView!=='groups'){switchView('groups');}
+  if(typeof grpCalView!=='undefined'&&grpCalView==='calendar'){grpCalView='list';renderGroupsTimeline();}
+  setTimeout(function(){
+    var el=document.querySelector('[data-mid="'+matchId+'"]');
+    if(el){
+      el.scrollIntoView({behavior:'smooth',block:'center'});
+      el.style.outline='2px solid #22c55e';
+      setTimeout(function(){el.style.outline='';},1500);
+    }
+  },160);
+}
+
 
 // ─── FAIR PLAY ────────────────────────────────────────────────────────────────
 

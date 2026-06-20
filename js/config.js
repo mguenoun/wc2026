@@ -91,7 +91,7 @@ function flagEmoji(name) {
   var code = FLAG[name];
   if (!code) return '';
   var src = 'https://flagcdn.com/20x15/' + code.toLowerCase() + '.png';
-  return '<img src="' + src + '" width="20" height="15" style="vertical-align:middle;border-radius:1px;margin-right:2px" alt="" loading="lazy">';
+  return '<img src="' + src + '" width="13" height="10" style="vertical-align:middle;border-radius:1px;margin-right:2px" alt="" loading="lazy">';
 }
 
 const GC = {A:'#0ea5e9',B:'#06b6d4',C:'#10b981',D:'#f59e0b',E:'#ef4444',F:'#f97316',G:'#8b5cf6',H:'#ec4899',I:'#14b8a6',J:'#a855f7',K:'#22c55e',L:'#f43f5e'};

@@ -36,7 +36,7 @@ async function fetchKeepers() {
       var rankColor = i === 0 ? '#fbbf24' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7f32' : '#475569';
       html += '<div class="scorer-row">' +
         '<span class="scorer-rank" style="color:' + rankColor + '">' + (i + 1) + '</span>' +
-        '<span class="scorer-name">' + k.name +
+        '<span class="scorer-name">' + (flagEmoji(k.team)||'') + ' ' + k.name +
           '<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">(' + k.team + ')</span>' +
         '</span>' +
         '<span style="font-size:10px;color:#64748b;min-width:28px;text-align:center">' + k.matches + '</span>' +
