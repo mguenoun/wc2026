@@ -15,8 +15,8 @@ function renderMatchRow(m){
   var _f1=flagEmoji(m.t1),_f2=flagEmoji(m.t2);
   if(m.ko){
     var _r1=resolveKOTeam(m.t1),_r2=resolveKOTeam(m.t2);
-    if(_r1)_t1+=' <span class="ko-res">('+_r1+')</span>';
-    if(_r2)_t2+=' <span class="ko-res">('+_r2+')</span>';
+    if(_r1){var _rf1=flagEmoji(_r1.split(' / ')[0])||'';_t1+=' <span class="ko-res">'+(_rf1?_rf1+' ':'')+'('+_r1+')</span>';}
+    if(_r2){var _rf2=flagEmoji(_r2.split(' / ')[0])||'';_t2+=' <span class="ko-res">'+(_rf2?_rf2+' ':'')+'('+_r2+')</span>';}
   }
   teams.innerHTML=(_f1?_f1+' ':'')+_t1+'<span class="vs">–</span>'+(_f2?_f2+' ':'')+_t2;
 
@@ -675,7 +675,7 @@ function makeBracketCard(m, phase){
   var left1=document.createElement('div');left1.className='bkt-left';
   var tn1=document.createElement('span');tn1.className='bkt-tn';if(!tbd1){tn1.innerHTML=(flagEmoji(m.t1)||'')+' ';tn1.appendChild(document.createTextNode(m.t1||'?'));}else{tn1.textContent=m.t1||'?';}
   left1.appendChild(tn1);
-  if(res1){var r1el=document.createElement('span');r1el.className='bkt-res';r1el.textContent='('+res1+')';left1.appendChild(r1el);}
+  if(res1){var r1el=document.createElement('span');r1el.className='bkt-res';r1el.innerHTML=(flagEmoji(res1.split(' / ')[0])||'')+' ('+res1+')';left1.appendChild(r1el);}
   var sc1=document.createElement('span');sc1.className='bkt-sc';sc1.textContent=(isFT||isLive)?s1:'';
   row1.appendChild(left1);row1.appendChild(sc1);
 
@@ -685,7 +685,7 @@ function makeBracketCard(m, phase){
   var left2=document.createElement('div');left2.className='bkt-left';
   var tn2=document.createElement('span');tn2.className='bkt-tn';if(!tbd2){tn2.innerHTML=(flagEmoji(m.t2)||'')+' ';tn2.appendChild(document.createTextNode(m.t2||'?'));}else{tn2.textContent=m.t2||'?';}
   left2.appendChild(tn2);
-  if(res2){var r2el=document.createElement('span');r2el.className='bkt-res';r2el.textContent='('+res2+')';left2.appendChild(r2el);}
+  if(res2){var r2el=document.createElement('span');r2el.className='bkt-res';r2el.innerHTML=(flagEmoji(res2.split(' / ')[0])||'')+' ('+res2+')';left2.appendChild(r2el);}
   var sc2=document.createElement('span');sc2.className='bkt-sc';sc2.textContent=(isFT||isLive)?s2:'';
   row2.appendChild(left2);row2.appendChild(sc2);
 
@@ -811,9 +811,12 @@ function renderKPIBar(){
   // fairplayData couvre les matchs de groupe (ESPN stats) ; KO = 0 jusqu'à première phase jouée
   var totalYC=0,totalRC=0;
   if(played>0&&!isKO){
+    var _fpCards=0;
     if(fairplayData&&fairplayData.length){
-      fairplayData.forEach(function(t){totalYC+=t.yc||0;totalRC+=t.rc||0;});
-    } else {
+      fairplayData.forEach(function(t){_fpCards+=(t.yc||0)+(t.rc||0);totalYC+=t.yc||0;totalRC+=t.rc||0;});
+    }
+    if(_fpCards===0){
+      totalYC=0;totalRC=0;
       Object.values(standings).forEach(function(tbl){
         tbl.forEach(function(r){totalYC+=r.yc||0;totalRC+=r.rc||0;});
       });
