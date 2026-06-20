@@ -829,8 +829,8 @@ function renderKPIBar(){
   var cardSubYC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgYC+'/m</span>';
   var cardSubRC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgRC+'/m</span>';
   el.innerHTML=
-    (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;max-width:none;padding:10px 14px;margin-bottom:10px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite;font-size:18px">⚡ '+live+'</span><span class="kpi-lbl" style="font-size:9px;color:#22c55e;letter-spacing:1.5px">EN DIRECT</span></div><div id="kpi-live-matches"></div></div>':'')+
     '<div class="kpi-grid">'+
+    (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;flex:3;min-width:110px;max-width:320px;padding:10px 14px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite;font-size:18px">⚡ '+live+'</span><span class="kpi-lbl" style="font-size:9px;color:#22c55e;letter-spacing:1.5px">EN DIRECT</span></div><div id="kpi-live-matches"></div></div>':'')+
     '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div></div>'+
