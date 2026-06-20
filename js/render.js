@@ -848,12 +848,12 @@ function renderKPIBar(){
         row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:2px 0;display:flex;align-items:center;gap:2px;white-space:nowrap;';
         row.innerHTML=
           (flagEmoji(m.t1)||'')+
-          '<b style="font-size:8px;color:#e2e8f0">'+_iso(m.t1)+'</b>'+
+          '<b style="font-size:7px;color:#e2e8f0">'+_iso(m.t1)+'</b>'+
           '<span style="display:inline-flex;flex-direction:column;align-items:center;margin:0 3px">'+
             (m.clockDisplay?'<span style="font-size:6px;color:#64748b;line-height:1.2">'+m.clockDisplay+'</span>':'')+
-            '<span style="font-size:10px;font-weight:900;color:#22c55e;line-height:1">'+(m.score||'–')+'</span>'+
+            '<span style="font-size:8px;font-weight:900;color:#22c55e;line-height:1">'+(m.score||'–')+'</span>'+
           '</span>'+
-          '<b style="font-size:8px;color:#e2e8f0">'+_iso(m.t2)+'</b>'+
+          '<b style="font-size:7px;color:#e2e8f0">'+_iso(m.t2)+'</b>'+
           (flagEmoji(m.t2)||'');
         row.addEventListener('click',function(e){e.stopPropagation();scrollToMatch(m.id);});
         _lmc.appendChild(row);
