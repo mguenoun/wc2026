@@ -841,12 +841,14 @@ function renderKPIBar(){
     var _liveMs=src.filter(function(m){return m.isLive;});
     var _lmc=document.getElementById('kpi-live-matches');
     if(_lmc){
+      function _iso(name){var c=FLAG[name]||(TEAM_MAP[name]&&FLAG[TEAM_MAP[name]])||'';return c?c.replace(/^GB-/,'').toUpperCase():(name||'???').slice(0,3).toUpperCase();}
       _liveMs.forEach(function(m){
         var row=document.createElement('div');
-        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:2px 0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:3px;';
-        row.innerHTML='<span style="font-size:8px;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">'+(flagEmoji(m.t1)||'')+' '+m.t1+'</span>'
-          +'<span style="font-size:9px;font-weight:900;color:#22c55e;white-space:nowrap;text-align:center">'+(m.score||'–')+(m.clockDisplay?'<br><span style="font-size:6px;color:#64748b;font-weight:400">'+m.clockDisplay+'</span>':'')+'</span>'
-          +'<span style="font-size:8px;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+m.t2+' '+(flagEmoji(m.t2)||'')+'</span>';
+        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:3px 0;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;';
+        row.innerHTML=(flagEmoji(m.t1)||'')+' <b style="font-size:9px;color:#e2e8f0">'+_iso(m.t1)+'</b>'
+          +' <span style="font-size:10px;font-weight:900;color:#22c55e;padding:0 3px">'+(m.score||'–')+'</span>'
+          +(m.clockDisplay?'<span style="font-size:7px;color:#64748b">'+m.clockDisplay+'</span>':'')
+          +' <b style="font-size:9px;color:#e2e8f0">'+_iso(m.t2)+'</b> '+(flagEmoji(m.t2)||'');
         row.addEventListener('click',function(e){e.stopPropagation();scrollToMatch(m.id);});
         _lmc.appendChild(row);
       });
@@ -865,10 +867,13 @@ function scrollToMatch(matchId){
   setTimeout(function(){
     var el=document.querySelector('[data-mid="'+matchId+'"]');
     if(!el)return;
-    el.scrollIntoView({behavior:'smooth',block:'center'});
+    var rect=el.getBoundingClientRect();
+    var targetY=(window.pageYOffset||document.documentElement.scrollTop)+rect.top-window.innerHeight/2+rect.height/2;
+    window.scrollTo({top:Math.max(0,targetY),behavior:'smooth'});
+    el.style.background='rgba(34,197,94,0.12)';
     el.style.outline='2px solid #22c55e';
-    setTimeout(function(){el.style.outline='';},1500);
-  },needNav||needList?300:80);
+    setTimeout(function(){el.style.background='';el.style.outline='';},2000);
+  },needNav||needList?350:120);
 }
 
 
