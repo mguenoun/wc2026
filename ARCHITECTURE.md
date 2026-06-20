@@ -1,5 +1,112 @@
 # WC2026 Dashboard — Architecture & Documentation
 
+---
+
+## Description fonctionnelle
+
+### Vision d'ensemble
+
+Le **Dashboard WC2026** est une application web temps réel de suivi de la Coupe du Monde 2026 (USA / Canada / Mexique, 48 équipes, 104 matchs). Accessible depuis n'importe quel navigateur, sans installation, elle offre :
+- Le suivi des matchs **en direct** (scores live, minute de jeu)
+- Les **classements de groupe** mis à jour en temps réel
+- Des **prédictions de score** basées sur un modèle Poisson avec prior FIFA
+- Les **statistiques individuelles** des joueurs agrégées depuis ESPN
+- Le classement **Fair Play** par cartons
+- L'adaptation automatique des **horaires au fuseau local** de l'utilisateur
+
+### Interface utilisateur — Navigation
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  ⚽ WC 2026   🕐 Heure locale (GMT+X)         [🔴 N EN DIRECT]      │
+│──────────────────────────────────────────────────────────────────────│
+│  [Phase de Groupes] [Classements] [Meilleurs 3es] [Élim. Directe]   │
+│  [Buteurs]          [Gardiens]    [Joueurs]        [🤝 Fair Play]    │
+│──────────────────────────────────────────────────────────────────────│
+│  ┌─ KPI Bar (Groupes / Élim. Directe uniquement) ─────────────────┐ │
+│  │  ⚡ N live │ N MATCHS │ N JOUÉS │ N BUTS moy.X/m │ 🟨N  🟥N  │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  [Contenu de l'onglet actif]                                         │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Onglets et contenu fonctionnel
+
+#### 🗓️ Phase de Groupes (`groups`)
+
+Affiche le calendrier complet des 72 matchs de phase de groupes, organisé par date. Pour chaque match :
+- **Statut** : `NS` (à venir), score live avec minute de jeu, ou score final `FT`
+- **Heure** : convertie dans le fuseau horaire local du navigateur (si différent du Maroc)
+- **Prédiction** : score prédit `🎯 X-Y` avec probabilités V / N / D (modèle Poisson + prior FIFA)
+- **Boutons Stats / Compos** sur les matchs terminés (données ESPN via Worker KV)
+- **Filtre groupe** : boutons A–L pour filtrer les matchs par groupe
+
+> **Source** : matchs depuis football-data.org → cache KV Worker → `allMatches`. Scores live depuis ESPN scoreboard → Worker `/data/live`.
+
+#### 📊 Classements (`standings`)
+
+Classements par groupe (Pts / J / V / N / D / BP / BC / DB), mis à jour en temps réel.
+
+> **Source** : football-data.org standings → cache KV Worker → `standings`.
+
+#### 🥉 Meilleurs 3èmes (`thirds`)
+
+Liste des 12 troisièmes de groupe avec leur bilan, les 8 qualifiés mis en évidence (règle FIFA). Gestion des ex æquo (badge `ex æq.`), indicateur provisoire `prov.` si le groupe n'est pas terminé.
+
+> **Source** : calculé depuis `allMatches` et `standings` en mémoire locale.
+
+#### 🏆 Élimination Directe (`knockout`)
+
+Vue liste ou bracket visuel des 32 matchs KO (32es → finale). Les placeholders (`1er Gr.A`, `V M73`…) sont résolus dynamiquement depuis les classements. Les matchs à venir affichent une prédiction de score.
+
+> **Source** : structure statique `fallback.js` + résolution dynamique depuis `standings`.
+
+#### ⚽ Buteurs (`scorers`)
+
+Top 20 des buteurs du tournoi avec nombre de buts et équipe.
+
+> **Source** : football-data.org scorers → cache KV Worker → `scorers`.
+
+#### 🧤 Gardiens (`keepers`)
+
+Classement des gardiens par `saves` cumulées (matchs joués, buts encaissés, clean sheets).
+
+> **Source** : pipeline stats ESPN → KV `match:*` → Worker `/stats/keepers`.
+
+#### 👤 Joueurs (`players`)
+
+Classement des joueurs par note moyenne pondérée (algo Rating v8). Colonnes : MJ, Min cumulées, Buts, Assists, Note.
+
+> **Source** : pipeline stats ESPN → KV `match:*` → Worker `/stats/players`.
+
+#### 🤝 Fair Play (`fairplay`)
+
+Classement des équipes par fair play : score `FP = jaunes + 3 × rouges` croissant. Les 5 meilleures équipes sont affichées en vert.
+
+> **Source** : stats ESPN par joueur (KV `match:*`) agrégées par équipe → Worker `/stats/fairplay`.
+
+### KPI Bar
+
+Affichée en haut des onglets **Phase de Groupes** et **Élimination Directe**, la barre KPI présente les statistiques agrégées de la phase active :
+
+| Indicateur | Description |
+|---|---|
+| ⚡ N **EN DIRECT** | Matchs actuellement en cours (affiché seulement si > 0) |
+| N **MATCHS** | Total des rencontres de la phase |
+| N **JOUÉS** | Matchs terminés (FT) |
+| N **BUTS** + moy./m | Total des buts marqués et moyenne par match joué |
+| 🟨 N **JAUNES** + moy./m | Cartons jaunes totaux (depuis `/stats/fairplay`) |
+| 🟥 N **ROUGES** + moy./m | Cartons rouges totaux (depuis `/stats/fairplay`) |
+
+> Les cartons KO affichent 0 tant qu'aucun match KO n'est terminé dans ESPN stats.
+
+### Fuseau horaire automatique
+
+L'heure locale du navigateur est auto-détectée via `Intl.DateTimeFormat().resolvedOptions().timeZone` (variable globale `USER_TZ`). Les horaires des matchs (champ `utcDate` de football-data.org) sont convertis et affichés dans ce fuseau. Le fuseau détecté est affiché dynamiquement dans l'en-tête. Le regroupement par journée reste en heure Maroc (UTC+1, `DISPLAY_TZ`) pour la cohérence du calendrier.
+
+---
+
 ## Vue d'ensemble
 
 Dashboard de suivi de la Coupe du Monde 2026 (USA/Canada/Mexique), déployé en tant que site statique sur **Cloudflare Pages** (branches `main` → prod, `staging` → recette) avec un backend serverless sur **Cloudflare Workers** (v7) et un cache persistant **Cloudflare KV**.
@@ -37,6 +144,7 @@ Dashboard de suivi de la Coupe du Monde 2026 (USA/Canada/Mexique), déployé en 
 │   Routes stats & pipeline :                                      │
 │   /stats/players         → Classement joueurs (depuis match:*)  │
 │   /stats/keepers         → Classement gardiens (depuis match:*) │
+│   /stats/fairplay        → Classement fair play (depuis match:*)│
 │   /stats/status          → État du pipeline                     │
 │   /stats/init            → POST : initialisation ESPN_ID_MAP    │
 │   /stats/step1|2|3       → Déclenchement manuel pipeline        │
@@ -82,33 +190,33 @@ Dashboard de suivi de la Coupe du Monde 2026 (USA/Canada/Mexique), déployé en 
 wc2026/
 ├── index.html             # Page principale (Cloudflare Pages)
 └── js/
-    ├── config.js      v2  # Constantes, maps, utilitaires
+    ├── config.js      v3  # Constantes, maps, utilitaires, USER_TZ, localTime()
     ├── fallback.js    v3  # Données statiques matchs (63 matchs + KO)
-    ├── api.js         v10 # Fetch Worker, traitement scores live
+    ├── api.js         v12 # Fetch Worker, traitement scores live, fetchFairPlay()
     ├── predictions.js v5  # Modèle Poisson v4 (prédictions matchs à venir)
     ├── ratings.js     v4  # Algo rating joueurs v8 (sans xG/xA)
     ├── modal.js       v7  # Modales stats match + lien YouTube par but
     ├── pitch.js       v4  # Terrain SVG, compositions, openLineupESPN
     ├── map.js         v7  # Affichage stade (OpenStreetMap + Google Maps)
-    ├── render.js      v11 # Liste matchs, prédictions, YouTube, bracket KO, Meilleurs 3èmes
+    ├── render.js      v13 # Liste matchs, prédictions, YouTube, bracket KO, Meilleurs 3èmes, Fair Play, KPI bar
     ├── rankings.js    v3  # Gardiens, buteurs, classement joueurs (avec Min)
-    └── state.js       v6  # renderAll, switchView (7 vues), scheduleRefresh
+    └── state.js       v8  # renderAll, switchView (8 vues), scheduleRefresh, init fuseau
 ```
 
 ### Ordre de chargement des scripts (critique)
 
 ```html
-<script src="js/config.js?v=2"></script>       <!-- 1. Constantes globales -->
+<script src="js/config.js?v=3"></script>       <!-- 1. Constantes globales, USER_TZ, localTime() -->
 <script src="js/fallback.js?v=3"></script>     <!-- 2. Données statiques -->
-<script src="js/api.js?v=10"></script>         <!-- 3. Fetch Worker/FD -->
+<script src="js/api.js?v=12"></script>         <!-- 3. Fetch Worker/FD, fetchFairPlay() -->
 <script src="js/predictions.js?v=5"></script>  <!-- 4. Modèle Poisson v4 -->
 <script src="js/ratings.js?v=4"></script>      <!-- 5. Algo rating v8 -->
 <script src="js/modal.js?v=7"></script>        <!-- 6. Modales + YouTube par but -->
 <script src="js/pitch.js?v=4"></script>        <!-- 7. Terrain SVG -->
 <script src="js/map.js?v=7"></script>          <!-- 8. Affichage stade (openMap) -->
-<script src="js/render.js?v=11"></script>      <!-- 9. Liste matchs, prédictions, YouTube, bracket KO, Meilleurs 3èmes -->
+<script src="js/render.js?v=13"></script>      <!-- 9. Liste matchs, prédictions, YouTube, bracket KO, Meilleurs 3èmes, Fair Play, KPI bar -->
 <script src="js/rankings.js?v=3"></script>     <!-- 10. Classements joueurs -->
-<script src="js/state.js?v=6"></script>        <!-- 11. Init + orchestration (7 vues) -->
+<script src="js/state.js?v=8"></script>        <!-- 11. Init + orchestration (8 vues), init fuseau -->
 ```
 
 ### Variables globales clés (config.js)
@@ -122,9 +230,12 @@ wc2026/
 | `allMatches` | Array des matchs (peuplé par `loadFallback()`) |
 | `standings` | Classements par groupe (peuplé par `fetchAll()`) |
 | `scorers` | Liste des buteurs (peuplé par `fetchAll()`) |
+| `fairplayData` | Array équipes avec `{team, yc, rc}` (peuplé par `fetchFairPlay()`) |
+| `fairplayLoaded` | Boolean garde-fou pour le lazy-load fair play |
 | `activeFilter` | Filtre groupe actif ('all' ou lettre) |
 | `_currentMatch` | Match actuellement ouvert en modale |
-| `DISPLAY_TZ` | Timezone d'affichage (`Africa/Casablanca`) |
+| `DISPLAY_TZ` | Timezone d'affichage fixe (`Africa/Casablanca`) — groupes par jour, TODAY_STR |
+| `USER_TZ` | Timezone du navigateur (auto-détecté via `Intl.DateTimeFormat`) — heures des matchs |
 
 ---
 
@@ -146,6 +257,7 @@ wc2026/
 | `/data/matches` | KV `cache:matches` | ~30min (step0) |
 | `/data/standings` | KV `cache:standings` | ~30min si changement (step0) |
 | `/data/scorers` | KV `cache:scorers` | 3h (step0) |
+| `/stats/fairplay` | KV `match:*` agrégé par équipe | Calculé à la demande |
 
 ### Pipeline de calcul des stats joueurs
 
@@ -454,17 +566,17 @@ Cloudflare Dashboard → worker `wc2026` → **Observability** → **Logs** : fi
 mguenoun/wc2026 (repo)
 ├── index.html             # Cloudflare Pages (main → prod, staging → recette)
 ├── js/
-│   ├── config.js      v2
+│   ├── config.js      v3  # USER_TZ, localTime(), liveMinute() avec utcDate
 │   ├── fallback.js    v3
-│   ├── api.js         v10
+│   ├── api.js         v12 # fetchFairPlay(), utcDate dans processMatches(), yc/rc standings
 │   ├── predictions.js v5  # Modèle Poisson v4 + prior FIFA
 │   ├── ratings.js     v4
 │   ├── modal.js       v7  # Lien YouTube par but
 │   ├── pitch.js       v4
 │   ├── map.js         v7  # Stade : openMap() uniquement (OSM + Google Maps)
-│   ├── render.js      v11 # Liste matchs, prédictions, YouTube, bracket KO, 3èmes
+│   ├── render.js      v13 # KPI bar, renderFairPlay(), localTime() dans matchRow
 │   ├── rankings.js    v3  # Min cumulées + Moy. pondérée
-│   └── state.js       v6  # 7 vues : groups/standings/thirds/knockout/scorers/keepers/players
+│   └── state.js       v8  # 8 vues (+ fairplay), KPI bar toggle, init fuseau horaire
 ├── worker/
 │   └── worker.js    v7   # Deploye via wrangler deploy
 ├── tests/
@@ -552,9 +664,9 @@ wrangler secret put API_TOKEN_FD
 <text x="180" y="106" text-anchor="middle" font-size="9" fill="#3C3489">main → prod  ·  staging → recette</text>
 <rect x="50" y="128" width="260" height="94" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
 <text x="180" y="148" text-anchor="middle" font-size="11" font-weight="bold" fill="#26215C">js/ (11 fichiers)</text>
-<text x="180" y="166" text-anchor="middle" font-size="9" fill="#3C3489">config v2 · fallback v3 · predictions v5</text>
-<text x="180" y="182" text-anchor="middle" font-size="9" fill="#3C3489">api v10 · ratings v4 · modal v7 · pitch v4</text>
-<text x="180" y="198" text-anchor="middle" font-size="9" fill="#3C3489">map v6 · render v10 · rankings v3 · state v6</text>
+<text x="180" y="166" text-anchor="middle" font-size="9" fill="#3C3489">config v3 · fallback v3 · predictions v5</text>
+<text x="180" y="182" text-anchor="middle" font-size="9" fill="#3C3489">api v12 · ratings v4 · modal v7 · pitch v4</text>
+<text x="180" y="198" text-anchor="middle" font-size="9" fill="#3C3489">map v7 · render v13 · rankings v3 · state v8</text>
 <!-- Cloudflare Worker -->
 <rect x="30" y="268" width="300" height="280" rx="14" fill="#e1f5ee" stroke="#1D9E75" stroke-width="1"/>
 <text x="180" y="294" text-anchor="middle" font-size="13" font-weight="bold" fill="#085041">Cloudflare Worker v7</text>
