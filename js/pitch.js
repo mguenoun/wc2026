@@ -196,6 +196,8 @@ function openLineupESPN(espnId){
         if(gridEl)gridEl.innerHTML=
           '<div>'+renderPlayerList(r0,col0,namesByTeam[0],cardMap,playerStats)+'</div>'+
           '<div>'+renderPlayerList(r1,col1,namesByTeam[1],cardMap,playerStats)+'</div>';
+        // Match maintenant en KV → rafraîchir fair play + KPI cartons
+        fetchFairPlay();
       }).catch(function(e){console.warn('Ratings load error:',e.message);});
     })
     .catch(function(e){document.getElementById('modal-body').innerHTML='<p style="color:#ef4444;font-size:11px;padding:12px">Erreur: '+e.message+'</p>';});
