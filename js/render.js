@@ -8,7 +8,7 @@ function renderMatchRow(m){
 
   var bg=document.createElement('span');bg.className='grp-badge';bg.style.background=hex2rgba(m.color,0.15);bg.style.color=m.color;bg.textContent=m.grp?'Gr.'+m.grp:(m.phase||'');
   var mid=document.createElement('span');mid.className='match-id';mid.textContent=m.id.length>4?'':m.id;
-  var tim=document.createElement('span');tim.className='match-time';tim.textContent=m.time||'';
+  var tim=document.createElement('span');tim.className='match-time';tim.textContent=localTime(m);
 
   var teams=document.createElement('span');teams.className='match-teams';
   var _t1=m.t1||'?',_t2=m.t2||'?';
@@ -615,4 +615,85 @@ function renderStandings(){
     });
     grid.appendChild(card);
   });
+}
+
+// ─── KPI BAR ─────────────────────────────────────────────────────────────────
+
+function renderKPIBar(){
+  var el=document.getElementById('kpi-bar');
+  if(!el)return;
+  var played=allMatches.filter(function(m){return m.isFT;}).length;
+  var live=allMatches.filter(function(m){return m.isLive;}).length;
+  var planned=allMatches.filter(function(m){return !m.isFT&&!m.isLive;}).length;
+  var totalGoals=0;
+  allMatches.filter(function(m){return m.isFT&&m.score;}).forEach(function(m){
+    var p=m.score.split(/[–\-]/);if(p.length===2){totalGoals+=(parseInt(p[0])||0)+(parseInt(p[1])||0);}
+  });
+  var avgGoals=played>0?(totalGoals/played).toFixed(2):'–';
+  var totalYC=0,totalRC=0,hasCards=false;
+  Object.values(standings).forEach(function(tbl){
+    tbl.forEach(function(r){if(r.yc||r.rc){hasCards=true;totalYC+=r.yc||0;totalRC+=r.rc||0;}});
+  });
+  var parts=[];
+  if(live>0)parts.push('<span style="color:#22c55e;font-weight:700;animation:pulse 1.5s infinite">⚡ '+live+' en direct</span>');
+  parts.push('\u{1F4C5} <b>'+planned+'</b> planifiés');
+  parts.push('✅ <b>'+played+'</b> joués');
+  parts.push('⚽ <b>'+totalGoals+'</b> buts <span style="color:#334155">(moy. '+avgGoals+'/m)</span>');
+  if(hasCards)parts.push('🟨 <b>'+totalYC+'</b> <span style="color:#334155">·</span> 🟥 <b>'+totalRC+'</b>');
+  el.innerHTML=parts.map(function(p,i){return (i>0?'<span class="sep">·</span>':'')+p;}).join('');
+}
+
+// ─── FAIR PLAY ────────────────────────────────────────────────────────────────
+
+function renderFairPlay(){
+  var c=document.getElementById('fairplay-list');
+  if(!c)return;
+  if(!Object.keys(standings).length){
+    c.innerHTML='<p style="color:#475569;font-size:11px;padding:12px">Disponible dès le premier match de groupe joué.</p>';
+    return;
+  }
+  var teams=[];
+  Object.entries(standings).forEach(function(e){
+    var grp=e[0],tbl=e[1];
+    tbl.forEach(function(r){
+      if(r.played>0)teams.push({team:r.team,grp:grp,played:r.played,yc:r.yc||0,rc:r.rc||0,fp:(r.yc||0)+3*(r.rc||0)});
+    });
+  });
+  if(!teams.length){
+    c.innerHTML='<p style="color:#475569;font-size:11px;padding:12px">Aucun match joué.</p>';
+    return;
+  }
+  var hasAnyCards=teams.some(function(t){return t.yc>0||t.rc>0;});
+  if(!hasAnyCards){
+    c.innerHTML='<p style="color:#475569;font-size:11px;padding:12px">Données cartons non encore disponibles pour cette compétition.</p>';
+    return;
+  }
+  teams.sort(function(a,b){return(a.fp-b.fp)||(a.yc-b.yc)||a.team.localeCompare(b.team);});
+  var rows=[];
+  rows.push('<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;padding:4px 12px">');
+  rows.push('<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:#475569;font-weight:700">'+
+    '<span style="min-width:20px">#</span>'+
+    '<span style="min-width:24px">Gr.</span>'+
+    '<span style="flex:1">Équipe</span>'+
+    '<span style="min-width:28px;text-align:center">MJ</span>'+
+    '<span style="min-width:36px;text-align:center">🟨 J</span>'+
+    '<span style="min-width:36px;text-align:center">🟥 R</span>'+
+    '<span style="min-width:44px;text-align:center">Score</span>'+
+    '</div>');
+  teams.forEach(function(t,i){
+    var top=i<5,last=i===teams.length-1;
+    var scoreCol=t.fp===0?'#22c55e':t.fp<=3?'#fbbf24':'#ef4444';
+    rows.push('<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:'+(last?'none':'1px solid rgba(255,255,255,0.03)')+';font-size:10px">'+
+      '<span style="min-width:20px;font-size:9px;font-weight:700;color:#475569">'+(i+1)+'</span>'+
+      '<span style="min-width:24px;font-size:9px;color:#64748b">'+t.grp+'</span>'+
+      '<span style="flex:1;color:'+(top?'#22c55e':'#e2e8f0')+';font-weight:'+(top?'700':'500')+'">'+t.team+'</span>'+
+      '<span style="min-width:28px;text-align:center;color:#475569">'+t.played+'</span>'+
+      '<span style="min-width:36px;text-align:center;color:#fbbf24;font-weight:700">'+t.yc+'</span>'+
+      '<span style="min-width:36px;text-align:center;color:#ef4444;font-weight:700">'+t.rc+'</span>'+
+      '<span style="min-width:44px;text-align:center;font-weight:800;color:'+scoreCol+'">'+t.fp+'</span>'+
+      '</div>');
+  });
+  rows.push('</div>');
+  rows.push('<p style="font-size:8px;color:#475569;margin-top:8px;text-align:center">Score Fair Play = Jaunes + 3×Rouges · Plus bas = plus fair · Phase de groupes uniquement</p>');
+  c.innerHTML=rows.join('');
 }

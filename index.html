@@ -115,7 +115,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 <div id="header">
   <div class="eyebrow">FIFA &middot; USA &middot; MEXIQUE &middot; CANADA</div>
   <h1>COUPE DU MONDE 2026</h1>
-  <div class="sub">11 Juin &ndash; 19 Juillet &middot; 48 &eacute;quipes &middot; 104 matchs &middot; <span style="color:#0ea5e9;font-weight:700" title="Heure du Maroc (UTC+1)">&#128336; Heure Maroc (GMT+1)</span></div>
+  <div class="sub">11 Juin &ndash; 19 Juillet &middot; 48 &eacute;quipes &middot; 104 matchs &middot; <span id="tz-label" style="color:#0ea5e9;font-weight:700">&#128336; Heure Maroc (GMT+1)</span></div>
   <div id="tabs">
     <button class="tab-btn active" onclick="switchView('groups')">&#128203; Phase de Groupes</button>
     <button class="tab-btn" onclick="switchView('standings')">&#128202; Classements</button>
@@ -124,6 +124,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <button class="tab-btn" onclick="switchView('scorers')">&#9917; Buteurs</button>
     <button class="tab-btn" onclick="switchView('keepers')">&#129354; Gardiens</button>
     <button class="tab-btn" onclick="switchView('players')">&#11088; Joueurs</button>
+    <button class="tab-btn" onclick="switchView('fairplay')">&#129309; Fair Play</button>
   </div>
 </div>
 <div id="status-bar">
@@ -131,6 +132,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
   <span id="last-update"></span>
   <button id="refresh-btn" onclick="fetchAll()">&#8635; Actualiser</button>
 </div>
+<div id="kpi-bar" class="info-bar hidden" style="justify-content:center;gap:10px;flex-wrap:wrap;font-size:10px"></div>
 <div id="main">
   <div id="loading"><div class="spinner"></div><br>Chargement des donn&eacute;es&hellip;</div>
   <div id="view-groups" class="hidden">
@@ -162,6 +164,10 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <div class="info-bar"><span>&#11088; Classement joueurs &middot; <b>Moy.</b> = note pond&eacute;r&eacute;e par minutes &middot; buts, passes &amp; min. en <b>cumul</b></span></div>
     <div id="players-list"></div>
   </div>
+  <div id="view-fairplay" class="hidden">
+    <div class="info-bar"><span>&#129309; Classement fair-play &middot; Score = Jaunes + 3&times;Rouges &middot; Phases de groupes</span></div>
+    <div id="fairplay-list" style="padding:8px 0"></div>
+  </div>
 </div>
 <div id="modal-overlay" onclick="closeModal(event)">
   <div id="modal-box">
@@ -170,17 +176,17 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <div id="modal-body"></div>
   </div>
 </div>
-<script src="js/config.js?v=2"></script>
+<script src="js/config.js?v=3"></script>
 <script src="js/fallback.js?v=3"></script>
-<script src="js/api.js?v=10"></script>
+<script src="js/api.js?v=11"></script>
 <script src="js/predictions.js?v=5"></script>
 <script src="js/ratings.js?v=4"></script>
 <script src="js/modal.js?v=7"></script>
 <script src="js/pitch.js?v=4"></script>
 <script src="js/map.js?v=7"></script>
-<script src="js/render.js?v=11"></script>
+<script src="js/render.js?v=12"></script>
 <script src="js/rankings.js?v=3"></script>
-<script src="js/state.js?v=6"></script>
+<script src="js/state.js?v=7"></script>
 
 </body>
 </html>

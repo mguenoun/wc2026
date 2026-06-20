@@ -13,6 +13,7 @@ const PROXY_BASE = (function() {
   return WORKER_PROD;
 })();
 const DISPLAY_TZ = 'Africa/Casablanca';
+var USER_TZ = (function(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone;}catch(e){return DISPLAY_TZ;}})();
 const TODAY_STR  = new Date().toLocaleDateString('en-CA', {timeZone: DISPLAY_TZ});
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world';
@@ -106,25 +107,35 @@ function normPos(p){ return POS_MAP[p] || p; }
 function liveMinute(m){
   if(!m.isLive) return null;
   var now = new Date();
-  // Parse kickoff time from m.time (format "20h00") and m.dayKey (format "2026-06-11")
-  if(!m.time || !m.dayKey) return null;
-  var timeParts = m.time.match(/(\d+)h(\d+)/);
-  if(!timeParts) return null;
-  var h = parseInt(timeParts[1]), min = parseInt(timeParts[2]);
-  // Build kickoff date in Casablanca (UTC+1)
-  var dateParts = m.dayKey.split('-');
-  var kickoffUTC = new Date(Date.UTC(
-    parseInt(dateParts[0]), parseInt(dateParts[1])-1, parseInt(dateParts[2]),
-    h-1, min // UTC = Casablanca - 1h
-  ));
+  var kickoffUTC;
+  if(m.utcDate){
+    kickoffUTC = new Date(m.utcDate);
+  } else {
+    if(!m.time || !m.dayKey) return null;
+    var timeParts = m.time.match(/(\d+)h(\d+)/);
+    if(!timeParts) return null;
+    var h = parseInt(timeParts[1]), min = parseInt(timeParts[2]);
+    var dateParts = m.dayKey.split('-');
+    kickoffUTC = new Date(Date.UTC(
+      parseInt(dateParts[0]), parseInt(dateParts[1])-1, parseInt(dateParts[2]),
+      h-1, min
+    ));
+  }
   var elapsedMs = now - kickoffUTC;
   var elapsedMin = Math.floor(elapsedMs / 60000);
   if(elapsedMin < 0) return null;
   if(elapsedMin <= 45) return elapsedMin + "'";
   if(elapsedMin <= 60) return 'Mi-temps';
-  if(elapsedMin <= 105) return (elapsedMin - 15) + "'"; // approx 15min halftime
+  if(elapsedMin <= 105) return (elapsedMin - 15) + "'";
   if(elapsedMin <= 120) return 'Prolongations';
   return '90+';
+}
+// Retourne l'heure du match dans le fuseau de l'utilisateur (si utcDate disponible)
+function localTime(m){
+  if(m.utcDate){
+    return new Date(m.utcDate).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:USER_TZ});
+  }
+  return m.time||'';
 }
 function hex2rgba(h,a){var r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
 function frDate(s){var d=new Date(s);return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',timeZone:DISPLAY_TZ}).replace(/^\w/,function(c){return c.toUpperCase();});}

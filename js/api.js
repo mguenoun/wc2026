@@ -166,7 +166,7 @@ function processMatches(matches, inputMatches){
     if(isLive){var sl=apiM.score&&apiM.score.fullTime;score=(sl&&sl.home!=null?sl.home:0)+' \u2013 '+(sl&&sl.away!=null?sl.away:0);}
     var t1u=sm.ko?normTeam((apiM.homeTeam&&(apiM.homeTeam.shortName||apiM.homeTeam.name))||sm.t1):sm.t1;
     var t2u=sm.ko?normTeam((apiM.awayTeam&&(apiM.awayTeam.shortName||apiM.awayTeam.name))||sm.t2):sm.t2;
-    return Object.assign({},sm,{t1:t1u,t2:t2u,score:score,status:apiM.status,isLive:isLive,isFT:isFT,apiId:apiM.id});
+    return Object.assign({},sm,{t1:t1u,t2:t2u,score:score,status:apiM.status,isLive:isLive,isFT:isFT,apiId:apiM.id,utcDate:apiM.utcDate||null});
   });
   if(!inputMatches) allMatches=result;
   return result;
@@ -178,7 +178,7 @@ function processStandings(data){
     if(s.type==='TOTAL'&&s.group&&s.table&&s.table.length){
       var grp=s.group.replace('GROUP_','').replace('Group ','').trim();
       if(!GC[grp])return;
-      standings[grp]=s.table.map(function(r){return{pos:r.position,team:normTeam(r.team.shortName||r.team.name),played:r.playedGames,won:r.won,draw:r.draw,lost:r.lost,gf:r.goalsFor,ga:r.goalsAgainst,gd:r.goalDifference,pts:r.points};});
+      standings[grp]=s.table.map(function(r){return{pos:r.position,team:normTeam(r.team.shortName||r.team.name),played:r.playedGames,won:r.won,draw:r.draw,lost:r.lost,gf:r.goalsFor,ga:r.goalsAgainst,gd:r.goalDifference,pts:r.points,yc:r.yellowCards||0,rc:r.redCards||0};});
     }
   });
 }

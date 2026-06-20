@@ -1,13 +1,17 @@
-var VIEWS=['groups','standings','thirds','knockout','scorers','keepers','players'];
+var VIEWS=['groups','standings','thirds','knockout','scorers','keepers','players','fairplay'];
 
 function renderAll(){
   renderGrpFilters();renderGroupsTimeline();renderKOLegend();
   if(koBracketView!=='bracket'){renderKOTimeline();}
   renderStandings();
+  renderKPIBar();
   if(activeView==='thirds')renderThirds();
 }
 
 function showView(v){
+  var kpiViews=['groups','knockout'];
+  var kpiBar=document.getElementById('kpi-bar');
+  if(kpiBar)kpiBar.classList.toggle('hidden',kpiViews.indexOf(v)<0);
   VIEWS.forEach(function(id){document.getElementById('view-'+id).classList.toggle('hidden',id!==v);});
   document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',VIEWS[i]===v);});
 }
@@ -18,6 +22,7 @@ function switchView(v){
   if(v==='keepers'&&!keepersLoaded)fetchKeepers();
   if(v==='players'&&!playersLoaded)fetchPlayerRankings();
   if(v==='thirds')renderThirds();
+  if(v==='fairplay')renderFairPlay();
   if(v==='knockout'&&koBracketView==='bracket'){
     var c=document.getElementById('knockout-timeline');
     c.innerHTML='';
@@ -42,6 +47,23 @@ function scheduleRefresh(){
 }
 
 // ─── INITIALISATION ───────────────────────────────────────────────────────────
+
+// Affichage dynamique du fuseau horaire détecté
+(function(){
+  var el=document.getElementById('tz-label');
+  if(!el)return;
+  try{
+    var offsetMin=-new Date().getTimezoneOffset();
+    var sign=offsetMin>=0?'+':'-';
+    var absH=Math.floor(Math.abs(offsetMin)/60);
+    var absM=Math.abs(offsetMin)%60;
+    var gmt='GMT'+sign+absH+(absM?':'+String(absM).padStart(2,'0'):'');
+    var tz=USER_TZ===DISPLAY_TZ?'Maroc':USER_TZ.replace('_',' ').split('/').pop();
+    el.textContent='\u{1F550} '+tz+' ('+gmt+')';
+    if(USER_TZ!==DISPLAY_TZ)el.title='Heures affichées dans votre fuseau local ('+USER_TZ+')';
+  }catch(e){}
+})();
+
 loadFallback();
 fetchAll();
 scheduleRefresh();
