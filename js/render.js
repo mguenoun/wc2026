@@ -632,25 +632,31 @@ function renderKPIBar(){
     var p=m.score.split(/[–\-]/);if(p.length===2){totalGoals+=(parseInt(p[0])||0)+(parseInt(p[1])||0);}
   });
   var avgGoals=played>0?(totalGoals/played).toFixed(2):'–';
+  // Cartons : uniquement pour les matchs joués dans la phase affichée
+  // fairplayData couvre les matchs de groupe (ESPN stats) ; KO = 0 jusqu'à première phase jouée
   var totalYC=0,totalRC=0;
-  if(fairplayData&&fairplayData.length){
-    fairplayData.forEach(function(t){totalYC+=t.yc||0;totalRC+=t.rc||0;});
-  } else {
-    Object.values(standings).forEach(function(tbl){
-      tbl.forEach(function(r){totalYC+=r.yc||0;totalRC+=r.rc||0;});
-    });
+  if(played>0&&!isKO){
+    if(fairplayData&&fairplayData.length){
+      fairplayData.forEach(function(t){totalYC+=t.yc||0;totalRC+=t.rc||0;});
+    } else {
+      Object.values(standings).forEach(function(tbl){
+        tbl.forEach(function(r){totalYC+=r.yc||0;totalRC+=r.rc||0;});
+      });
+    }
   }
-  var avgYC=played>0?(totalYC/played).toFixed(1):'–';
-  var avgRC=played>0?(totalRC/played).toFixed(2):'–';
-  var cardLabel=(!fairplayData||!fairplayData.length)&&totalYC===0&&totalRC===0?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgYC+'/m</span>';
+  var avgYC=played>0&&totalYC>0?(totalYC/played).toFixed(1):'–';
+  var avgRC=played>0&&totalRC>0?(totalRC/played).toFixed(2):'–';
+  var noCardData=played>0&&!isKO&&totalYC===0&&totalRC===0;
+  var cardSubYC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgYC+'/m</span>';
+  var cardSubRC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgRC+'/m</span>';
   el.innerHTML=
     '<div class="kpi-grid">'+
     (live>0?'<div class="kpi-card kpi-live"><div class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite">⚡ '+live+'</div><div class="kpi-lbl">EN DIRECT</div></div>':'')+
     '<div class="kpi-card"><div class="kpi-val">'+planned+'</div><div class="kpi-lbl">PLANIFIÉS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24">🟨 '+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardLabel+'</div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444">🟥 '+totalRC+'</div><div class="kpi-lbl">ROUGES <span class="kpi-sub">moy. '+avgRC+'/m</span></div></div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24">🟨 '+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444">🟥 '+totalRC+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
     '</div>';
 }
 
