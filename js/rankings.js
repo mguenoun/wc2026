@@ -115,10 +115,11 @@ async function fetchPlayerRankings() {
     html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:#475569;font-weight:700">' +
       '<span style="min-width:20px">#</span>' +
       '<span style="flex:1">Joueur</span>' +
-      '<span style="min-width:30px;text-align:center">MJ</span>' +
-      '<span style="min-width:30px;text-align:center;color:#22c55e">⚽</span>' +
-      '<span style="min-width:30px;text-align:center;color:#0ea5e9">→</span>' +
-      '<span style="min-width:36px;text-align:right">Note</span>' +
+      '<span style="min-width:26px;text-align:center" title="Matchs joués">MJ</span>' +
+      '<span style="min-width:34px;text-align:center" title="Minutes cumulées">Min</span>' +
+      '<span style="min-width:28px;text-align:center;color:#22c55e" title="Buts (cumul)">⚽</span>' +
+      '<span style="min-width:28px;text-align:center;color:#0ea5e9" title="Passes déc. (cumul)">→</span>' +
+      '<span style="min-width:36px;text-align:right;color:#fbbf24" title="Note moyenne pondérée par minutes">Moy.</span>' +
       '</div>';
 
     ranking.forEach(function(p, i) {
@@ -131,9 +132,10 @@ async function fetchPlayerRankings() {
           '<span style="font-size:8px;color:#475569;margin-left:4px">(' + p.team + ')</span>' +
           '<span style="font-size:7px;color:#334155;margin-left:3px;background:rgba(255,255,255,0.05);border-radius:2px;padding:1px 3px">' + roleLabel + '</span>' +
         '</span>' +
-        '<span style="min-width:30px;text-align:center;font-size:9px;color:#475569">' + p.matches + '</span>' +
-        (p.goals ? '<span style="min-width:30px;text-align:center;font-size:10px;font-weight:700;color:#22c55e">' + p.goals + '</span>' : '<span style="min-width:30px"></span>') +
-        (p.assists ? '<span style="min-width:30px;text-align:center;font-size:10px;font-weight:700;color:#0ea5e9">' + p.assists + '</span>' : '<span style="min-width:30px"></span>') +
+        '<span style="min-width:26px;text-align:center;font-size:9px;color:#475569">' + p.matches + '</span>' +
+        '<span style="min-width:34px;text-align:center;font-size:9px;color:#64748b">' + p.minutes + '</span>' +
+        (p.goals ? '<span style="min-width:28px;text-align:center;font-size:10px;font-weight:700;color:#22c55e">' + p.goals + '</span>' : '<span style="min-width:28px"></span>') +
+        (p.assists ? '<span style="min-width:28px;text-align:center;font-size:10px;font-weight:700;color:#0ea5e9">' + p.assists + '</span>' : '<span style="min-width:28px"></span>') +
         '<span style="min-width:36px;text-align:right;font-size:11px;font-weight:800;color:' + rc + '">' + p.rating.toFixed(1) + '</span>' +
         '</div>';
     });
