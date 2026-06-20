@@ -54,6 +54,9 @@ const TEAM_NORM = {
   'Finland':'Finlande','Greece':'Grèce',
   'Russia':'Russie','Czech Republic':'Tchéquie',
   'Curaçao':'Curaçao','Iraq':'Irak',
+  'Cape Verde':'Cap-Vert','Jordan':'Jordanie',
+  'Congo DR':'Congo RD','DR Congo':'Congo RD',
+  'Uzbekistan':'Ouzbékistan','Bosnia and Herzegovina':'Bosnie-H.',
 };
 
 function normTeam(name) {
@@ -646,9 +649,10 @@ async function handleFairPlay(env, cors) {
     if (!data?.stats) continue;
     for (const [, s] of Object.entries(data.stats)) {
       if (!s.team) continue;
-      if (!teams[s.team]) teams[s.team] = { team: s.team, yc: 0, rc: 0 };
-      teams[s.team].yc += s.yellow || 0;
-      teams[s.team].rc += s.red    || 0;
+      const t = normTeam(s.team);
+      if (!teams[t]) teams[t] = { team: t, yc: 0, rc: 0 };
+      teams[t].yc += s.yellow || 0;
+      teams[t].rc += s.red    || 0;
     }
   }
   const fairplay = Object.values(teams).sort((a, b) =>
