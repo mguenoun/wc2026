@@ -829,7 +829,7 @@ function renderKPIBar(){
   var cardSubYC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgYC+'/m</span>';
   var cardSubRC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgRC+'/m</span>';
   el.innerHTML=
-    (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;display:flex;align-items:center;padding:8px 14px;gap:12px;margin-bottom:10px;"><div style="flex-shrink:0;text-align:center"><div class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite">⚡ '+live+'</div><div class="kpi-lbl">EN DIRECT</div></div><div id="kpi-live-matches" style="flex:1;min-width:0"></div></div>':'')+
+    (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;max-width:none;padding:10px 14px;margin-bottom:10px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite;font-size:18px">⚡ '+live+'</span><span class="kpi-lbl" style="font-size:9px;color:#22c55e;letter-spacing:1.5px">EN DIRECT</span></div><div id="kpi-live-matches"></div></div>':'')+
     '<div class="kpi-grid">'+
     '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
@@ -845,7 +845,7 @@ function renderKPIBar(){
       function _iso(name){var c=FLAG[name]||(TEAM_MAP[name]&&FLAG[TEAM_MAP[name]])||'';return c?c.replace(/^GB-/,'').toUpperCase():(name||'???').slice(0,3).toUpperCase();}
       _liveMs.forEach(function(m){
         var row=document.createElement('div');
-        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:3px 0;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;';
+        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:4px 0;display:flex;align-items:center;gap:6px;white-space:nowrap;';
         row.innerHTML=(flagEmoji(m.t1)||'')+' <b style="font-size:9px;color:#e2e8f0">'+_iso(m.t1)+'</b>'
           +' <span style="font-size:10px;font-weight:900;color:#22c55e;padding:0 3px">'+(m.score||'–')+'</span>'
           +(m.clockDisplay?'<span style="font-size:7px;color:#64748b">'+m.clockDisplay+'</span>':'')
