@@ -12,12 +12,13 @@ function renderMatchRow(m){
 
   var teams=document.createElement('span');teams.className='match-teams';
   var _t1=m.t1||'?',_t2=m.t2||'?';
+  var _f1=flagEmoji(m.t1),_f2=flagEmoji(m.t2);
   if(m.ko){
     var _r1=resolveKOTeam(m.t1),_r2=resolveKOTeam(m.t2);
     if(_r1)_t1+=' <span class="ko-res">('+_r1+')</span>';
     if(_r2)_t2+=' <span class="ko-res">('+_r2+')</span>';
   }
-  teams.innerHTML=_t1+'<span class="vs">–</span>'+_t2;
+  teams.innerHTML=(_f1?_f1+' ':'')+_t1+'<span class="vs">–</span>'+(_f2?_f2+' ':'')+_t2;
 
   var sc=document.createElement('span');sc.className='match-score';sc.style.color=m.color;
   if(m.isLive){
@@ -118,16 +119,28 @@ function renderDayBlock(dateLabel,matches,container){
   container.appendChild(block);
 }
 
-// ─── FILTRES GROUPES ─────────────────────────────────────────────────────────
+// ─── FILTRES GROUPES + TOGGLE VUE ────────────────────────────────────────────
+
+var grpCalView = 'list'; // 'list' ou 'calendar'
 
 function renderGrpFilters(){
+  // Toggle liste / calendrier
+  var tog=document.getElementById('grp-view-toggle');
+  if(tog){
+    tog.innerHTML='';
+    [{v:'list',icon:'📋',lbl:'Liste'},{v:'calendar',icon:'📅',lbl:'Calendrier'}].forEach(function(o){
+      var btn=document.createElement('button');btn.className='ko-sw-btn'+(grpCalView===o.v?' ko-sw-active':'');
+      btn.textContent=o.icon+' '+o.lbl;
+      btn.addEventListener('click',function(){grpCalView=o.v;renderAll();});
+      tog.appendChild(btn);
+    });
+  }
   var c=document.getElementById('grp-filters');c.innerHTML='';
   var all=document.createElement('button');all.className='grp-btn';all.textContent='Tous';
   if(activeFilter==='all'){all.style.background='#0ea5e922';all.style.borderColor='#0ea5e9';all.style.color='#0ea5e9';}
   all.addEventListener('click',function(){activeFilter='all';renderAll();});c.appendChild(all);
   Object.entries(GC).forEach(function(e){var g=e[0],col=e[1];
     var btn=document.createElement('button');btn.className='grp-btn';btn.textContent='Gr.'+g;
-    // Actif : couleur pleine ; inactif : couleur atténuée visible
     if(activeFilter===g){
       btn.style.background=hex2rgba(col,.18);btn.style.borderColor=col;btn.style.color=col;
     } else {
@@ -138,15 +151,89 @@ function renderGrpFilters(){
 }
 
 function renderGroupsTimeline(){
+  if(grpCalView==='calendar'){renderGroupsCalendar();return;}
   var c=document.getElementById('groups-timeline');c.innerHTML='';
   var filtered=activeFilter==='all'?allMatches.filter(function(m){return !m.ko;}):allMatches.filter(function(m){return m.grp===activeFilter;});
   groupByDate(filtered).forEach(function(e){renderDayBlock(e[0],e[1],c);});
 }
 
+// ─── VUE CALENDRIER GROUPES ──────────────────────────────────────────────────
+
+function renderGroupsCalendar(){
+  var c=document.getElementById('groups-timeline');c.innerHTML='';
+  var filtered=activeFilter==='all'?allMatches.filter(function(m){return !m.ko;}):allMatches.filter(function(m){return m.grp===activeFilter;});
+  var days=groupByDate(filtered);
+
+  var wrap=document.createElement('div');wrap.style.cssText='overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;';
+  var grid=document.createElement('div');grid.style.cssText='display:flex;gap:6px;min-width:max-content;padding:2px;';
+
+  days.forEach(function(e){
+    var dateLabel=e[0],matches=e[1];
+    var isToday=matches[0]&&matches[0].dayKey===TODAY_STR;
+    var col=document.createElement('div');
+    col.style.cssText='display:flex;flex-direction:column;width:124px;flex-shrink:0;';
+
+    var dk=matches[0].dayKey;
+    var parts=dk.split('-');
+    var dateShort=parts[2]+'/'+parts[1];
+    var dayAbbr=dateLabel.slice(0,3).toUpperCase();
+    var hdr=document.createElement('div');
+    hdr.style.cssText='font-size:9px;font-weight:800;color:'+(isToday?'#fbbf24':'#64748b')+';text-align:center;padding:4px 2px 6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:5px;letter-spacing:.5px;';
+    hdr.textContent=dayAbbr+' '+dateShort;
+    col.appendChild(hdr);
+
+    matches.forEach(function(m){
+      var card=document.createElement('div');
+      card.style.cssText='background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-left:2px solid '+m.color+';border-radius:6px;padding:5px 6px;margin-bottom:4px;cursor:pointer;transition:background .12s;';
+      if(selectedId===m.id)card.style.background=hex2rgba(m.color,.12);
+      card.onmouseenter=function(){if(selectedId!==m.id)card.style.background='rgba(255,255,255,0.03)';};
+      card.onmouseleave=function(){if(selectedId!==m.id)card.style.background='#080f1e';};
+
+      var top=document.createElement('div');
+      top.style.cssText='display:flex;align-items:center;gap:3px;margin-bottom:3px;';
+      var grpBadge=document.createElement('span');
+      grpBadge.style.cssText='font-size:8px;font-weight:800;color:'+m.color+';';
+      grpBadge.textContent='Gr.'+m.grp;
+      var time=document.createElement('span');
+      time.style.cssText='font-size:8px;color:#475569;flex:1;text-align:right;';
+      time.textContent=localTime(m);
+      var sc=document.createElement('span');
+      sc.style.cssText='font-size:9px;font-weight:800;margin-left:2px;';
+      if(m.isFT&&m.score){sc.textContent=m.score;sc.style.color='#e2e8f0';}
+      else if(m.isLive&&m.score){sc.textContent=m.score;sc.style.color='#22c55e';}
+      top.appendChild(grpBadge);top.appendChild(time);top.appendChild(sc);
+
+      var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
+      var t1=document.createElement('div');
+      t1.style.cssText='font-size:10px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
+      t1.textContent=(f1?f1+' ':'')+(m.t1||'?');
+      var sep=document.createElement('div');
+      sep.style.cssText='font-size:8px;color:#334155;line-height:1.2;';sep.textContent='–';
+      var t2=document.createElement('div');
+      t2.style.cssText='font-size:10px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
+      t2.textContent=(f2?f2+' ':'')+(m.t2||'?');
+
+      card.appendChild(top);card.appendChild(t1);card.appendChild(sep);card.appendChild(t2);
+      card.addEventListener('click',function(){selectedId=selectedId===m.id?null:m.id;renderAll();if(selectedId)openMatchInfo(m);});
+      col.appendChild(card);
+    });
+    grid.appendChild(col);
+  });
+
+  // Scroll automatique vers aujourd'hui ou le dernier match joué
+  var todayIdx=days.findIndex(function(e){return e[1][0]&&e[1][0].dayKey===TODAY_STR;});
+  if(todayIdx<0) todayIdx=Math.max(0,days.findLastIndex?days.findLastIndex(function(e){return e[1].some(function(m){return m.isFT;});}):0);
+
+  wrap.appendChild(grid);c.appendChild(wrap);
+  if(todayIdx>0){
+    setTimeout(function(){var scrollTo=todayIdx*(124+6)-20;wrap.scrollLeft=Math.max(0,scrollTo);},50);
+  }
+}
+
 // Ordre des phases KO et couleurs associées
 var KO_PHASES=[
-  {key:'32es', label:'32èmes', color:'#8b5cf6'},
-  {key:'16es', label:'16èmes', color:'#f59e0b'},
+  {key:'16es', label:'16es de fin.', color:'#8b5cf6'},
+  {key:'8es',  label:'8es de fin.',  color:'#f59e0b'},
   {key:'Quarts', label:'Quarts', color:'#ef4444'},
   {key:'Demis', label:'Demis', color:'#f97316'},
   {key:'Finale', label:'Finale', color:'#fbbf24'},

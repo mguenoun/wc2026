@@ -79,10 +79,11 @@ function renderScorers() {
     var penalties = s.penalties || 0;
     var rank = i + 1;
     var rankColor = rank === 1 ? '#fbbf24' : rank === 2 ? '#94a3b8' : rank === 3 ? '#cd7f32' : '#475569';
+    var _tName = normTeam(team.shortName || team.name || '');
     html += '<div class="scorer-row">' +
       '<span class="scorer-rank" style="color:' + rankColor + '">' + rank + '</span>' +
-      '<span class="scorer-name">' + (player.name || '?') +
-        '<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">(' + normTeam(team.shortName || team.name || '') + ')</span>' +
+      '<span class="scorer-name">' + (flagEmoji(_tName)||'') + ' ' + (player.name || '?') +
+        '<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">(' + _tName + ')</span>' +
         (penalties ? '<span style="font-size:8px;color:#f59e0b;margin-left:4px">(' + penalties + ' pen.)</span>' : '') +
       '</span>' +
       '<span style="font-size:12px;font-weight:800;color:#22c55e;min-width:36px;text-align:center">⚽ ' + goals + '</span>' +
@@ -128,7 +129,7 @@ async function fetchPlayerRankings() {
       var roleLabel = { 'GK':'Gard.','DEF':'Def.','FB':'Lat.','DM':'M.Def','CM':'Mil.','AM':'M.Off','FW':'Att.' }[p.role] || p.role;
       html += '<div class="scorer-row">' +
         '<span style="min-width:20px;font-size:9px;font-weight:700;color:' + rankColor + '">' + (i + 1) + '</span>' +
-        '<span style="flex:1;font-size:10px;color:#e2e8f0">' + p.name +
+        '<span style="flex:1;font-size:10px;color:#e2e8f0">' + (flagEmoji(p.team)||'') + ' ' + p.name +
           '<span style="font-size:8px;color:#475569;margin-left:4px">(' + p.team + ')</span>' +
           '<span style="font-size:7px;color:#334155;margin-left:3px;background:rgba(255,255,255,0.05);border-radius:2px;padding:1px 3px">' + roleLabel + '</span>' +
         '</span>' +

@@ -51,23 +51,51 @@ const ESPN_ID_MAP = {
 };
 
 const VENUE_COORDS = {
-  'Estadio Azteca':          {lat:19.3029,  lng:-99.1505,  q:'Estadio+Azteca+Mexico+City'},
-  'Estadio Akron':           {lat:20.6867,  lng:-103.4667, q:'Estadio+Akron+Guadalajara+Mexico'},
-  'Estadio BBVA':            {lat:25.6694,  lng:-100.2436, q:'Estadio+BBVA+Monterrey+Mexico'},
-  'BMO Field':               {lat:43.6333,  lng:-79.4183,  q:'BMO+Field+Toronto+Canada'},
-  'BC Place':                {lat:49.2767,  lng:-123.1117, q:'BC+Place+Vancouver+Canada'},
-  'MetLife Stadium':         {lat:40.8135,  lng:-74.0745,  q:'MetLife+Stadium+East+Rutherford+NJ'},
-  'Gillette Stadium':        {lat:42.0909,  lng:-71.2643,  q:'Gillette+Stadium+Foxborough+MA'},
-  'NRG Stadium':             {lat:29.6847,  lng:-95.4107,  q:'NRG+Stadium+Houston+TX'},
-  'AT&T Stadium':            {lat:32.7479,  lng:-97.0945,  q:'ATT+Stadium+Arlington+TX'},
-  'Lincoln Financial Field': {lat:39.9008,  lng:-75.1675,  q:'Lincoln+Financial+Field+Philadelphia+PA'},
-  'Mercedes-Benz Stadium':   {lat:33.7553,  lng:-84.4006,  q:'Mercedes-Benz+Stadium+Atlanta+GA'},
-  'Hard Rock Stadium':       {lat:25.9580,  lng:-80.2389,  q:'Hard+Rock+Stadium+Miami+Gardens+FL'},
-  "Levi's Stadium":          {lat:37.4033,  lng:-121.9694, q:'Levis+Stadium+Santa+Clara+CA'},
-  'SoFi Stadium':            {lat:33.9535,  lng:-118.3392, q:'SoFi+Stadium+Inglewood+CA'},
-  'Lumen Field':             {lat:47.5952,  lng:-122.3316, q:'Lumen+Field+Seattle+WA'},
-  'Arrowhead Stadium':       {lat:39.0489,  lng:-94.4839,  q:'Arrowhead+Stadium+Kansas+City+MO'},
+  'Estadio Azteca':          {lat:19.3029,  lng:-99.1505,  q:'Estadio+Azteca+Mexico+City',           cap:87523, city:'Mexico City'},
+  'Estadio Akron':           {lat:20.6867,  lng:-103.4667, q:'Estadio+Akron+Guadalajara+Mexico',      cap:48071, city:'Guadalajara'},
+  'Estadio BBVA':            {lat:25.6694,  lng:-100.2436, q:'Estadio+BBVA+Monterrey+Mexico',         cap:53460, city:'Monterrey'},
+  'BMO Field':               {lat:43.6333,  lng:-79.4183,  q:'BMO+Field+Toronto+Canada',              cap:45500, city:'Toronto'},
+  'BC Place':                {lat:49.2767,  lng:-123.1117, q:'BC+Place+Vancouver+Canada',             cap:54500, city:'Vancouver'},
+  'MetLife Stadium':         {lat:40.8135,  lng:-74.0745,  q:'MetLife+Stadium+East+Rutherford+NJ',    cap:87157, city:'New York'},
+  'Gillette Stadium':        {lat:42.0909,  lng:-71.2643,  q:'Gillette+Stadium+Foxborough+MA',        cap:70000, city:'Boston'},
+  'NRG Stadium':             {lat:29.6847,  lng:-95.4107,  q:'NRG+Stadium+Houston+TX',               cap:72220, city:'Houston'},
+  'AT&T Stadium':            {lat:32.7479,  lng:-97.0945,  q:'ATT+Stadium+Arlington+TX',             cap:92967, city:'Dallas'},
+  'Lincoln Financial Field': {lat:39.9008,  lng:-75.1675,  q:'Lincoln+Financial+Field+Philadelphia+PA',cap:69328,city:'Philadelphia'},
+  'Mercedes-Benz Stadium':   {lat:33.7553,  lng:-84.4006,  q:'Mercedes-Benz+Stadium+Atlanta+GA',     cap:75000, city:'Atlanta'},
+  'Hard Rock Stadium':       {lat:25.9580,  lng:-80.2389,  q:'Hard+Rock+Stadium+Miami+Gardens+FL',   cap:67518, city:'Miami'},
+  "Levi's Stadium":          {lat:37.4033,  lng:-121.9694, q:'Levis+Stadium+Santa+Clara+CA',         cap:70909, city:'San Francisco'},
+  'SoFi Stadium':            {lat:33.9535,  lng:-118.3392, q:'SoFi+Stadium+Inglewood+CA',            cap:70240, city:'Los Angeles'},
+  'Lumen Field':             {lat:47.5952,  lng:-122.3316, q:'Lumen+Field+Seattle+WA',               cap:69000, city:'Seattle'},
+  'Arrowhead Stadium':       {lat:39.0489,  lng:-94.4839,  q:'Arrowhead+Stadium+Kansas+City+MO',     cap:76640, city:'Kansas City'},
 };
+
+// ─── DRAPEAUX ─────────────────────────────────────────────────────────────────
+
+var FLAG = {
+  'Mexique':'MX','Afrique du Sud':'ZA','Corée du Sud':'KR','Tchéquie':'CZ',
+  'Canada':'CA','Bosnie-H.':'BA','Qatar':'QA','Suisse':'CH',
+  'Brésil':'BR','Maroc':'MA','Haïti':'HT','Écosse':'GB-SCT',
+  'USA':'US','Paraguay':'PY','Australie':'AU','Turquie':'TR',
+  'Allemagne':'DE','Curaçao':'CW','Côte d’Ivoire':'CI',"Côte d'Ivoire":'CI','Équateur':'EC',
+  'Pays-Bas':'NL','Japon':'JP','Suède':'SE','Tunisie':'TN',
+  'Belgique':'BE','Égypte':'EG','Iran':'IR','Nv-Zélande':'NZ',
+  'Espagne':'ES','Cap-Vert':'CV','Arabie S.':'SA','Uruguay':'UY',
+  'France':'FR','Sénégal':'SN','Irak':'IQ','Norvège':'NO',
+  'Argentine':'AR','Algérie':'DZ','Autriche':'AT','Jordanie':'JO',
+  'Portugal':'PT','Congo RD':'CD','Ouzbékistan':'UZ','Colombie':'CO',
+  'Angleterre':'GB-ENG','Croatie':'HR','Ghana':'GH','Panama':'PA',
+};
+
+function flagEmoji(name) {
+  var code = FLAG[name];
+  if (!code) return '';
+  // Drapeaux subdivision (Angleterre, Écosse) — séquences tag Unicode
+  if (code === 'GB-ENG') return '🏴󠁧󠁢󠁥󠁮󠁧󠁿';
+  if (code === 'GB-SCT') return '🏴󠁧󠁢󠁳󠁣󠁴󠁿';
+  var f = '';
+  for (var i = 0; i < code.length; i++) { f += String.fromCodePoint(code.charCodeAt(i) + 127397); }
+  return f;
+}
 
 const GC = {A:'#0ea5e9',B:'#06b6d4',C:'#10b981',D:'#f59e0b',E:'#ef4444',F:'#f97316',G:'#8b5cf6',H:'#ec4899',I:'#14b8a6',J:'#a855f7',K:'#22c55e',L:'#f43f5e'};
 

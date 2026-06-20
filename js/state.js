@@ -1,4 +1,4 @@
-var VIEWS=['groups','standings','thirds','knockout','scorers','keepers','players','fairplay'];
+var VIEWS=['groups','standings','thirds','knockout','scorers','keepers','players','fairplay','stades'];
 
 function renderAll(){
   renderGrpFilters();renderGroupsTimeline();renderKOLegend();
@@ -24,6 +24,7 @@ function switchView(v){
   if(v==='players'&&!playersLoaded)fetchPlayerRankings();
   if(v==='thirds')renderThirds();
   if(v==='fairplay'){if(!fairplayLoaded)fetchFairPlay();else renderFairPlay();}
+  if(v==='stades'){setTimeout(function(){renderStadesMap();},80);}
   if(v==='knockout'&&koBracketView==='bracket'){
     var c=document.getElementById('knockout-timeline');
     c.innerHTML='';

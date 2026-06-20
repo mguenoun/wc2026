@@ -18,3 +18,5 @@ binding = "STATS_KV"
 id = "226dc371905c4fc7a5b32bc5db2c344d"
 
 # Pas de crons sur staging (Free plan : un seul Worker avec triggers auto)
+[env.staging.triggers]
+crons = []

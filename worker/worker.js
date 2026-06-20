@@ -225,19 +225,24 @@ async function step0_refreshData(env) {
     } catch (e) { console.warn('[step0] FD standings:', e.message); }
   }
 
-  // ── 3. Buteurs FD (toutes les 3h) ─────────────────────────────────────────
+  // ── 3. Buteurs FD (toutes les 30min, ou immédiatement si un match vient de terminer) ──
   const cachedScorers = await kv.get(env, 'cache:scorers');
-  if (!cachedScorers || (now - (cachedScorers.lastUpdate || 0)) > 3 * 60 * 60 * 1000) {
+  const scorersStale = !cachedScorers || (now - (cachedScorers.lastUpdate || 0)) > 30 * 60 * 1000;
+  let scorersUpdated = false;
+  if (scorersStale || changes > 0) {
     try {
       const resp = await fetch(`${FD_BASE}/competitions/WC/scorers?limit=20`, { headers: { 'X-Auth-Token': token } });
       if (resp.ok) {
         const data = await resp.json();
         await kv.put(env, 'cache:scorers', { scorers: data.scorers || [], lastUpdate: now });
+        scorersUpdated = true;
+      } else {
+        console.warn('[step0] FD scorers HTTP', resp.status);
       }
     } catch (e) { console.warn('[step0] FD scorers:', e.message); }
   }
 
-  return { step: 0, changes, lastUpdate: now };
+  return { step: 0, changes, scorersUpdated, lastUpdate: now };
 }
 
 // ─── PIPELINE ─────────────────────────────────────────────────────────────────

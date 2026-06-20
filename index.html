@@ -120,7 +120,13 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 .kpi-val.kpi-yellow{color:#f59e0b}
 .kpi-lbl{font-size:8px;font-weight:700;color:#475569;letter-spacing:1px;margin-top:3px}
 .kpi-sub{font-size:7px;color:#334155;font-weight:400;letter-spacing:0}
+/* ─── STADES MAP ──────────────────────────────────────────────────────────── */
+#stades-map-leaflet{height:340px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);margin-bottom:0}
+@media(max-width:480px){#stades-map-leaflet{height:240px}}
+.leaflet-container{background:#060c18;font-family:'Segoe UI',system-ui,sans-serif}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div id="header">
@@ -136,6 +142,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <button class="tab-btn" onclick="switchView('keepers')">&#129354; Gardiens</button>
     <button class="tab-btn" onclick="switchView('players')">&#11088; Joueurs</button>
     <button class="tab-btn" onclick="switchView('fairplay')">&#129309; Fair Play</button>
+    <button class="tab-btn" onclick="switchView('stades')">&#127960;&#65039; Stades</button>
   </div>
 </div>
 <div id="status-bar">
@@ -147,6 +154,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 <div id="main">
   <div id="loading"><div class="spinner"></div><br>Chargement des donn&eacute;es&hellip;</div>
   <div id="view-groups" class="hidden">
+    <div id="grp-view-toggle" style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap"></div>
     <div id="grp-filters"></div>
     <div class="info-bar"><span>&#9917; <b>72</b> matchs &middot; groupe</span><span class="sep">&middot;</span><span>&#127937; <b>J3</b> = matchs simultan&eacute;s</span><span class="sep">&middot;</span><span>Score en direct</span></div>
     <div id="groups-timeline"></div>
@@ -179,6 +187,12 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
     <div class="info-bar"><span>&#129309; Classement fair-play &middot; Score = Jaunes + 3&times;Rouges &middot; Phases de groupes</span></div>
     <div id="fairplay-list" style="padding:8px 0"></div>
   </div>
+  <div id="view-stades" class="hidden">
+    <div class="info-bar"><span>&#127967; <b>16</b> stades &middot; USA · Canada · Mexique &middot; Cliquez un marqueur pour les d&eacute;tails</span></div>
+    <div id="stades-map-leaflet" style="width:100%;height:340px;border-radius:8px;overflow:hidden;margin-bottom:10px"></div>
+    <div id="stades-info-panel" class="hidden"></div>
+    <div id="stades-list" style="margin-top:10px"></div>
+  </div>
 </div>
 <div id="modal-overlay" onclick="closeModal(event)">
   <div id="modal-box">
@@ -194,10 +208,10 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 <script src="js/ratings.js?v=4"></script>
 <script src="js/modal.js?v=7"></script>
 <script src="js/pitch.js?v=4"></script>
-<script src="js/map.js?v=7"></script>
-<script src="js/render.js?v=13"></script>
+<script src="js/map.js?v=8"></script>
+<script src="js/render.js?v=14"></script>
 <script src="js/rankings.js?v=3"></script>
-<script src="js/state.js?v=8"></script>
+<script src="js/state.js?v=9"></script>
 
 </body>
 </html>
