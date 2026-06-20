@@ -12,10 +12,10 @@
 <text x="180" y="93" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">index.html</text>
 <text x="180" y="106" text-anchor="middle" font-size="9" fill="#3C3489">main → prod  ·  staging → recette</text>
 <rect x="50" y="128" width="260" height="94" rx="6" fill="#CECBF6" stroke="#534AB7" stroke-width="0.8"/>
-<text x="180" y="148" text-anchor="middle" font-size="11" font-weight="bold" fill="#26215C">js/ (10 fichiers)</text>
-<text x="180" y="166" text-anchor="middle" font-size="9" fill="#3C3489">config v2 · fallback v3 · api v7 · ratings v4</text>
-<text x="180" y="182" text-anchor="middle" font-size="9" fill="#3C3489">modal v7 · pitch v4 · map v4 · render v6</text>
-<text x="180" y="198" text-anchor="middle" font-size="9" fill="#3C3489">rankings v2 · state v6</text>
+<text x="180" y="148" text-anchor="middle" font-size="11" font-weight="bold" fill="#26215C">js/ (11 fichiers)</text>
+<text x="180" y="166" text-anchor="middle" font-size="9" fill="#3C3489">config v2 · fallback v3 · predictions v5</text>
+<text x="180" y="182" text-anchor="middle" font-size="9" fill="#3C3489">api v10 · ratings v4 · modal v7 · pitch v4</text>
+<text x="180" y="198" text-anchor="middle" font-size="9" fill="#3C3489">map v6 · render v10 · rankings v3 · state v6</text>
 <!-- Cloudflare Worker -->
 <rect x="30" y="268" width="300" height="280" rx="14" fill="#e1f5ee" stroke="#1D9E75" stroke-width="1"/>
 <text x="180" y="294" text-anchor="middle" font-size="13" font-weight="bold" fill="#085041">Cloudflare Worker v7</text>
