@@ -124,7 +124,7 @@ async function fetchAll(){
   setStatus('ok','En ligne ✓ ('+src+')');
   var now=new Date();
   document.getElementById('last-update').textContent='Mis à jour '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  renderAll();fetchScorers();
+  renderAll();fetchScorers();fetchFairPlay();
   if(activeView==='players')fetchPlayerRankings();
   document.getElementById('loading').classList.add('hidden');
   showView(activeView);
@@ -276,6 +276,7 @@ function fetchFairPlay(){
       fairplayData=data.fairplay||[];
       fairplayLoaded=true;
       if(activeView==='fairplay')renderFairPlay();
+      if(activeView==='groups'||activeView==='knockout')renderKPIBar();
     })
     .catch(function(e){console.warn('[WC2026] fairplay:',e.message);fairplayLoaded=true;});
 }
