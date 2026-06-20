@@ -82,31 +82,33 @@ Dashboard de suivi de la Coupe du Monde 2026 (USA/Canada/Mexique), déployé en 
 wc2026/
 ├── index.html             # Page principale (Cloudflare Pages)
 └── js/
-    ├── config.js    v2    # Constantes, maps, utilitaires
-    ├── fallback.js  v3    # Données statiques matchs (63 matchs + KO)
-    ├── api.js       v7    # Fetch Worker, traitement scores live
-    ├── ratings.js   v4    # Algo rating joueurs v8 (sans xG/xA)
-    ├── modal.js     v7    # Modales stats match + lien YouTube par but
-    ├── pitch.js     v4    # Terrain SVG, compositions, openLineupESPN
-    ├── map.js       v4    # Vue liste matchs + bouton ▶ YouTube résumé
-    ├── render.js    v6    # Timelines, bracket KO, Meilleurs 3èmes
-    ├── rankings.js  v2    # Gardiens, buteurs, classement joueurs
-    └── state.js     v6    # renderAll, switchView (7 vues), scheduleRefresh
+    ├── config.js      v2  # Constantes, maps, utilitaires
+    ├── fallback.js    v3  # Données statiques matchs (63 matchs + KO)
+    ├── api.js         v10 # Fetch Worker, traitement scores live
+    ├── predictions.js v5  # Modèle Poisson v4 (prédictions matchs à venir)
+    ├── ratings.js     v4  # Algo rating joueurs v8 (sans xG/xA)
+    ├── modal.js       v7  # Modales stats match + lien YouTube par but
+    ├── pitch.js       v4  # Terrain SVG, compositions, openLineupESPN
+    ├── map.js         v6  # Vue liste matchs + prédictions score + ▶ YouTube
+    ├── render.js      v10 # Timelines, bracket KO, Meilleurs 3èmes
+    ├── rankings.js    v3  # Gardiens, buteurs, classement joueurs (avec Min)
+    └── state.js       v6  # renderAll, switchView (7 vues), scheduleRefresh
 ```
 
 ### Ordre de chargement des scripts (critique)
 
 ```html
-<script src="js/config.js?v=2"></script>    <!-- 1. Constantes globales -->
-<script src="js/fallback.js?v=3"></script>  <!-- 2. Données statiques -->
-<script src="js/api.js?v=7"></script>       <!-- 3. Fetch Worker/FD -->
-<script src="js/ratings.js?v=4"></script>   <!-- 4. Algo rating v8 -->
-<script src="js/modal.js?v=7"></script>     <!-- 5. Modales + YouTube par but -->
-<script src="js/pitch.js?v=4"></script>     <!-- 6. Terrain SVG -->
-<script src="js/map.js?v=4"></script>       <!-- 7. Vue liste + ▶ YouTube résumé -->
-<script src="js/render.js?v=6"></script>    <!-- 8. Rendu groupes + KO + Meilleurs 3èmes -->
-<script src="js/rankings.js?v=2"></script>  <!-- 9. Classements -->
-<script src="js/state.js?v=6"></script>     <!-- 10. Init + orchestration (7 vues) -->
+<script src="js/config.js?v=2"></script>       <!-- 1. Constantes globales -->
+<script src="js/fallback.js?v=3"></script>     <!-- 2. Données statiques -->
+<script src="js/api.js?v=10"></script>         <!-- 3. Fetch Worker/FD -->
+<script src="js/predictions.js?v=5"></script>  <!-- 4. Modèle Poisson v4 -->
+<script src="js/ratings.js?v=4"></script>      <!-- 5. Algo rating v8 -->
+<script src="js/modal.js?v=7"></script>        <!-- 6. Modales + YouTube par but -->
+<script src="js/pitch.js?v=4"></script>        <!-- 7. Terrain SVG -->
+<script src="js/map.js?v=6"></script>          <!-- 8. Vue liste + prédictions -->
+<script src="js/render.js?v=10"></script>      <!-- 9. Rendu groupes + KO + Meilleurs 3èmes -->
+<script src="js/rankings.js?v=3"></script>     <!-- 10. Classements joueurs -->
+<script src="js/state.js?v=6"></script>        <!-- 11. Init + orchestration (7 vues) -->
 ```
 
 ### Variables globales clés (config.js)
@@ -246,6 +248,110 @@ Poids par rôle :
 
 ---
 
+## Prédictions de Score — Modèle Poisson v4 (predictions.js)
+
+Les prédictions sont calculées côté navigateur pour chaque match **à venir** (non démarré, non terminé, sans placeholder KO).
+
+### Prior FIFA
+
+Chaque équipe dispose d'un **rating FIFA officiel** (juin 2026, 48 équipes). En l'absence de stats de tournoi, le modèle revient à ce prior :
+
+```
+priorGF_A = avgGF × (fifaA / avgFifa)^1.5
+priorGA_A = avgGA × (avgFifa / fifaA)^1.5
+```
+
+- `avgGF` / `avgGA` : buts par équipe par match calculés depuis les classements en cours
+- `avgFifa` ≈ 1580 (moyenne des 48 équipes)
+- Exposant 1.5 : différencie suffisamment sans exagérer (Maroc vs Écosse → ~58% favori)
+
+### Régression bayésienne K=6
+
+Après chaque match joué, les stats réelles ne pèsent que `w = played / (played + K)` :
+
+```
+w = played / (played + 6)
+gf_A = w × rawGF_A + (1-w) × priorGF_A
+ga_A = w × rawGA_A + (1-w) × priorGA_A
+```
+
+Avec K=6, après 1 match joué le poids sur les stats réelles est seulement 14%. Cela évite qu'une défaite difficile (ex: 0-2 vs Brésil J1) écrase le prior d'une équipe de niveau mondial.
+
+### Paramètres Poisson
+
+```
+lambdaA = clip(gf_A × ga_B / avgGF, 0.2, 4.0)
+lambdaB = clip(gf_B × ga_A / avgGF, 0.2, 4.0)
+```
+
+La distribution de Poisson bivarié P(i buts A, j buts B) = PMF(λA, i) × PMF(λB, j) est calculée sur une grille 8×8 (0 à 7 buts chaque côté).
+
+### Argmax par catégorie
+
+Les probabilités sont séparées en trois catégories :
+- **V (Victoire A)** : somme des P(i,j) avec i > j
+- **N (Nul)** : somme des P(i,j) avec i = j
+- **D (Défaite A)** : somme des P(i,j) avec i < j
+
+Le **score affiché** est le score (i,j) maximisant P dans la catégorie la plus probable (pas le score global le plus probable, ce qui permettrait d'afficher un nul 0-0 même quand V=55%).
+
+### Affichage (map.js v6)
+
+Pour chaque match à venir, la ligne affiche :
+- `🎯 X-Y` en orange (stats disponibles) ou gris (prior FIFA uniquement)
+- `Vxx% · Nxx% · Dxx%` colorisés : vert si favori, rouge si perdant, gris si nul prédit
+- Tooltip : `Poisson λ=X.X / Y.Y`
+
+`buildPredictions()` est appelé depuis `api.js` après chaque `fetchAll()` et après chaque mise à jour de standings en live.
+
+---
+
+## Classement Joueurs (rankings.js v3 + Worker /stats/players)
+
+### Pipeline de calcul (Worker)
+
+`handlePlayers()` agrège toutes les clés `match:{eid}` du KV pour construire le classement :
+
+```
+Pour chaque joueur sur tous les matchs :
+  totalMinutes += minutes_jouées_ce_match
+  totalRating  += rating_ce_match × minutes_jouées_ce_match
+  goals        += buts
+  assists      += passes décisives
+  matches      += 1
+
+rating_final = totalRating / totalMinutes   (moyenne pondérée par minutes)
+```
+
+Le classement est trié par `rating_final` décroissant.
+
+### Algo Rating v8 (ratings.js)
+
+Formule par poste : `rating = 6.3 + volScore + offScore`
+
+| Métrique | Description |
+|---|---|
+| **Per90 atténué** | `1 + (90/min − 1) × 0.2` — atténue la distorsion sur peu de minutes |
+| **volScore** | Métriques de volume/défense (tackles, passes, duels, saves, CS) — plafonné 1.2→1.8 selon poste |
+| **offScore** | Buts, assists, tirs cadrés — plafonné à 2.5 (2.8 FW) |
+| **Carton rouge** | −1.0 |
+| **Carton jaune** | −0.3 |
+| **Plage finale** | [4.0 — 9.5] |
+
+Sans xG/xA (supprimés en v8 car causaient une inflation de +0.1 à +0.5 sur AM/FW vs SofaScore).
+
+### Colonnes affichées
+
+| Colonne | Description |
+|---|---|
+| **MJ** | Matchs joués (cumul) |
+| **Min** | Minutes cumulées sur tous les matchs |
+| **⚽** | Buts totaux (cumul) |
+| **→** | Passes décisives totales (cumul) |
+| **Moy.** | Note moyenne pondérée par minutes — critère de classement |
+
+---
+
 ## Refresh des scores live
 
 `state.js` — `scheduleRefresh()` toutes les **30s** (setTimeout récursif) :
@@ -348,16 +454,17 @@ Cloudflare Dashboard → worker `wc2026` → **Observability** → **Logs** : fi
 mguenoun/wc2026 (repo)
 ├── index.html             # Cloudflare Pages (main → prod, staging → recette)
 ├── js/
-│   ├── config.js    v2
-│   ├── fallback.js  v3
-│   ├── api.js       v7
-│   ├── ratings.js   v4
-│   ├── modal.js     v7   # Lien YouTube par but
-│   ├── pitch.js     v4
-│   ├── map.js       v4   # Bouton ▶ YouTube résumé sur lignes FT
-│   ├── render.js    v6   # Meilleurs 3èmes + matching bipartite + ex æquo
-│   ├── rankings.js  v2
-│   └── state.js     v6   # 7 vues : groups/standings/thirds/knockout/scorers/keepers/players
+│   ├── config.js      v2
+│   ├── fallback.js    v3
+│   ├── api.js         v10
+│   ├── predictions.js v5  # Modèle Poisson v4 + prior FIFA
+│   ├── ratings.js     v4
+│   ├── modal.js       v7  # Lien YouTube par but
+│   ├── pitch.js       v4
+│   ├── map.js         v6  # Prédictions score + ▶ YouTube résumé
+│   ├── render.js      v10 # Meilleurs 3èmes + matching bipartite + ex æquo
+│   ├── rankings.js    v3  # Min cumulées + Moy. pondérée
+│   └── state.js       v6  # 7 vues : groups/standings/thirds/knockout/scorers/keepers/players
 ├── worker/
 │   └── worker.js    v7   # Deploye via wrangler deploy
 ├── tests/
