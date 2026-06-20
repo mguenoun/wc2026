@@ -899,7 +899,7 @@ function renderFairPlay(){
     var scoreCol=t.fp===0?'#22c55e':t.fp<=3?'#fbbf24':'#ef4444';
     rows.push('<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:'+(last?'none':'1px solid rgba(255,255,255,0.03)')+';font-size:11px">'+
       '<span style="min-width:24px;font-size:9px;font-weight:700;color:#475569">'+(i+1)+'</span>'+
-      '<span style="flex:1;color:'+(top?'#22c55e':'#e2e8f0')+';font-weight:'+(top?'700':'500')+'">'+t.team+'</span>'+
+      '<span style="flex:1;color:'+(top?'#22c55e':'#e2e8f0')+';font-weight:'+(top?'700':'500')+'">'+(flagEmoji(t.team)||'')+t.team+'</span>'+
       '<span style="min-width:44px;text-align:center;color:#fbbf24;font-weight:700;font-size:12px">'+t.yc+'</span>'+
       '<span style="min-width:44px;text-align:center;color:#ef4444;font-weight:700;font-size:12px">'+t.rc+'</span>'+
       '<span style="min-width:52px;text-align:center;font-weight:900;font-size:14px;color:'+scoreCol+'">'+t.fp+'</span>'+
