@@ -834,8 +834,8 @@ function renderKPIBar(){
     '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24"><span style="display:inline-block;width:11px;height:16px;background:#fbbf24;border-radius:2px;vertical-align:middle;margin-right:3px"></span>'+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444"><span style="display:inline-block;width:11px;height:16px;background:#ef4444;border-radius:2px;vertical-align:middle;margin-right:3px"></span>'+totalRC+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24"><span style="display:inline-block;width:0.6em;height:1em;background:#fbbf24;border-radius:2px;vertical-align:text-bottom;margin-right:3px"></span>'+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444"><span style="display:inline-block;width:0.6em;height:1em;background:#ef4444;border-radius:2px;vertical-align:text-bottom;margin-right:3px"></span>'+totalRC+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
     '</div>';
   // Mini-matchs en cours cliquables dans la KPI live
   if(live>0){
