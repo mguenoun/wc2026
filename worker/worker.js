@@ -638,6 +638,25 @@ async function handleKeepers(env, cors) {
   return jsonResp({ ranking, cachedAt: Date.now() }, cors);
 }
 
+async function handleFairPlay(env, cors) {
+  const list = await env.STATS_KV.list({ prefix: 'match:' });
+  const teams = {};
+  for (const key of list.keys) {
+    const data = await kv.get(env, key.name);
+    if (!data?.stats) continue;
+    for (const [, s] of Object.entries(data.stats)) {
+      if (!s.team) continue;
+      if (!teams[s.team]) teams[s.team] = { team: s.team, yc: 0, rc: 0 };
+      teams[s.team].yc += s.yellow || 0;
+      teams[s.team].rc += s.red    || 0;
+    }
+  }
+  const fairplay = Object.values(teams).sort((a, b) =>
+    (a.yc + 3 * a.rc) - (b.yc + 3 * b.rc) || a.yc - b.yc
+  );
+  return jsonResp({ fairplay, cachedAt: Date.now() }, cors);
+}
+
 async function handleStatus(env, cors) {
   const queue   = await kv.get(env, 'pipeline_queue') || { pending: [], processing: [], done: [] };
   const espnMap = await kv.get(env, 'espn_map') || {};
@@ -720,9 +739,10 @@ export default {
     const url  = new URL(request.url);
     const path = url.pathname;
 
-    if (path === '/stats/players') return handlePlayers(env, cors);
-    if (path === '/stats/keepers') return handleKeepers(env, cors);
-    if (path === '/stats/status')  return handleStatus(env, cors);
+    if (path === '/stats/players')   return handlePlayers(env, cors);
+    if (path === '/stats/keepers')   return handleKeepers(env, cors);
+    if (path === '/stats/fairplay')  return handleFairPlay(env, cors);
+    if (path === '/stats/status')    return handleStatus(env, cors);
     if (path === '/stats/step1')   return jsonResp(await step1_discover(env),   cors);
     if (path === '/stats/step2')   return jsonResp(await step2_fetchUrls(env),  cors);
     if (path === '/stats/step3')   return jsonResp(await step3_fetchStats(env), cors);

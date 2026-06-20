@@ -267,6 +267,19 @@ function fetchScorers(){
 }
 
 
+var fairplayData=[], fairplayLoaded=false;
+function fetchFairPlay(){
+  fairplayLoaded=false;
+  fetch(PROXY_BASE+'/stats/fairplay')
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(data){
+      fairplayData=data.fairplay||[];
+      fairplayLoaded=true;
+      if(activeView==='fairplay')renderFairPlay();
+    })
+    .catch(function(e){console.warn('[WC2026] fairplay:',e.message);fairplayLoaded=true;});
+}
+
 // ─── MODAL ────────────────────────────────────────────────────────────────────
 var _modalRefreshTimer = null;
 var _modalRefreshFn   = null;

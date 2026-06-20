@@ -22,7 +22,7 @@ function switchView(v){
   if(v==='keepers'&&!keepersLoaded)fetchKeepers();
   if(v==='players'&&!playersLoaded)fetchPlayerRankings();
   if(v==='thirds')renderThirds();
-  if(v==='fairplay')renderFairPlay();
+  if(v==='fairplay'){if(!fairplayLoaded)fetchFairPlay();else renderFairPlay();}
   if(v==='knockout'&&koBracketView==='bracket'){
     var c=document.getElementById('knockout-timeline');
     c.innerHTML='';
