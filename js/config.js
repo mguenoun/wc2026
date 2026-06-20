@@ -88,7 +88,7 @@ var FLAG = {
 
 
 function flagEmoji(name) {
-  var code = FLAG[name];
+  var code = FLAG[name] || (TEAM_MAP[name] && FLAG[TEAM_MAP[name]]);
   if (!code) return '';
   var src = 'https://flagcdn.com/20x15/' + code.toLowerCase() + '.png';
   return '<img src="' + src + '" width="13" height="10" style="vertical-align:middle;border-radius:1px;margin-right:2px" alt="" loading="lazy">';

@@ -840,11 +840,10 @@ function renderKPIBar(){
     if(_lmc){
       _liveMs.forEach(function(m){
         var row=document.createElement('div');
-        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:3px 0;display:flex;align-items:center;gap:3px;flex-wrap:wrap;justify-content:center;';
-        row.innerHTML='<span style="font-size:9px;color:#e2e8f0;white-space:nowrap">'+(flagEmoji(m.t1)||'')+' '+m.t1+'</span>'
-          +'<span style="font-size:10px;font-weight:900;color:#22c55e;padding:0 4px">'+(m.score||'–')+'</span>'
-          +'<span style="font-size:9px;color:#e2e8f0;white-space:nowrap">'+m.t2+' '+(flagEmoji(m.t2)||'')+'</span>'
-          +(m.clockDisplay?'<span style="font-size:7px;color:#64748b;width:100%;text-align:center">'+m.clockDisplay+'</span>':'');
+        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:2px 0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:3px;';
+        row.innerHTML='<span style="font-size:8px;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">'+(flagEmoji(m.t1)||'')+' '+m.t1+'</span>'
+          +'<span style="font-size:9px;font-weight:900;color:#22c55e;white-space:nowrap;text-align:center">'+(m.score||'–')+(m.clockDisplay?'<br><span style="font-size:6px;color:#64748b;font-weight:400">'+m.clockDisplay+'</span>':'')+'</span>'
+          +'<span style="font-size:8px;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+m.t2+' '+(flagEmoji(m.t2)||'')+'</span>';
         row.addEventListener('click',function(e){e.stopPropagation();scrollToMatch(m.id);});
         _lmc.appendChild(row);
       });
@@ -855,16 +854,18 @@ function renderKPIBar(){
 }
 
 function scrollToMatch(matchId){
-  if(activeView!=='groups'){switchView('groups');}
-  if(typeof grpCalView!=='undefined'&&grpCalView==='calendar'){grpCalView='list';renderGroupsTimeline();}
+  var needNav=activeView!=='groups';
+  var needList=typeof grpCalView!=='undefined'&&grpCalView==='calendar';
+  if(needNav)switchView('groups');
+  if(needList)grpCalView='list';
+  if(needNav||needList)renderGroupsTimeline();
   setTimeout(function(){
     var el=document.querySelector('[data-mid="'+matchId+'"]');
-    if(el){
-      el.scrollIntoView({behavior:'smooth',block:'center'});
-      el.style.outline='2px solid #22c55e';
-      setTimeout(function(){el.style.outline='';},1500);
-    }
-  },160);
+    if(!el)return;
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.style.outline='2px solid #22c55e';
+    setTimeout(function(){el.style.outline='';},1500);
+  },needNav||needList?300:80);
 }
 
 
