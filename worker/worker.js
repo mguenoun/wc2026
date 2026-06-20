@@ -812,11 +812,21 @@ export default {
       const espnId = path.split('/')[3];
       if (!espnId) return new Response('Missing espnId', { status: 400, headers: cors });
       const m = await kv.get(env, 'match:' + espnId);
-      if (m?.stats) return jsonResp({ stats: m.stats, cachedAt: m.cachedAt, startersOnly: m.startersOnly || false }, cors);
-      // KV miss → calcul on-demand des titulaires
+      if (m?.stats) {
+        // KV hit : profiter pour traiter les matchs manquants en arrière-plan
+        const list = await env.STATS_KV.list({ prefix: 'match:' });
+        await _triggerMissing(env, ctx, list);
+        return jsonResp({ stats: m.stats, cachedAt: m.cachedAt, startersOnly: m.startersOnly || false }, cors);
+      }
+      // KV miss → calcul on-demand du match courant
       try {
         const stats = await computeOnDemand(env, espnId);
-        if (stats) return jsonResp({ stats, cachedAt: Date.now(), startersOnly: true }, cors);
+        if (stats) {
+          // Match courant maintenant en KV : traiter les autres matchs manquants
+          const list = await env.STATS_KV.list({ prefix: 'match:' });
+          await _triggerMissing(env, ctx, list);
+          return jsonResp({ stats, cachedAt: Date.now(), startersOnly: true }, cors);
+        }
       } catch (e) {
         console.warn('[ondemand]', espnId, e.message);
       }
