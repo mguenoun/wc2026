@@ -18,6 +18,7 @@ function showView(v){
 
 function switchView(v){
   activeView=v;showView(v);
+  if(v==='groups'||v==='knockout')renderKPIBar();
   if(v==='scorers')renderScorers();
   if(v==='keepers'&&!keepersLoaded)fetchKeepers();
   if(v==='players'&&!playersLoaded)fetchPlayerRankings();
