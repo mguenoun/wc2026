@@ -113,13 +113,14 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 /* ─── KPI BAR ─────────────────────────────────────────────────────────────── */
 #kpi-bar{max-width:720px;margin:0 auto 14px;padding:0 16px}
 .kpi-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.kpi-card{background:#080f1e;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 18px;text-align:center;min-width:90px;flex:1;max-width:160px}
+.kpi-card{background:#080f1e;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 18px;text-align:center;min-width:55px;flex:1;max-width:160px}
 .kpi-card.kpi-live{border-color:#22c55e44;background:#052010}
 .kpi-val{font-size:22px;font-weight:900;color:#e2e8f0;line-height:1.2}
 .kpi-val.kpi-green{color:#22c55e}
 .kpi-val.kpi-yellow{color:#f59e0b}
 .kpi-lbl{font-size:8px;font-weight:700;color:#475569;letter-spacing:1px;margin-top:3px}
 .kpi-sub{font-size:7px;color:#334155;font-weight:400;letter-spacing:0}
+@media(max-width:520px){.kpi-grid .kpi-card{padding:7px 5px}.kpi-grid .kpi-val{font-size:16px}.kpi-sub{display:none}}
 /* ─── STADES MAP ──────────────────────────────────────────────────────────── */
 #stades-map-leaflet{height:340px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);margin-bottom:0}
 @media(max-width:480px){#stades-map-leaflet{height:240px}}
@@ -213,7 +214,7 @@ body{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#0c1628 0%,#0
 <script src="js/modal.js?v=7"></script>
 <script src="js/pitch.js?v=5"></script>
 <script src="js/map.js?v=9"></script>
-<script src="js/render.js?v=18"></script>
+<script src="js/render.js?v=19"></script>
 <script src="js/rankings.js?v=4"></script>
 <script src="js/state.js?v=9"></script>
 
