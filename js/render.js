@@ -830,12 +830,12 @@ function renderKPIBar(){
   var cardSubRC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgRC+'/m</span>';
   el.innerHTML=
     '<div class="kpi-grid">'+
-    (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;flex:2;min-width:110px;max-width:240px;padding:10px 14px;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite;font-size:18px">⚡ '+live+'</span><span class="kpi-lbl" style="font-size:9px;color:#22c55e;letter-spacing:1.5px">EN DIRECT</span></div><div id="kpi-live-matches"></div></div>':'')+
+    (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;flex:2;min-width:110px;max-width:240px;padding:8px 10px;"><div style="font-size:14px;font-weight:900;color:#22c55e;animation:pulse 1.5s infinite;line-height:1.1">⚡ '+live+'</div><div style="font-size:7px;font-weight:700;color:#22c55e;letter-spacing:1px;margin-bottom:5px">EN DIRECT</div><div id="kpi-live-matches"></div></div>':'')+
     '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24">'+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444">'+totalRC+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24"><span style="display:inline-block;width:11px;height:8px;background:#fbbf24;border-radius:1px;vertical-align:middle;margin-right:3px"></span>'+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444"><span style="display:inline-block;width:11px;height:8px;background:#ef4444;border-radius:1px;vertical-align:middle;margin-right:3px"></span>'+totalRC+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
     '</div>';
   // Mini-matchs en cours cliquables dans la KPI live
   if(live>0){
@@ -845,11 +845,16 @@ function renderKPIBar(){
       function _iso(name){var c=FLAG[name]||(TEAM_MAP[name]&&FLAG[TEAM_MAP[name]])||'';return c?c.replace(/^GB-/,'').toUpperCase():(name||'???').slice(0,3).toUpperCase();}
       _liveMs.forEach(function(m){
         var row=document.createElement('div');
-        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:4px 0;display:flex;align-items:center;gap:6px;white-space:nowrap;';
-        row.innerHTML=(flagEmoji(m.t1)||'')+' <b style="font-size:9px;color:#e2e8f0">'+_iso(m.t1)+'</b>'
-          +' <span style="font-size:10px;font-weight:900;color:#22c55e;padding:0 3px">'+(m.score||'–')+'</span>'
-          +(m.clockDisplay?'<span style="font-size:7px;color:#64748b">'+m.clockDisplay+'</span>':'')
-          +' <b style="font-size:9px;color:#e2e8f0">'+_iso(m.t2)+'</b> '+(flagEmoji(m.t2)||'');
+        row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:2px 0;display:flex;align-items:center;gap:2px;white-space:nowrap;';
+        row.innerHTML=
+          (flagEmoji(m.t1)||'')+
+          '<b style="font-size:8px;color:#e2e8f0">'+_iso(m.t1)+'</b>'+
+          '<span style="display:inline-flex;flex-direction:column;align-items:center;margin:0 3px">'+
+            (m.clockDisplay?'<span style="font-size:6px;color:#64748b;line-height:1.2">'+m.clockDisplay+'</span>':'')+
+            '<span style="font-size:10px;font-weight:900;color:#22c55e;line-height:1">'+(m.score||'–')+'</span>'+
+          '</span>'+
+          '<b style="font-size:8px;color:#e2e8f0">'+_iso(m.t2)+'</b>'+
+          (flagEmoji(m.t2)||'');
         row.addEventListener('click',function(e){e.stopPropagation();scrollToMatch(m.id);});
         _lmc.appendChild(row);
       });
