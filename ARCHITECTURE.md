@@ -89,8 +89,8 @@ wc2026/
     ├── ratings.js     v4  # Algo rating joueurs v8 (sans xG/xA)
     ├── modal.js       v7  # Modales stats match + lien YouTube par but
     ├── pitch.js       v4  # Terrain SVG, compositions, openLineupESPN
-    ├── map.js         v6  # Vue liste matchs + prédictions score + ▶ YouTube
-    ├── render.js      v10 # Timelines, bracket KO, Meilleurs 3èmes
+    ├── map.js         v7  # Affichage stade (OpenStreetMap + Google Maps)
+    ├── render.js      v11 # Liste matchs, prédictions, YouTube, bracket KO, Meilleurs 3èmes
     ├── rankings.js    v3  # Gardiens, buteurs, classement joueurs (avec Min)
     └── state.js       v6  # renderAll, switchView (7 vues), scheduleRefresh
 ```
@@ -105,8 +105,8 @@ wc2026/
 <script src="js/ratings.js?v=4"></script>      <!-- 5. Algo rating v8 -->
 <script src="js/modal.js?v=7"></script>        <!-- 6. Modales + YouTube par but -->
 <script src="js/pitch.js?v=4"></script>        <!-- 7. Terrain SVG -->
-<script src="js/map.js?v=6"></script>          <!-- 8. Vue liste + prédictions -->
-<script src="js/render.js?v=10"></script>      <!-- 9. Rendu groupes + KO + Meilleurs 3èmes -->
+<script src="js/map.js?v=7"></script>          <!-- 8. Affichage stade (openMap) -->
+<script src="js/render.js?v=11"></script>      <!-- 9. Liste matchs, prédictions, YouTube, bracket KO, Meilleurs 3èmes -->
 <script src="js/rankings.js?v=3"></script>     <!-- 10. Classements joueurs -->
 <script src="js/state.js?v=6"></script>        <!-- 11. Init + orchestration (7 vues) -->
 ```
@@ -295,7 +295,7 @@ Les probabilités sont séparées en trois catégories :
 
 Le **score affiché** est le score (i,j) maximisant P dans la catégorie la plus probable (pas le score global le plus probable, ce qui permettrait d'afficher un nul 0-0 même quand V=55%).
 
-### Affichage (map.js v6)
+### Affichage (render.js v11)
 
 Pour chaque match à venir, la ligne affiche :
 - `🎯 X-Y` en orange (stats disponibles) ou gris (prior FIFA uniquement)
@@ -374,7 +374,7 @@ Tick N :
 
 - `fallback.js` : données statiques des 63 matchs (GS + KO), placeholders `1er Gr.X`, `2e Gr.X`, `3e A/B/C/D`, `V Mxx`, `Vainq./Perdant`
 - `resolveKOTeam(placeholder)` : résout les placeholders depuis `allMatches` et `standings`
-- Noms résolus affichés entre parenthèses dans la vue liste (`map.js`) et dans le bracket (`render.js`)
+- Noms résolus affichés entre parenthèses dans la vue liste et dans le bracket (tous deux dans `render.js`)
 - **`getAll3rd()`** : collecte le 3e de chaque groupe ayant joué ≥ 1 match, trié par pts/DB/BP. Détecte les cas ex æquo (2e et 3e avec stats identiques) et renseigne un champ `coTeam`.
 - **`buildThirdAssign()`** : matching bipartite (chemin augmentant) pour assigner chaque 3e qualifié à un slot KO. Chaque slot liste les groupes éligibles selon la règle FIFA ; l'algo garantit un matching maximal même quand le greedy simple échouerait.
 - **`renderThirds()`** : onglet dédié affichant les 12 troisièmes classés, top 8 qualifiés mis en évidence (✓), badge `prov.` si le groupe n'a pas fini, badge `ex æq.` si deux équipes sont parfaitement à égalité.
@@ -461,8 +461,8 @@ mguenoun/wc2026 (repo)
 │   ├── ratings.js     v4
 │   ├── modal.js       v7  # Lien YouTube par but
 │   ├── pitch.js       v4
-│   ├── map.js         v6  # Prédictions score + ▶ YouTube résumé
-│   ├── render.js      v10 # Meilleurs 3èmes + matching bipartite + ex æquo
+│   ├── map.js         v7  # Stade : openMap() uniquement (OSM + Google Maps)
+│   ├── render.js      v11 # Liste matchs, prédictions, YouTube, bracket KO, 3èmes
 │   ├── rankings.js    v3  # Min cumulées + Moy. pondérée
 │   └── state.js       v6  # 7 vues : groups/standings/thirds/knockout/scorers/keepers/players
 ├── worker/
