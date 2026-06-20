@@ -226,8 +226,8 @@ function renderGroupsCalendar(){
     var vTd=document.createElement('td');
     vTd.style.cssText='position:sticky;left:0;z-index:2;background:#08101f;width:'+VW+'px;min-width:'+VW+'px;'
       +'padding:4px 6px;border-bottom:1px solid rgba(255,255,255,0.05);border-right:1px solid rgba(255,255,255,0.07);vertical-align:middle;';
-    vTd.innerHTML='<div style="font-size:9px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(VW-14)+'px" title="'+venue+'">'+shortV+'</div>'
-      +'<div style="font-size:8px;color:#475569;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+city+'</div>';
+    vTd.innerHTML='<div style="font-size:9px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(VW-14)+'px">'+city+'</div>'
+      +'<div style="font-size:8px;color:#475569;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+venue+'">'+shortV+'</div>';
     tr.appendChild(vTd);
 
     days.forEach(function(dk){

@@ -86,15 +86,12 @@ var FLAG = {
   'Angleterre':'GB-ENG','Croatie':'HR','Ghana':'GH','Panama':'PA',
 };
 
+
 function flagEmoji(name) {
   var code = FLAG[name];
   if (!code) return '';
-  // Drapeaux subdivision (Angleterre, Écosse) — séquences tag Unicode
-  if (code === 'GB-ENG') return '🏴󠁧󠁢󠁥󠁮󠁧󠁿';
-  if (code === 'GB-SCT') return '🏴󠁧󠁢󠁳󠁣󠁴󠁿';
-  var f = '';
-  for (var i = 0; i < code.length; i++) { f += String.fromCodePoint(code.charCodeAt(i) + 127397); }
-  return f;
+  var src = 'https://flagcdn.com/20x15/' + code.toLowerCase() + '.png';
+  return '<img src="' + src + '" width="20" height="15" style="vertical-align:middle;border-radius:1px;margin-right:2px" alt="" loading="lazy">';
 }
 
 const GC = {A:'#0ea5e9',B:'#06b6d4',C:'#10b981',D:'#f59e0b',E:'#ef4444',F:'#f97316',G:'#8b5cf6',H:'#ec4899',I:'#14b8a6',J:'#a855f7',K:'#22c55e',L:'#f43f5e'};

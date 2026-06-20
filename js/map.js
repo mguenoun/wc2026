@@ -31,7 +31,7 @@ function renderStadesMap(){
         radius:8,fillColor:'#0ea5e9',color:'#fff',weight:1.5,opacity:1,fillOpacity:.85
       }).addTo(_stadesMap);
       _stadesMarkers[name]=marker;
-      marker.bindTooltip(v.city,{direction:'top',offset:[0,-10],permanent:true,className:'stade-lbl'});
+      marker.bindTooltip('<b>'+v.city+'</b><br><span style="font-size:10px;color:#94a3b8">'+name+'</span>',{direction:'top',offset:[0,-8],className:'stade-lbl'});
       marker.on('click',function(){_showStadeInfo(name,v,panel);});
     });
   } else {
@@ -46,7 +46,7 @@ function renderStadesMap(){
     var html='<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;padding:4px 12px;">';
     html+='<div style="display:flex;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:#475569;font-weight:700">'
       +'<span style="min-width:20px">#</span>'
-      +'<span style="flex:1">Stade · Ville</span>'
+      +'<span style="flex:1">Ville · Stade</span>'
       +'<span style="min-width:56px;text-align:right">Capacité</span>'
       +'<span style="min-width:40px;text-align:right">Matchs</span></div>';
     sorted.forEach(function(e,i){
@@ -55,8 +55,8 @@ function renderStadesMap(){
       var rc=i===0?'#fbbf24':i===1?'#94a3b8':i===2?'#cd7f32':'#475569';
       html+='<div class="scorer-row" style="cursor:pointer" onclick="_showStadeInfo(\''+name.replace(/'/g,"\\'")+'\',VENUE_COORDS[\''+name.replace(/'/g,"\\'")+'\'],document.getElementById(\'stades-info-panel\'));document.getElementById(\'stades-map-leaflet\').scrollIntoView({behavior:\'smooth\'})">'
         +'<span class="scorer-rank" style="color:'+rc+'">'+(i+1)+'</span>'
-        +'<span class="scorer-name"><b style="color:#e2e8f0">'+name+'</b>'
-          +'<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">'+v.city+'</span></span>'
+        +'<span class="scorer-name"><b style="color:#e2e8f0">'+v.city+'</b>'
+          +'<span style="font-size:9px;color:#64748b;font-weight:400;margin-left:4px">'+name+'</span></span>'
         +'<span style="font-size:11px;font-weight:800;color:#0ea5e9;min-width:56px;text-align:right">'+v.cap.toLocaleString('fr-FR')+'</span>'
         +'<span style="font-size:10px;color:#64748b;min-width:40px;text-align:right">'+mc+'</span>'
         +'</div>';
@@ -93,8 +93,8 @@ function _showStadeInfo(name,v,panel){
     '<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;margin-top:10px;">'
     +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">'
       +'<div>'
-        +'<div style="font-size:13px;font-weight:800;color:#e2e8f0">'+name+'</div>'
-        +'<div style="font-size:10px;color:#64748b;margin-top:2px">📍 '+v.city+'</div>'
+        +'<div style="font-size:13px;font-weight:800;color:#e2e8f0">'+v.city+'</div>'
+        +'<div style="font-size:10px;color:#64748b;margin-top:2px">📍 '+name+'</div>'
       +'</div>'
       +'<a href="'+mapsUrl+'" target="_blank" style="font-size:10px;color:#0ea5e9;text-decoration:none;flex-shrink:0">Maps ↗</a>'
     +'</div>'
