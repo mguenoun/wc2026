@@ -624,9 +624,9 @@ function renderKPIBar(){
   if(!el)return;
   var isKO=activeView==='knockout';
   var src=allMatches.filter(function(m){return isKO?m.ko:!m.ko;});
+  var total=src.length;
   var played=src.filter(function(m){return m.isFT;}).length;
   var live=src.filter(function(m){return m.isLive;}).length;
-  var planned=src.filter(function(m){return !m.isFT&&!m.isLive;}).length;
   var totalGoals=0;
   src.filter(function(m){return m.isFT&&m.score;}).forEach(function(m){
     var p=m.score.split(/[–\-]/);if(p.length===2){totalGoals+=(parseInt(p[0])||0)+(parseInt(p[1])||0);}
@@ -652,7 +652,7 @@ function renderKPIBar(){
   el.innerHTML=
     '<div class="kpi-grid">'+
     (live>0?'<div class="kpi-card kpi-live"><div class="kpi-val" style="color:#22c55e;animation:pulse 1.5s infinite">⚡ '+live+'</div><div class="kpi-lbl">EN DIRECT</div></div>':'')+
-    '<div class="kpi-card"><div class="kpi-val">'+planned+'</div><div class="kpi-lbl">PLANIFIÉS</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div></div>'+
     '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24">🟨 '+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
