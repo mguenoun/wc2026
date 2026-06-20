@@ -31,7 +31,7 @@ function renderStadesMap(){
         radius:8,fillColor:'#0ea5e9',color:'#fff',weight:1.5,opacity:1,fillOpacity:.85
       }).addTo(_stadesMap);
       _stadesMarkers[name]=marker;
-      marker.bindTooltip('<b>'+name+'</b><br>'+v.city,{direction:'top',offset:[0,-6]});
+      marker.bindTooltip(v.city,{direction:'top',offset:[0,-10],permanent:true,className:'stade-lbl'});
       marker.on('click',function(){_showStadeInfo(name,v,panel);});
     });
   } else {

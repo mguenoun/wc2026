@@ -161,72 +161,111 @@ function renderGroupsTimeline(){
 
 function renderGroupsCalendar(){
   var c=document.getElementById('groups-timeline');c.innerHTML='';
-  var filtered=activeFilter==='all'?allMatches.filter(function(m){return !m.ko;}):allMatches.filter(function(m){return m.grp===activeFilter;});
-  var days=groupByDate(filtered);
+  var filtered=activeFilter==='all'
+    ?allMatches.filter(function(m){return !m.ko;})
+    :allMatches.filter(function(m){return m.grp===activeFilter;});
 
-  var wrap=document.createElement('div');wrap.style.cssText='overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;';
-  var grid=document.createElement('div');grid.style.cssText='display:flex;gap:6px;min-width:max-content;padding:2px;';
+  // Dates uniques triees
+  var daySet={},days=[];
+  filtered.forEach(function(m){if(m.dayKey&&!daySet[m.dayKey]){daySet[m.dayKey]=true;days.push(m.dayKey);}});
+  days.sort();
 
-  days.forEach(function(e){
-    var dateLabel=e[0],matches=e[1];
-    var isToday=matches[0]&&matches[0].dayKey===TODAY_STR;
-    var col=document.createElement('div');
-    col.style.cssText='display:flex;flex-direction:column;width:124px;flex-shrink:0;';
+  // Stades uniques dans l ordre chronologique de leur premier match
+  var venueSet={},venues=[];
+  filtered.slice().sort(function(a,b){return (a.dayKey||'')>(b.dayKey||'')?1:-1;})
+    .forEach(function(m){if(m.venue&&!venueSet[m.venue]){venueSet[m.venue]=true;venues.push(m.venue);}});
 
-    var dk=matches[0].dayKey;
-    var parts=dk.split('-');
-    var dateShort=parts[2]+'/'+parts[1];
-    var dayAbbr=dateLabel.slice(0,3).toUpperCase();
-    var hdr=document.createElement('div');
-    hdr.style.cssText='font-size:9px;font-weight:800;color:'+(isToday?'#fbbf24':'#64748b')+';text-align:center;padding:4px 2px 6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:5px;letter-spacing:.5px;';
-    hdr.textContent=dayAbbr+' '+dateShort;
-    col.appendChild(hdr);
-
-    matches.forEach(function(m){
-      var card=document.createElement('div');
-      card.style.cssText='background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-left:2px solid '+m.color+';border-radius:6px;padding:5px 6px;margin-bottom:4px;cursor:pointer;transition:background .12s;';
-      if(selectedId===m.id)card.style.background=hex2rgba(m.color,.12);
-      card.onmouseenter=function(){if(selectedId!==m.id)card.style.background='rgba(255,255,255,0.03)';};
-      card.onmouseleave=function(){if(selectedId!==m.id)card.style.background='#080f1e';};
-
-      var top=document.createElement('div');
-      top.style.cssText='display:flex;align-items:center;gap:3px;margin-bottom:3px;';
-      var grpBadge=document.createElement('span');
-      grpBadge.style.cssText='font-size:8px;font-weight:800;color:'+m.color+';';
-      grpBadge.textContent='Gr.'+m.grp;
-      var time=document.createElement('span');
-      time.style.cssText='font-size:8px;color:#475569;flex:1;text-align:right;';
-      time.textContent=localTime(m);
-      var sc=document.createElement('span');
-      sc.style.cssText='font-size:9px;font-weight:800;margin-left:2px;';
-      if(m.isFT&&m.score){sc.textContent=m.score;sc.style.color='#e2e8f0';}
-      else if(m.isLive&&m.score){sc.textContent=m.score;sc.style.color='#22c55e';}
-      top.appendChild(grpBadge);top.appendChild(time);top.appendChild(sc);
-
-      var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
-      var t1=document.createElement('div');
-      t1.style.cssText='font-size:10px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
-      t1.textContent=(f1?f1+' ':'')+(m.t1||'?');
-      var sep=document.createElement('div');
-      sep.style.cssText='font-size:8px;color:#334155;line-height:1.2;';sep.textContent='–';
-      var t2=document.createElement('div');
-      t2.style.cssText='font-size:10px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
-      t2.textContent=(f2?f2+' ':'')+(m.t2||'?');
-
-      card.appendChild(top);card.appendChild(t1);card.appendChild(sep);card.appendChild(t2);
-      card.addEventListener('click',function(){selectedId=selectedId===m.id?null:m.id;renderAll();if(selectedId)openMatchInfo(m);});
-      col.appendChild(card);
-    });
-    grid.appendChild(col);
+  // Index [venue][dayKey]->[matches]
+  var idx={};
+  filtered.forEach(function(m){
+    if(!idx[m.venue])idx[m.venue]={};
+    if(!idx[m.venue][m.dayKey])idx[m.venue][m.dayKey]=[];
+    idx[m.venue][m.dayKey].push(m);
   });
 
-  // Scroll automatique vers aujourd'hui ou le dernier match joué
-  var todayIdx=days.findIndex(function(e){return e[1][0]&&e[1][0].dayKey===TODAY_STR;});
-  if(todayIdx<0) todayIdx=Math.max(0,days.findLastIndex?days.findLastIndex(function(e){return e[1].some(function(m){return m.isFT;});}):0);
+  var CW=108,VW=118;
+  var DAY=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  var MON=['Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
+  var todayColIdx=-1;
 
-  wrap.appendChild(grid);c.appendChild(wrap);
-  if(todayIdx>0){
-    setTimeout(function(){var scrollTo=todayIdx*(124+6)-20;wrap.scrollLeft=Math.max(0,scrollTo);},50);
+  var wrap=document.createElement('div');
+  wrap.style.cssText='overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;';
+
+  var tbl=document.createElement('table');
+  tbl.style.cssText='border-collapse:collapse;table-layout:fixed;min-width:'+(VW+days.length*CW)+'px;';
+
+  // En-tete : coin + colonnes dates
+  var thead=document.createElement('thead');
+  var hrow=document.createElement('tr');
+  var corner=document.createElement('th');
+  corner.style.cssText='position:sticky;left:0;z-index:3;background:#07101f;width:'+VW+'px;min-width:'+VW+'px;padding:3px 6px;font-size:8px;color:#334155;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.08);text-align:left;';
+  corner.textContent='Stade · Ville';
+  hrow.appendChild(corner);
+  days.forEach(function(dk,i){
+    var th=document.createElement('th');
+    var isToday=dk===TODAY_STR;
+    if(isToday)todayColIdx=i;
+    var d=new Date(dk+'T12:00:00Z');
+    th.style.cssText='width:'+CW+'px;min-width:'+CW+'px;padding:3px 2px;font-size:8px;font-weight:'+(isToday?'800':'600')+';'
+      +'color:'+(isToday?'#fbbf24':'#475569')+';border-bottom:1px solid rgba(255,255,255,0.08);text-align:center;'
+      +(isToday?'background:rgba(251,191,36,0.05);':'');
+    th.textContent=DAY[d.getUTCDay()]+' '+d.getUTCDate()+' '+MON[d.getUTCMonth()];
+    hrow.appendChild(th);
+  });
+  thead.appendChild(hrow);
+  tbl.appendChild(thead);
+
+  // Corps : une ligne par stade
+  var tbody=document.createElement('tbody');
+  venues.forEach(function(venue){
+    var vc=VENUE_COORDS[venue];
+    var city=vc?vc.city:(filtered.find(function(m){return m.venue===venue;})||{}).city||venue;
+    var shortV=venue.replace(/^Estadio /,'').replace(/ Stadium$/,'').replace(/ Field$/,'').trim();
+    var tr=document.createElement('tr');
+
+    var vTd=document.createElement('td');
+    vTd.style.cssText='position:sticky;left:0;z-index:2;background:#08101f;width:'+VW+'px;min-width:'+VW+'px;'
+      +'padding:4px 6px;border-bottom:1px solid rgba(255,255,255,0.05);border-right:1px solid rgba(255,255,255,0.07);vertical-align:middle;';
+    vTd.innerHTML='<div style="font-size:9px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(VW-14)+'px" title="'+venue+'">'+shortV+'</div>'
+      +'<div style="font-size:8px;color:#475569;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+city+'</div>';
+    tr.appendChild(vTd);
+
+    days.forEach(function(dk){
+      var td=document.createElement('td');
+      var isToday=dk===TODAY_STR;
+      var matches=(idx[venue]&&idx[venue][dk])||[];
+      td.style.cssText='width:'+CW+'px;min-width:'+CW+'px;padding:2px 3px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top;'+(isToday?'background:rgba(251,191,36,0.03);':'');
+      matches.forEach(function(m){
+        var card=document.createElement('div');
+        var isLive=m.isLive;
+        var scoreStr=(m.score&&(m.isFT||isLive))?m.score:localTime(m);
+        var scoreCol=isLive?'#22c55e':m.isFT?'#94a3b8':'#475569';
+        var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
+        card.style.cssText='background:'+(isLive?'rgba(239,68,68,0.08)':'rgba(255,255,255,0.02)')+';'
+          +'border:1px solid '+(isLive?'rgba(239,68,68,0.2)':'rgba(255,255,255,0.06)')+';'
+          +'border-left:2px solid '+(m.color||'#334155')+';'
+          +'border-radius:5px;padding:3px 4px;cursor:pointer;margin-bottom:2px;';
+        card.innerHTML=
+          '<div style="display:flex;justify-content:space-between;margin-bottom:2px;">'
+            +'<span style="font-size:7px;font-weight:800;color:'+(m.color||'#475569')+'">Gr.'+m.grp+'</span>'
+            +'<span style="font-size:7px;color:'+scoreCol+'">'+scoreStr+'</span>'
+          +'</div>'
+          +'<div style="font-size:9px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(f1?f1+' ':'')+m.t1+'</div>'
+          +'<div style="font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(f2?f2+' ':'')+m.t2+'</div>';
+        card.addEventListener('click',function(){selectedId=selectedId===m.id?null:m.id;renderAll();if(selectedId)openMatchInfo(m);});
+        td.appendChild(card);
+      });
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  wrap.appendChild(tbl);
+  c.appendChild(wrap);
+
+  // Scroll vers aujourd hui
+  if(todayColIdx>=0){
+    setTimeout(function(){wrap.scrollLeft=Math.max(0,VW+todayColIdx*CW-80);},50);
   }
 }
 
