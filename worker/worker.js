@@ -595,8 +595,22 @@ async function computeOnDemand(env, espnId) {
 
 // ─── LECTURE KV ───────────────────────────────────────────────────────────────
 
-async function handlePlayers(env, cors) {
+async function _triggerMissing(env, ctx, list) {
+  if (!ctx) return;
+  const processedIds = new Set(list.keys.map(k => k.name.replace('match:', '')));
+  const espnMap = await kv.get(env, 'espn_map') || {};
+  const missing = Object.values(espnMap).map(String).filter(id => !processedIds.has(id));
+  if (!missing.length) return;
+  ctx.waitUntil((async () => {
+    for (const espnId of missing.slice(0, 3)) {
+      try { await computeOnDemand(env, espnId); } catch (_) {}
+    }
+  })());
+}
+
+async function handlePlayers(env, ctx, cors) {
   const list = await env.STATS_KV.list({ prefix: 'match:' });
+  await _triggerMissing(env, ctx, list);
   const agg  = {};
   for (const key of list.keys) {
     const data = await kv.get(env, key.name);
@@ -622,8 +636,9 @@ async function handlePlayers(env, cors) {
   return jsonResp({ ranking, cachedAt: Date.now() }, cors);
 }
 
-async function handleKeepers(env, cors) {
+async function handleKeepers(env, ctx, cors) {
   const list = await env.STATS_KV.list({ prefix: 'match:' });
+  await _triggerMissing(env, ctx, list);
   const gks  = {};
   for (const key of list.keys) {
     const data = await kv.get(env, key.name);
@@ -646,8 +661,9 @@ async function handleKeepers(env, cors) {
   return jsonResp({ ranking, cachedAt: Date.now() }, cors);
 }
 
-async function handleFairPlay(env, cors) {
+async function handleFairPlay(env, ctx, cors) {
   const list = await env.STATS_KV.list({ prefix: 'match:' });
+  await _triggerMissing(env, ctx, list);
   const teams = {};
   for (const key of list.keys) {
     const data = await kv.get(env, key.name);
@@ -737,7 +753,7 @@ async function proxy(upstream, headers, cors) {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || 'null';
     if (!isAllowed(origin)) return new Response('Forbidden', { status: 403 });
     const cors = makeCors(origin);
@@ -748,9 +764,9 @@ export default {
     const url  = new URL(request.url);
     const path = url.pathname;
 
-    if (path === '/stats/players')   return handlePlayers(env, cors);
-    if (path === '/stats/keepers')   return handleKeepers(env, cors);
-    if (path === '/stats/fairplay')  return handleFairPlay(env, cors);
+    if (path === '/stats/players')   return handlePlayers(env, ctx, cors);
+    if (path === '/stats/keepers')   return handleKeepers(env, ctx, cors);
+    if (path === '/stats/fairplay')  return handleFairPlay(env, ctx, cors);
     if (path === '/stats/status')    return handleStatus(env, cors);
     if (path === '/stats/step1')   return jsonResp(await step1_discover(env),   cors);
     if (path === '/stats/step2')   return jsonResp(await step2_fetchUrls(env),  cors);
