@@ -1,4 +1,4 @@
-<svg width="900" viewBox="0 0 680 832" xmlns="http://www.w3.org/2000/svg" style="background:white;font-family:Arial,sans-serif">
+<svg width="900" viewBox="0 0 680 800" xmlns="http://www.w3.org/2000/svg" style="background:white;font-family:Arial,sans-serif">
 <defs>
 <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -24,101 +24,91 @@
 <text x="445" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">Gardiens</text>
 <rect x="486" y="100" width="64" height="28" rx="5" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
 <text x="518" y="118" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">Joueurs</text>
-<!-- Fleches onglets → fonctions -->
+<!-- Fleches onglets → fonctions (KO légèrement incliné : les 3 tabs trop proches pour 3 boîtes non-superposées) -->
 <line x1="155" y1="128" x2="155" y2="168" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
-<line x1="238" y1="128" x2="238" y2="168" stroke="#059669" stroke-width="1.2" marker-end="url(#arrow)"/>
-<line x1="308" y1="128" x2="308" y2="168" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
-<line x1="445" y1="128" x2="445" y2="208" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="238" y1="128" x2="270" y2="168" stroke="#059669" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="308" y1="128" x2="402" y2="168" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="445" y1="128" x2="471" y2="208" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
 <line x1="518" y1="128" x2="518" y2="168" stroke="#378ADD" stroke-width="1.2" marker-end="url(#arrow)"/>
-<!-- Blocs fonctions onglets -->
-<rect x="72"  y="168" width="150" height="44" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
-<text x="147" y="186" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderStandings()</text>
-<text x="147" y="202" text-anchor="middle" font-size="9" fill="#085041">standings en memoire + DB/BP</text>
-<rect x="194" y="168" width="100" height="44" rx="6" fill="#9FE1CB" stroke="#059669" stroke-width="0.8"/>
-<text x="244" y="186" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderThirds()</text>
-<text x="244" y="202" text-anchor="middle" font-size="9" fill="#085041">top 8 · ex aequo · prov.</text>
-<rect x="258" y="168" width="120" height="44" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
-<text x="318" y="186" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderKOTimeline()</text>
-<text x="318" y="202" text-anchor="middle" font-size="9" fill="#085041">buildThirdAssign() bipartite</text>
-<rect x="398" y="168" width="146" height="44" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
-<text x="471" y="186" text-anchor="middle" font-size="10" font-weight="bold" fill="#412402">fetchPlayerRankings()</text>
-<text x="471" y="202" text-anchor="middle" font-size="9" fill="#633806">/stats/players (Worker KV)</text>
-<rect x="398" y="208" width="146" height="44" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
-<text x="471" y="226" text-anchor="middle" font-size="10" font-weight="bold" fill="#412402">fetchKeepers()</text>
-<text x="471" y="242" text-anchor="middle" font-size="9" fill="#633806">/stats/keepers (Worker KV)</text>
-<!-- Prediction inline sur match a venir -->
-<text x="30" y="268" font-size="9" fill="#475569">buildPredictions() → predictions[m.id] pour chaque match NS (non démarré)</text>
+<!-- Blocs fonctions onglets — non superposés, répartis sur la largeur -->
+<rect x="30"  y="168" width="170" height="44" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="115" y="186" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderStandings()</text>
+<text x="115" y="202" text-anchor="middle" font-size="9" fill="#085041">pts · DB · BP · ex aequo</text>
+<rect x="208" y="168" width="136" height="44" rx="6" fill="#9FE1CB" stroke="#059669" stroke-width="0.8"/>
+<text x="276" y="186" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderThirds()</text>
+<text x="276" y="202" text-anchor="middle" font-size="9" fill="#085041">top 8 · bipartite · ex æq.</text>
+<rect x="352" y="168" width="136" height="44" rx="6" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.8"/>
+<text x="420" y="186" text-anchor="middle" font-size="10" font-weight="bold" fill="#04342C">renderKOTimeline()</text>
+<text x="420" y="202" text-anchor="middle" font-size="9" fill="#085041">bracket + 3es resolus</text>
+<rect x="496" y="168" width="142" height="44" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
+<text x="567" y="186" text-anchor="middle" font-size="10" font-weight="bold" fill="#412402">fetchPlayerRankings()</text>
+<text x="567" y="202" text-anchor="middle" font-size="9" fill="#633806">/stats/players (KV)</text>
+<rect x="426" y="208" width="142" height="44" rx="6" fill="#FAC775" stroke="#BA7517" stroke-width="0.8"/>
+<text x="497" y="226" text-anchor="middle" font-size="10" font-weight="bold" fill="#412402">fetchKeepers()</text>
+<text x="497" y="242" text-anchor="middle" font-size="9" fill="#633806">/stats/keepers (KV)</text>
 <!-- Separateur -->
-<line x1="30" y1="278" x2="650" y2="278" stroke="#cbd5e1" stroke-width="0.5" stroke-dasharray="4 3"/>
-<text x="340" y="294" text-anchor="middle" font-size="10" fill="#475569">Interactions sur un match (clic sur une ligne)</text>
-<!-- Ligne match NS avec prediction -->
-<rect x="30" y="304" width="620" height="36" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.8"/>
-<text x="160" y="328" text-anchor="middle" font-size="11" font-weight="bold" fill="#e2e8f0">France – Portugal  NS  J3</text>
-<text x="400" y="321" text-anchor="middle" font-size="10" font-weight="bold" fill="#f59e0b">🎯 2-1</text>
-<text x="400" y="334" font-size="8" fill="#64748b" text-anchor="middle"><tspan fill="#22c55e">V61%</tspan><tspan fill="#475569">·</tspan><tspan fill="#64748b">N23%</tspan><tspan fill="#475569">·</tspan><tspan fill="#94a3b8">D16%</tspan></text>
-<text x="570" y="328" text-anchor="middle" font-size="8" fill="#64748b">predictions.js v5</text>
-<!-- Ligne match FT avec boutons (incl. YouTube) -->
-<rect x="30" y="348" width="620" height="40" rx="8" fill="#f1f5f9" stroke="#888780" stroke-width="0.8"/>
-<text x="180" y="373" text-anchor="middle" font-size="11" font-weight="bold" fill="#2C2C2A">USA – Paraguay  4-1  FT</text>
-<rect x="404" y="355" width="50" height="24" rx="4" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
-<text x="429" y="371" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">📊 Stats</text>
-<rect x="462" y="355" width="56" height="24" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.7"/>
-<text x="490" y="371" text-anchor="middle" font-size="9" font-weight="bold" fill="#26215C">👕 Compos</text>
-<rect x="526" y="355" width="50" height="24" rx="4" fill="#dcfce7" stroke="#22c55e" stroke-width="0.7"/>
-<text x="551" y="371" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">▶ YouTube</text>
+<line x1="30" y1="276" x2="650" y2="276" stroke="#cbd5e1" stroke-width="0.5" stroke-dasharray="4 3"/>
+<text x="340" y="292" text-anchor="middle" font-size="10" fill="#475569">Interactions sur un match (clic sur une ligne)</text>
+<!-- Ligne match avec boutons (incl. YouTube) -->
+<rect x="30" y="302" width="620" height="40" rx="8" fill="#f1f5f9" stroke="#888780" stroke-width="0.8"/>
+<text x="180" y="327" text-anchor="middle" font-size="11" font-weight="bold" fill="#2C2C2A">USA – Paraguay  4-1  FT</text>
+<rect x="404" y="309" width="50" height="24" rx="4" fill="#B5D4F4" stroke="#378ADD" stroke-width="0.7"/>
+<text x="429" y="325" text-anchor="middle" font-size="9" font-weight="bold" fill="#042C53">📊 Stats</text>
+<rect x="462" y="309" width="56" height="24" rx="4" fill="#CECBF6" stroke="#534AB7" stroke-width="0.7"/>
+<text x="490" y="325" text-anchor="middle" font-size="9" font-weight="bold" fill="#26215C">👕 Compos</text>
+<rect x="526" y="309" width="50" height="24" rx="4" fill="#dcfce7" stroke="#22c55e" stroke-width="0.7"/>
+<text x="551" y="325" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">▶ YouTube</text>
 <!-- Fleches match → actions -->
-<line x1="429" y1="379" x2="230" y2="416" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
-<line x1="490" y1="379" x2="490" y2="416" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
-<line x1="551" y1="379" x2="560" y2="416" stroke="#22c55e" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="429" y1="333" x2="230" y2="370" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="490" y1="333" x2="490" y2="370" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="551" y1="333" x2="560" y2="370" stroke="#22c55e" stroke-width="1.2" marker-end="url(#arrow)"/>
 <!-- Stats modal -->
-<rect x="30" y="416" width="330" height="56" rx="6" fill="#FAECE7" stroke="#D85A30" stroke-width="0.8"/>
-<text x="195" y="436" text-anchor="middle" font-size="10" font-weight="bold" fill="#4A1B0C">openMatchInfo()</text>
-<text x="195" y="452" text-anchor="middle" font-size="9" fill="#712B13">Worker /data/summary/:id (cache KV 60s/perm)</text>
-<text x="195" y="466" text-anchor="middle" font-size="9" fill="#712B13">buts (▶ YouTube par but) · cartons · stats equipes</text>
+<rect x="30" y="370" width="330" height="56" rx="6" fill="#FAECE7" stroke="#D85A30" stroke-width="0.8"/>
+<text x="195" y="390" text-anchor="middle" font-size="10" font-weight="bold" fill="#4A1B0C">openMatchInfo()</text>
+<text x="195" y="406" text-anchor="middle" font-size="9" fill="#712B13">Worker /data/summary/:id (cache KV 60s/perm)</text>
+<text x="195" y="420" text-anchor="middle" font-size="9" fill="#712B13">buts (▶ YouTube par but) · cartons · stats equipes</text>
 <!-- Compos modal -->
-<rect x="374" y="416" width="220" height="56" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
-<text x="484" y="436" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">openLineupESPN()</text>
-<text x="484" y="452" text-anchor="middle" font-size="9" fill="#3C3489">Worker /data/summary/:id rosters</text>
-<text x="484" y="466" text-anchor="middle" font-size="9" fill="#3C3489">Phase 1 : terrain SVG immediat</text>
+<rect x="374" y="370" width="220" height="56" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="484" y="390" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">openLineupESPN()</text>
+<text x="484" y="406" text-anchor="middle" font-size="9" fill="#3C3489">Worker /data/summary/:id rosters</text>
+<text x="484" y="420" text-anchor="middle" font-size="9" fill="#3C3489">Phase 1 : terrain SVG immediat</text>
 <!-- YouTube -->
-<rect x="606" y="416" width="62" height="56" rx="6" fill="#dcfce7" stroke="#22c55e" stroke-width="0.8"/>
-<text x="637" y="438" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">▶ YouTube</text>
-<text x="637" y="454" text-anchor="middle" font-size="8" fill="#166534">youtube.com</text>
-<text x="637" y="468" text-anchor="middle" font-size="8" fill="#166534">search_query</text>
-<line x1="484" y1="472" x2="484" y2="492" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="606" y="370" width="62" height="56" rx="6" fill="#dcfce7" stroke="#22c55e" stroke-width="0.8"/>
+<text x="637" y="392" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">▶ YouTube</text>
+<text x="637" y="408" text-anchor="middle" font-size="8" fill="#166534">youtube.com</text>
+<text x="637" y="422" text-anchor="middle" font-size="8" fill="#166534">search_query</text>
+<line x1="484" y1="426" x2="484" y2="446" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow)"/>
 <!-- loadMatchPlayerStats -->
-<rect x="374" y="492" width="220" height="70" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
-<text x="484" y="512" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">loadMatchPlayerStats()</text>
-<text x="484" y="528" text-anchor="middle" font-size="9" fill="#3C3489">1. Fast path : Worker /data/stats/:id (KV)</text>
-<text x="484" y="544" text-anchor="middle" font-size="9" fill="#3C3489">2. Fallback : ESPN Core x22-52 joueurs</text>
-<text x="484" y="558" text-anchor="middle" font-size="9" fill="#3C3489">Ratings v8 sans xG/xA injectes Phase 2</text>
-<line x1="484" y1="562" x2="484" y2="582" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="374" y="446" width="220" height="70" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="484" y="466" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">loadMatchPlayerStats()</text>
+<text x="484" y="482" text-anchor="middle" font-size="9" fill="#3C3489">1. Fast path : Worker /data/stats/:id (KV)</text>
+<text x="484" y="498" text-anchor="middle" font-size="9" fill="#3C3489">2. Fallback : ESPN Core x22-52 joueurs</text>
+<text x="484" y="512" text-anchor="middle" font-size="9" fill="#3C3489">Ratings v8 sans xG/xA injectes Phase 2</text>
+<line x1="484" y1="516" x2="484" y2="536" stroke="#534AB7" stroke-width="1.2" marker-end="url(#arrow)"/>
 <!-- renderPitch -->
-<rect x="374" y="582" width="220" height="44" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
-<text x="484" y="602" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">renderPitch() / renderPlayerList()</text>
-<text x="484" y="618" text-anchor="middle" font-size="9" fill="#3C3489">Terrain SVG + liste avec ratings colores</text>
+<rect x="374" y="536" width="220" height="44" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="484" y="556" text-anchor="middle" font-size="10" font-weight="bold" fill="#26215C">renderPitch() / renderPlayerList()</text>
+<text x="484" y="572" text-anchor="middle" font-size="9" fill="#3C3489">Terrain SVG + liste avec ratings colores</text>
 <!-- Filtres -->
-<line x1="30" y1="646" x2="650" y2="646" stroke="#cbd5e1" stroke-width="0.5" stroke-dasharray="4 3"/>
-<text x="340" y="662" text-anchor="middle" font-size="10" fill="#475569">Filtres groupes</text>
-<rect x="30" y="672" width="620" height="40" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
-<text x="76"  y="696" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Tous</text>
-<text x="152" y="696" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.A</text>
-<text x="228" y="696" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.B</text>
-<text x="304" y="696" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.C</text>
-<text x="380" y="696" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.D ...</text>
-<text x="530" y="688" text-anchor="middle" font-size="9" fill="#27500A">activeFilter = grp</text>
-<text x="530" y="704" text-anchor="middle" font-size="9" fill="#27500A">renderAll()</text>
+<line x1="30" y1="600" x2="650" y2="600" stroke="#cbd5e1" stroke-width="0.5" stroke-dasharray="4 3"/>
+<text x="340" y="616" text-anchor="middle" font-size="10" fill="#475569">Filtres groupes</text>
+<rect x="30" y="626" width="620" height="40" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
+<text x="76"  y="650" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Tous</text>
+<text x="152" y="650" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.A</text>
+<text x="228" y="650" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.B</text>
+<text x="304" y="650" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.C</text>
+<text x="380" y="650" text-anchor="middle" font-size="9" font-weight="bold" fill="#173404">Gr.D ...</text>
+<text x="530" y="642" text-anchor="middle" font-size="9" fill="#27500A">activeFilter = grp</text>
+<text x="530" y="658" text-anchor="middle" font-size="9" fill="#27500A">renderAll()</text>
 <!-- Legende -->
-<rect x="30" y="728" width="14" height="12" rx="2" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.6"/>
-<text x="50" y="738" font-size="8" fill="#475569">Depuis memoire locale : allMatches / standings / scorers</text>
-<rect x="30" y="744" width="14" height="12" rx="2" fill="#FAC775" stroke="#BA7517" stroke-width="0.6"/>
-<text x="50" y="754" font-size="8" fill="#475569">Lazy load unique Worker KV /stats/players ou /stats/keepers</text>
-<rect x="30" y="760" width="14" height="12" rx="2" fill="#FAECE7" stroke="#D85A30" stroke-width="0.6"/>
-<text x="50" y="770" font-size="8" fill="#475569">Worker /data/summary/:id cache KV (rapide des 2e appel)</text>
-<rect x="30" y="776" width="14" height="12" rx="2" fill="#dcfce7" stroke="#22c55e" stroke-width="0.6"/>
-<text x="50" y="786" font-size="8" fill="#475569">Lien YouTube direct (youtube.com/results?search_query=…)</text>
-<rect x="30" y="792" width="14" height="12" rx="2" fill="#fef3c7" stroke="#f59e0b" stroke-width="0.6"/>
-<text x="50" y="802" font-size="8" fill="#475569">Predictions Poisson v4 (calcul navigateur, aucun appel reseau)</text>
-<rect x="30" y="808" width="14" height="12" rx="2" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.6"/>
-<text x="50" y="818" font-size="8" fill="#475569">Ratings v8 : KV fast-path ou ESPN Core fallback (1-3s)</text>
+<rect x="30" y="682" width="14" height="12" rx="2" fill="#9FE1CB" stroke="#1D9E75" stroke-width="0.6"/>
+<text x="50" y="692" font-size="8" fill="#475569">Depuis memoire locale : allMatches / standings / scorers</text>
+<rect x="30" y="698" width="14" height="12" rx="2" fill="#FAC775" stroke="#BA7517" stroke-width="0.6"/>
+<text x="50" y="708" font-size="8" fill="#475569">Lazy load unique Worker KV /stats/players ou /stats/keepers</text>
+<rect x="30" y="714" width="14" height="12" rx="2" fill="#FAECE7" stroke="#D85A30" stroke-width="0.6"/>
+<text x="50" y="724" font-size="8" fill="#475569">Worker /data/summary/:id cache KV (rapide des 2e appel)</text>
+<rect x="30" y="730" width="14" height="12" rx="2" fill="#dcfce7" stroke="#22c55e" stroke-width="0.6"/>
+<text x="50" y="740" font-size="8" fill="#475569">Lien YouTube direct (youtube.com/results?search_query=…)</text>
+<rect x="30" y="746" width="14" height="12" rx="2" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.6"/>
+<text x="50" y="756" font-size="8" fill="#475569">Ratings v8 : KV fast-path ou ESPN Core fallback (1-3s)</text>
 </svg>
