@@ -73,6 +73,7 @@ async function fetchAll(){
   if(PROXY_BASE.includes('REMPLACER')){setStatus('error','Proxy non configuré');loadFallback();renderAll();document.getElementById('loading').classList.add('hidden');showView(activeView);document.getElementById('refresh-btn').textContent='蘵 Actualiser';return;}
 
   loadFallback(); // base statique : remet tous les matchs à score:null
+  playersLoaded = false; // forcer un re-fetch des stats joueurs au prochain visit
 
   // ── 1. Données matchs depuis cache KV worker (rapide, pré-agrégé) ──────────
   var fdOk=false;
@@ -123,6 +124,7 @@ async function fetchAll(){
   var now=new Date();
   document.getElementById('last-update').textContent='Mis à jour '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   renderAll();fetchScorers();
+  if(activeView==='players')fetchPlayerRankings();
   document.getElementById('loading').classList.add('hidden');
   showView(activeView);
   document.getElementById('refresh-btn').textContent='蘵 Actualiser';
