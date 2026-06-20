@@ -4,6 +4,7 @@ function renderMatchRow(m){
   var sel=selectedId===m.id;
   var row=document.createElement('div');
   row.className='match-row';
+  row.dataset.mid=m.id;
   if(sel){row.style.background=hex2rgba(m.color,0.1);row.style.borderLeft='3px solid '+m.color;row.style.paddingLeft='7px';}
 
   var bg=document.createElement('span');bg.className='grp-badge';bg.style.background=hex2rgba(m.color,0.15);bg.style.color=m.color;bg.textContent=m.grp?'Gr.'+m.grp:(m.phase||'');
