@@ -174,8 +174,15 @@ function _setCalScore(el,m){
     el.appendChild(document.createTextNode(m.score));
     if(m.clockDisplay){var clk=document.createElement('span');clk.style.cssText='font-size:6px;color:#64748b;';clk.textContent=m.clockDisplay;el.appendChild(clk);}
   } else if(m.isFT&&m.score){
-    el.style.cssText='font-size:9px;font-weight:900;color:#e2e8f0;display:flex;align-items:center;gap:2px;flex-shrink:0;';
-    el.textContent=m.score;
+    el.style.cssText='display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:0;';
+    var scS=document.createElement('span');
+    scS.style.cssText='font-size:9px;font-weight:900;color:#e2e8f0;';
+    scS.textContent=m.score;
+    el.appendChild(scS);
+    var tS=document.createElement('span');
+    tS.style.cssText='font-size:6px;color:#475569;';
+    tS.textContent=localTime(m);
+    el.appendChild(tS);
   } else {
     el.style.cssText='font-size:7px;color:#475569;display:flex;align-items:center;gap:2px;flex-shrink:0;';
     el.textContent=localTime(m);
