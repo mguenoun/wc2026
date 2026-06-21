@@ -167,14 +167,18 @@ function renderGroupsTimeline(){
 
 function _setCalScore(el,m){
   el.innerHTML='';
-  el.style.cssText='font-size:7px;color:'+(m.isLive?'#22c55e':m.isFT?'#94a3b8':'#475569')+';display:flex;align-items:center;gap:2px;flex-shrink:0;';
   if(m.isLive&&m.score){
+    el.style.cssText='font-size:7px;color:#22c55e;display:flex;align-items:center;gap:2px;flex-shrink:0;';
     var bolt=document.createElement('span');bolt.className='live-lightning';bolt.textContent='⚡';
     el.appendChild(bolt);
     el.appendChild(document.createTextNode(m.score));
     if(m.clockDisplay){var clk=document.createElement('span');clk.style.cssText='font-size:6px;color:#64748b;';clk.textContent=m.clockDisplay;el.appendChild(clk);}
+  } else if(m.isFT&&m.score){
+    el.style.cssText='font-size:9px;font-weight:900;color:#e2e8f0;display:flex;align-items:center;gap:2px;flex-shrink:0;';
+    el.textContent=m.score;
   } else {
-    el.textContent=(m.score&&m.isFT)?m.score:localTime(m);
+    el.style.cssText='font-size:7px;color:#475569;display:flex;align-items:center;gap:2px;flex-shrink:0;';
+    el.textContent=localTime(m);
   }
 }
 
@@ -609,6 +613,26 @@ function renderKOBracket(container, koMatches){
   troph.innerHTML='<span style="font-size:22px">🏆</span>';
   bracket.appendChild(troph);
 
+  // Fusionner colonnes 3e Place + Finale en une colonne empilée
+  (function(){
+    var col3El=document.getElementById('ko-col-3e Place');
+    var colFEl=document.getElementById('ko-col-Finale');
+    if(!col3El||!colFEl)return;
+    var colWrap3=col3El.parentElement;
+    var colWrapF=colFEl.parentElement;
+    if(!colWrap3||!colWrapF||colWrap3===colWrapF)return;
+    var connEl=document.getElementById('ko-conn-3e Place');
+    var connWrapper=connEl?connEl.parentElement:null;
+    var combined=document.createElement('div');
+    combined.style.cssText='display:flex;flex-direction:column;flex-shrink:0';
+    colWrap3.style.cssText='display:flex;flex-direction:column;flex:1';
+    colWrapF.style.cssText='display:flex;flex-direction:column;flex:1;border-top:1px solid rgba(255,255,255,0.1)';
+    bracket.replaceChild(combined,colWrap3);
+    combined.appendChild(colWrap3);
+    if(connWrapper)connWrapper.remove();
+    combined.appendChild(colWrapF);
+  })();
+
   // Dessiner les connecteurs après rendu
   setTimeout(function(){drawBracketConnectors();},80);
 }
@@ -707,7 +731,6 @@ function drawBracketConnectors(){
     {svgId:'ko-conn-32es',   fromId:'ko-col-32es',   toId:'ko-col-16es'},
     {svgId:'ko-conn-16es',   fromId:'ko-col-16es',   toId:'ko-col-Quarts'},
     {svgId:'ko-conn-Quarts', fromId:'ko-col-Quarts', toId:'ko-col-Demis'},
-    {svgId:'ko-conn-Demis',  fromId:'ko-col-Demis',  toId:'ko-col-Finale'},
   ];
   var ns='http://www.w3.org/2000/svg';
   pairs.forEach(function(pair){
@@ -741,6 +764,42 @@ function drawBracketConnectors(){
       });
     }
   });
+  // Connecteur Y depuis Demis → 3e Place (haut) + Finale (bas)
+  (function(){
+    var svgD=document.getElementById('ko-conn-Demis');
+    var colD=document.getElementById('ko-col-Demis');
+    var col3=document.getElementById('ko-col-3e Place');
+    var colF=document.getElementById('ko-col-Finale');
+    if(!svgD||!colD||!col3||!colF)return;
+    var fC=Array.from(colD.children);
+    if(fC.length<2)return;
+    var ct3=col3.querySelector('.bkt-card');
+    var ctF=colF.querySelector('.bkt-card');
+    if(!ct3||!ctF)return;
+    var svgR=svgD.getBoundingClientRect();
+    var h=colD.getBoundingClientRect().height;
+    svgD.setAttribute('height',h);
+    svgD.setAttribute('viewBox','0 0 24 '+h);
+    svgD.innerHTML='';
+    var r1=fC[0].getBoundingClientRect(),r2=fC[1].getBoundingClientRect();
+    var r3=ct3.getBoundingClientRect(),rF=ctF.getBoundingClientRect();
+    var y1=r1.top+r1.height/2-svgR.top;
+    var y2=r2.top+r2.height/2-svgR.top;
+    var ym=(y1+y2)/2;
+    var y3=r3.top+r3.height/2-svgR.top;
+    var yF=rF.top+rF.height/2-svgR.top;
+    [
+      'M0,'+y1.toFixed(1)+' H12 V'+ym.toFixed(1),
+      'M0,'+y2.toFixed(1)+' H12 V'+ym.toFixed(1),
+      'M12,'+ym.toFixed(1)+' V'+y3.toFixed(1)+' H24',
+      'M12,'+ym.toFixed(1)+' V'+yF.toFixed(1)+' H24',
+    ].forEach(function(d){
+      var p=document.createElementNS(ns,'path');
+      p.setAttribute('d',d);p.setAttribute('fill','none');
+      p.setAttribute('stroke','rgba(255,255,255,0.1)');p.setAttribute('stroke-width','1');
+      svgD.appendChild(p);
+    });
+  })();
 }
 
 function renderKOLegend(){
