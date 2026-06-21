@@ -50,7 +50,10 @@ function renderMatchRow(m){
   }
 
   var city=document.createElement('span');city.className='match-city';
-  city.textContent=m.city?(m.venue?'📍'+m.venue+' · '+m.city:'📍'+m.city):'';
+  city.innerHTML=m.city
+    ?'<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📍'+m.city+'</span>'
+    +(m.venue?'<span style="display:block;font-size:7px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+m.venue+'</span>':'')
+    :'';
 
   row.appendChild(bg);row.appendChild(mid);row.appendChild(tim);row.appendChild(teams);row.appendChild(sc);row.appendChild(city);
 
@@ -268,13 +271,13 @@ function renderGroupsCalendar(){
   var MON=['Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
   var todayColIdx=-1;
   var wrap=document.createElement('div');
-  wrap.style.cssText='overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px;';
+  wrap.style.cssText='overflow:auto;max-height:60vh;-webkit-overflow-scrolling:touch;padding-bottom:8px;';
   var tbl=document.createElement('table');
   tbl.style.cssText='border-collapse:collapse;table-layout:fixed;min-width:'+(VW+days.length*CW)+'px;';
   var thead=document.createElement('thead');
   var hrow=document.createElement('tr');
   var corner=document.createElement('th');
-  corner.style.cssText='position:sticky;left:0;z-index:3;background:#07101f;width:'+VW+'px;min-width:'+VW+'px;padding:3px 6px;font-size:8px;color:#334155;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.08);text-align:left;';
+  corner.style.cssText='position:sticky;top:0;left:0;z-index:5;background:#07101f;width:'+VW+'px;min-width:'+VW+'px;padding:3px 6px;font-size:8px;color:#334155;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.08);text-align:left;';
   corner.textContent='Ville · Stade';
   hrow.appendChild(corner);
   days.forEach(function(dk,i){
@@ -282,9 +285,9 @@ function renderGroupsCalendar(){
     var isToday=dk===TODAY_STR;
     if(isToday)todayColIdx=i;
     var d=new Date(dk+'T12:00:00Z');
-    th.style.cssText='width:'+CW+'px;min-width:'+CW+'px;padding:3px 2px;font-size:8px;font-weight:'+(isToday?'800':'600')+';'
+    th.style.cssText='position:sticky;top:0;z-index:4;width:'+CW+'px;min-width:'+CW+'px;padding:3px 2px;font-size:8px;font-weight:'+(isToday?'800':'600')+';'
       +'color:'+(isToday?'#fbbf24':'#475569')+';border-bottom:1px solid rgba(255,255,255,0.08);text-align:center;'
-      +(isToday?'background:rgba(251,191,36,0.05);':'');
+      +'background:'+(isToday?'rgba(251,191,36,0.08)':'#07101f')+';';
     th.textContent=DAY[d.getUTCDay()]+' '+d.getUTCDate()+' '+MON[d.getUTCMonth()];
     hrow.appendChild(th);
   });
@@ -326,6 +329,7 @@ var KO_PHASES=[
   {key:'Quarts', label:'Quarts', color:'#ef4444'},
   {key:'Demis', label:'Demis', color:'#f97316'},
   {key:'Finale', label:'Finale', color:'#fbbf24'},
+  {key:'3e Place', label:'3e Place', color:'#64748b'},
 ];
 
 var koBracketView='list'; // 'list' ou 'bracket'
