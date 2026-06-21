@@ -23,6 +23,19 @@ function processESPNScores(events){
     if(!m)return;
     var state=e.status&&e.status.type&&e.status.type.state;
     if(state!=='in'&&state!=='post')return; // ignorer les matchs pas encore commencés
+    // Guard : ne pas marquer comme live si le match n'a pas encore commencé (protection mauvais ID ESPN)
+    if(state==='in'){
+      var now=Date.now();
+      var kickoffMs=m.utcDate?new Date(m.utcDate).getTime():null;
+      if(!kickoffMs&&m.dayKey&&m.time){
+        var _tp=(m.time||'').match(/(\d+)h(\d+)/);
+        if(_tp){
+          // Approximation UTC conservatrice : heure locale traitée comme UTC (Casablanca UTC+0..+1)
+          kickoffMs=new Date(m.dayKey+'T'+String(parseInt(_tp[1])).padStart(2,'0')+':'+String(parseInt(_tp[2])).padStart(2,'0')+':00Z').getTime()-3600000;
+        }
+      }
+      if(kickoffMs&&now<kickoffMs-30*60*1000)return;
+    }
     // Ne jamais écraser un score FT déjà acquis par une entrée sans score (ex: match hors fenêtre)
     if(m.isFT&&state==='post'&&m.score)return;
     var comp=e.competitions&&e.competitions[0];
