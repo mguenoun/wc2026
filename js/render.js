@@ -191,12 +191,16 @@ function _buildCalCard(m){
     +'border-radius:5px;padding:3px 4px;cursor:pointer;margin-bottom:2px;';
   var top=document.createElement('div');
   top.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:2px;';
-  var topLeft=document.createElement('span');
-  topLeft.style.cssText='display:flex;align-items:center;gap:2px;flex-shrink:1;min-width:0;overflow:hidden;';
   var badge=document.createElement('span');
   badge.style.cssText='font-size:7px;font-weight:800;color:'+(m.color||'#475569')+';white-space:nowrap;flex-shrink:0;';
   badge.textContent='Gr.'+m.grp;
-  topLeft.appendChild(badge);
+  top.appendChild(badge);
+  var topRight=document.createElement('span');
+  topRight.style.cssText='display:flex;align-items:center;gap:2px;flex-shrink:0;';
+  var scoreEl=document.createElement('span');
+  scoreEl.dataset.score=m.id;
+  _setCalScore(scoreEl,m);
+  topRight.appendChild(scoreEl);
   if(m.isFT){
     var playA=document.createElement('a');
     playA.href='https://www.youtube.com/results?search_query='+encodeURIComponent(m.t1+' '+m.t2+' FIFA World Cup 2026 highlights');
@@ -204,13 +208,9 @@ function _buildCalCard(m){
     playA.style.cssText='font-size:9px;color:#22c55e;text-decoration:none;line-height:1;display:flex;align-items:center;flex-shrink:0;';
     playA.textContent='▶';
     playA.onclick=function(e){e.stopPropagation();};
-    topLeft.appendChild(playA);
+    topRight.appendChild(playA);
   }
-  top.appendChild(topLeft);
-  var scoreEl=document.createElement('span');
-  scoreEl.dataset.score=m.id;
-  _setCalScore(scoreEl,m);
-  top.appendChild(scoreEl);
+  top.appendChild(topRight);
   card.appendChild(top);
   var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
   var t1=document.createElement('div');
@@ -350,8 +350,8 @@ var KO_PHASES=[
   {key:'8es',  label:'8es de fin.',  color:'#f59e0b'},
   {key:'Quarts', label:'Quarts', color:'#ef4444'},
   {key:'Demis', label:'Demis', color:'#f97316'},
-  {key:'Finale', label:'Finale', color:'#fbbf24'},
   {key:'3e Place', label:'3e Place', color:'#64748b'},
+  {key:'Finale', label:'Finale', color:'#fbbf24'},
 ];
 
 var koBracketView='list'; // 'list' ou 'bracket'
@@ -612,6 +612,13 @@ function renderKOBracket(container, koMatches){
       cardsDiv.appendChild(makeBracketCard(m, phase));
     }
     col.appendChild(cardsDiv);
+    if(phase.key==='3e Place'){
+      col.style.position='relative';
+      var wireSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      wireSvg.id='ko-wire-3ePlaceCol';
+      wireSvg.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
+      col.appendChild(wireSvg);
+    }
     bracket.appendChild(col);
 
     // Colonne connecteur SVG (sauf après la finale)
@@ -814,6 +821,21 @@ function drawBracketConnectors(){
       pP.setAttribute('stroke','rgba(255,255,255,0.1)');
       pP.setAttribute('stroke-width','1');
       svgP.appendChild(pP);
+    }
+    // Fil traversant la colonne 3e Place à la hauteur de la Finale
+    var wire3=document.getElementById('ko-wire-3ePlaceCol');
+    if(wire3){
+      var col3El=col3.parentElement;
+      var col3R=col3El.getBoundingClientRect();
+      var wire3R=wire3.getBoundingClientRect();
+      var yFW=rF.top+rF.height/2-wire3R.top;
+      wire3.innerHTML='';
+      var pW=document.createElementNS(ns,'path');
+      pW.setAttribute('d','M0,'+yFW.toFixed(1)+' H'+col3R.width.toFixed(1));
+      pW.setAttribute('fill','none');
+      pW.setAttribute('stroke','rgba(255,255,255,0.1)');
+      pW.setAttribute('stroke-width','1');
+      wire3.appendChild(pW);
     }
   })();
 }
