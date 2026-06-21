@@ -191,13 +191,26 @@ function _buildCalCard(m){
     +'border-radius:5px;padding:3px 4px;cursor:pointer;margin-bottom:2px;';
   var top=document.createElement('div');
   top.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:2px;';
+  var topLeft=document.createElement('span');
+  topLeft.style.cssText='display:flex;align-items:center;gap:2px;flex-shrink:1;min-width:0;overflow:hidden;';
   var badge=document.createElement('span');
-  badge.style.cssText='font-size:7px;font-weight:800;color:'+(m.color||'#475569')+';white-space:nowrap;';
+  badge.style.cssText='font-size:7px;font-weight:800;color:'+(m.color||'#475569')+';white-space:nowrap;flex-shrink:0;';
   badge.textContent='Gr.'+m.grp;
+  topLeft.appendChild(badge);
+  if(m.isFT){
+    var playA=document.createElement('a');
+    playA.href='https://www.youtube.com/results?search_query='+encodeURIComponent(m.t1+' '+m.t2+' FIFA World Cup 2026 highlights');
+    playA.target='_blank';playA.rel='noopener';playA.title='Resume YouTube';
+    playA.style.cssText='font-size:9px;color:#22c55e;text-decoration:none;line-height:1;display:flex;align-items:center;flex-shrink:0;';
+    playA.textContent='▶';
+    playA.onclick=function(e){e.stopPropagation();};
+    topLeft.appendChild(playA);
+  }
+  top.appendChild(topLeft);
   var scoreEl=document.createElement('span');
   scoreEl.dataset.score=m.id;
   _setCalScore(scoreEl,m);
-  top.appendChild(badge);top.appendChild(scoreEl);
+  top.appendChild(scoreEl);
   card.appendChild(top);
   var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
   var t1=document.createElement('div');
@@ -220,18 +233,6 @@ function _buildCalCard(m){
       bl.onclick=(function(_m,_e){return function(){_currentMatch=_m;openLineupESPN(_e);};})(m,eid);
       acts.appendChild(bl);
     }
-    if(m.isFT){
-      var ba=document.createElement('a');
-      ba.href='https://www.youtube.com/results?search_query='+encodeURIComponent(m.t1+' '+m.t2+' FIFA World Cup 2026 highlights');
-      ba.target='_blank';ba.rel='noopener';ba.title='Resume YouTube';
-      ba.style.cssText='font-size:10px;padding:1px 3px;color:#22c55e;text-decoration:none;line-height:1;display:flex;align-items:center;';
-      ba.textContent='▶';acts.appendChild(ba);
-    }
-  }
-  if(m.venue&&typeof VENUE_COORDS!=='undefined'&&VENUE_COORDS[m.venue]){
-    var bm=document.createElement('button');bm.className='bkt-ico action-btn';bm.title='Stade';bm.textContent='📍';
-    bm.onclick=(function(_m){return function(){openMap(_m);};})(m);
-    acts.appendChild(bm);
   }
   if(acts.childNodes.length)card.appendChild(acts);
   card.addEventListener('click',function(){selectedId=selectedId===m.id?null:m.id;renderAll();if(selectedId)openMatchInfo(m);});
@@ -300,14 +301,31 @@ function renderGroupsCalendar(){
   var tbody=document.createElement('tbody');
   venues.forEach(function(venue){
     var vc=VENUE_COORDS[venue];
-    var city=vc?vc.city:(filtered.find(function(m){return m.venue===venue;})||{}).city||venue;
+    var firstM=filtered.find(function(m){return m.venue===venue;})||null;
+    var city=vc?vc.city:(firstM&&firstM.city)||venue;
     var shortV=venue.replace(/^Estadio /,'').replace(/ Stadium$/,'').replace(/ Field$/,'').trim();
     var tr=document.createElement('tr');
     var vTd=document.createElement('td');
     vTd.style.cssText='position:sticky;left:0;z-index:2;background:#08101f;width:'+VW+'px;min-width:'+VW+'px;'
       +'padding:4px 6px;border-bottom:1px solid rgba(255,255,255,0.05);border-right:1px solid rgba(255,255,255,0.07);vertical-align:middle;';
-    vTd.innerHTML='<div style="font-size:9px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(VW-14)+'px">'+city+'</div>'
-      +'<div style="font-size:8px;color:#475569;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+venue+'">'+shortV+'</div>';
+    var cityRow=document.createElement('div');
+    cityRow.style.cssText='display:flex;align-items:center;gap:3px;';
+    var citySpan=document.createElement('span');
+    citySpan.style.cssText='font-size:9px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:'+(VW-34)+'px;';
+    citySpan.textContent=city;
+    cityRow.appendChild(citySpan);
+    if(vc&&firstM){
+      var mapBtnV=document.createElement('button');
+      mapBtnV.className='bkt-ico action-btn';mapBtnV.title='Voir le stade';mapBtnV.textContent='📍';
+      mapBtnV.style.cssText='font-size:10px;padding:1px 2px;flex-shrink:0;';
+      mapBtnV.onclick=(function(_m){return function(e){e.stopPropagation();openMap(_m);};})(firstM);
+      cityRow.appendChild(mapBtnV);
+    }
+    vTd.appendChild(cityRow);
+    var venueDiv=document.createElement('div');
+    venueDiv.style.cssText='font-size:8px;color:#475569;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    venueDiv.title=venue;venueDiv.textContent=shortV;
+    vTd.appendChild(venueDiv);
     tr.appendChild(vTd);
     days.forEach(function(dk){
       var td=document.createElement('td');
@@ -582,7 +600,9 @@ function renderKOBracket(container, koMatches){
     // Conteneur cartes
     var cardsDiv=document.createElement('div');
     cardsDiv.id='ko-col-'+phase.key;
-    cardsDiv.style.cssText='display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:0';
+    cardsDiv.style.cssText='display:flex;flex-direction:column;justify-content:'+(phase.key==='3e Place'||phase.key==='Finale'?'center':'space-around')+';flex:1;gap:0'
+      +(phase.key==='3e Place'?';padding-bottom:55px':'')
+      +(phase.key==='Finale'?';padding-top:55px':'');
 
     // Nombre de slots selon la phase
     var slots=phase.key==='32es'?16:phase.key==='16es'?8:phase.key==='Quarts'?4:phase.key==='Demis'?2:1;
@@ -612,26 +632,6 @@ function renderKOBracket(container, koMatches){
   troph.style.cssText='display:flex;align-items:center;justify-content:center;width:32px;flex-shrink:0;padding-top:26px';
   troph.innerHTML='<span style="font-size:22px">🏆</span>';
   bracket.appendChild(troph);
-
-  // Fusionner colonnes 3e Place + Finale en une colonne empilée
-  (function(){
-    var col3El=document.getElementById('ko-col-3e Place');
-    var colFEl=document.getElementById('ko-col-Finale');
-    if(!col3El||!colFEl)return;
-    var colWrap3=col3El.parentElement;
-    var colWrapF=colFEl.parentElement;
-    if(!colWrap3||!colWrapF||colWrap3===colWrapF)return;
-    var connEl=document.getElementById('ko-conn-3e Place');
-    var connWrapper=connEl?connEl.parentElement:null;
-    var combined=document.createElement('div');
-    combined.style.cssText='display:flex;flex-direction:column;flex-shrink:0';
-    colWrap3.style.cssText='display:flex;flex-direction:column;flex:1';
-    colWrapF.style.cssText='display:flex;flex-direction:column;flex:1;border-top:1px solid rgba(255,255,255,0.1)';
-    bracket.replaceChild(combined,colWrap3);
-    combined.appendChild(colWrap3);
-    if(connWrapper)connWrapper.remove();
-    combined.appendChild(colWrapF);
-  })();
 
   // Dessiner les connecteurs après rendu
   setTimeout(function(){drawBracketConnectors();},80);
@@ -799,6 +799,22 @@ function drawBracketConnectors(){
       p.setAttribute('stroke','rgba(255,255,255,0.1)');p.setAttribute('stroke-width','1');
       svgD.appendChild(p);
     });
+    // Ligne de passage dans ko-conn-3e Place → Finale
+    var svgP=document.getElementById('ko-conn-3e Place');
+    if(svgP){
+      var svgPR=svgP.getBoundingClientRect();
+      var hP=colD.getBoundingClientRect().height;
+      svgP.setAttribute('height',hP);
+      svgP.setAttribute('viewBox','0 0 24 '+hP);
+      svgP.innerHTML='';
+      var yFP=rF.top+rF.height/2-svgPR.top;
+      var pP=document.createElementNS(ns,'path');
+      pP.setAttribute('d','M0,'+yFP.toFixed(1)+' H24');
+      pP.setAttribute('fill','none');
+      pP.setAttribute('stroke','rgba(255,255,255,0.1)');
+      pP.setAttribute('stroke-width','1');
+      svgP.appendChild(pP);
+    }
   })();
 }
 
