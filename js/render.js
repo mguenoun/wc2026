@@ -220,6 +220,24 @@ function _buildCalCard(m){
   t2.style.cssText='font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
   t2.innerHTML=(f2?f2+' ':'')+m.t2;
   card.appendChild(t1);card.appendChild(t2);
+  if(!m.isLive&&!m.isFT){
+    var pred=predictions&&predictions[m.id];
+    if(pred){
+      var predDiv=document.createElement('div');
+      predDiv.style.cssText='font-size:7px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      var _sc=pred.hasStats?'#f59e0b':'#64748b';
+      var _wc=pred.probW>=pred.probL?'#22c55e':'#94a3b8';
+      var _lc=pred.probL>=pred.probW?'#f87171':'#94a3b8';
+      if(!pred.hasStats){_wc='#94a3b8';_lc='#94a3b8';}
+      predDiv.innerHTML='<span style="color:'+_sc+'">🎯 '+pred.score+'</span>'
+        +' <span style="color:'+_wc+'">V'+pred.probW+'%</span>'
+        +'<span style="color:#475569">·</span>'
+        +'<span style="color:#64748b">N'+pred.probD+'%</span>'
+        +'<span style="color:#475569">·</span>'
+        +'<span style="color:'+_lc+'">D'+pred.probL+'%</span>';
+      card.appendChild(predDiv);
+    }
+  }
   var acts=document.createElement('div');
   acts.style.cssText='display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;';
   acts.onclick=function(e){e.stopPropagation();};
