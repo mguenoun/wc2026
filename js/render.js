@@ -599,6 +599,19 @@ function renderKOBracket(container, koMatches){
     if(byPhase[m.phase]!==undefined) byPhase[m.phase].push(m);
   });
 
+  // Tri par position réelle dans l'arbre — indépendant de l'ordre d'arrivée API/fallback.
+  // Chaque paire adjacente (slot 2i, slot 2i+1) doit correspondre aux deux 16es qui
+  // alimentent le même 8es, etc. Sans ce tri les fils SVG relient les mauvaises cartes.
+  var KO_SLOT={
+    'M73':0,'M75':1,'M74':2,'M76':3,'M77':4,'M79':5,'M78':6,'M80':7,
+    'M81':8,'M83':9,'M82':10,'M84':11,'M85':12,'M87':13,'M86':14,'M88':15,
+    'M89':0,'M91':1,'M90':2,'M92':3,'M93':4,'M95':5,'M94':6,'M96':7,
+    'QF1':0,'QF2':1,'QF3':2,'QF4':3,'SF1':0,'SF2':1,'3PL':0,'FIN':0
+  };
+  KO_PHASES.forEach(function(p){
+    byPhase[p.key].sort(function(a,b){return (KO_SLOT[a.id]||0)-(KO_SLOT[b.id]||0);});
+  });
+
   // Créer le wrapper scrollable
   var wrap=document.createElement('div');
   wrap.style.cssText='overflow-x:auto;padding-bottom:12px';
