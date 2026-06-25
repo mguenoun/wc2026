@@ -599,13 +599,24 @@ function renderKOBracket(container, koMatches){
     if(byPhase[m.phase]!==undefined) byPhase[m.phase].push(m);
   });
 
-  // Tri par position réelle dans l'arbre — indépendant de l'ordre d'arrivée API/fallback.
-  // Chaque paire adjacente (slot 2i, slot 2i+1) doit correspondre aux deux 16es qui
-  // alimentent le même 8es, etc. Sans ce tri les fils SVG relient les mauvaises cartes.
+  // Tri par position de bracket — garantit le bon ordre visuel colonne par colonne.
+  // Règle : les deux 16es qui alimentent le même 8es doivent être aux slots 2i et 2i+1,
+  // et les deux 8es qui alimentent le même QF doivent être aux slots 2j et 2j+1, etc.
   var KO_SLOT={
-    'M73':0,'M75':1,'M74':2,'M76':3,'M77':4,'M79':5,'M78':6,'M80':7,
-    'M81':8,'M83':9,'M82':10,'M84':11,'M85':12,'M87':13,'M86':14,'M88':15,
-    'M89':0,'M91':1,'M90':2,'M92':3,'M93':4,'M95':5,'M94':6,'M96':7,
+    // 16es : par paire selon le 8e qu'ils alimentent (M89 QF1-haut, M91 QF1-bas, M90 QF2-haut, M92 QF2-bas…)
+    'M73':0,'M75':1,  // → M89
+    'M77':2,'M79':3,  // → M91
+    'M74':4,'M76':5,  // → M90
+    'M78':6,'M80':7,  // → M92
+    'M81':8,'M83':9,  // → M93
+    'M85':10,'M87':11,// → M95
+    'M82':12,'M84':13,// → M94
+    'M86':14,'M88':15,// → M96
+    // 8es : par paire selon le quart qu'ils alimentent
+    'M89':0,'M91':1,  // → QF1
+    'M90':2,'M92':3,  // → QF2
+    'M93':4,'M95':5,  // → QF3
+    'M94':6,'M96':7,  // → QF4
     'QF1':0,'QF2':1,'QF3':2,'QF4':3,'SF1':0,'SF2':1,'3PL':0,'FIN':0
   };
   KO_PHASES.forEach(function(p){
@@ -686,6 +697,7 @@ function makeBracketCard(m, phase){
   var card=document.createElement('div');
   card.className='bkt-card'+(m&&m.phase==='Finale'?' bkt-final':'');
   card.style.margin='3px 0';
+  if(m&&m.id)card.dataset.mid=m.id;
 
   if(!m){
     var headE=document.createElement('div');headE.className='bkt-head';
@@ -772,42 +784,47 @@ function makeBracketCard(m, phase){
 }
 
 function drawBracketConnectors(){
-  var pairs=[
+  var ns='http://www.w3.org/2000/svg';
+  // Liens statiques basés sur les numéros de match — indépendants de t1/t2 et de l'ordre API.
+  var KO_SOURCES={
+    'M89':['M73','M75'],'M90':['M74','M76'],'M91':['M77','M79'],'M92':['M78','M80'],
+    'M93':['M81','M83'],'M94':['M82','M84'],'M95':['M85','M87'],'M96':['M86','M88'],
+    'QF1':['M89','M91'],'QF2':['M90','M92'],'QF3':['M93','M95'],'QF4':['M94','M96'],
+    'SF1':['QF1','QF2'],'SF2':['QF3','QF4'],
+  };
+  var phasePairs=[
     {svgId:'ko-conn-16es',   fromId:'ko-col-16es',   toId:'ko-col-8es'},
     {svgId:'ko-conn-8es',    fromId:'ko-col-8es',    toId:'ko-col-Quarts'},
     {svgId:'ko-conn-Quarts', fromId:'ko-col-Quarts', toId:'ko-col-Demis'},
   ];
-  var ns='http://www.w3.org/2000/svg';
-  pairs.forEach(function(pair){
+  phasePairs.forEach(function(pair){
     var svg=document.getElementById(pair.svgId);
-    var from=document.getElementById(pair.fromId);
-    var to=document.getElementById(pair.toId);
-    if(!svg||!from||!to)return;
-    var fC=Array.from(from.children);
-    var tC=Array.from(to.children);
+    var fromCol=document.getElementById(pair.fromId);
+    var toCol=document.getElementById(pair.toId);
+    if(!svg||!fromCol||!toCol)return;
     var svgR=svg.getBoundingClientRect();
-    var h=from.getBoundingClientRect().height;
+    var h=fromCol.getBoundingClientRect().height;
     svg.setAttribute('height',h);
     svg.setAttribute('viewBox','0 0 24 '+h);
     svg.innerHTML='';
-    for(var i=0;i<tC.length;i++){
-      var c1=fC[2*i],c2=fC[2*i+1],ct=tC[i];
-      if(!c1||!c2||!ct)continue;
-      var r1=c1.getBoundingClientRect();
-      var r2=c2.getBoundingClientRect();
-      var rt=ct.getBoundingClientRect();
-      var y1=r1.top+r1.height/2-svgR.top;
-      var y2=r2.top+r2.height/2-svgR.top;
+    Array.from(toCol.children).forEach(function(toCard){
+      var mid=toCard.dataset&&toCard.dataset.mid;
+      if(!mid||!KO_SOURCES[mid])return;
+      var rt=toCard.getBoundingClientRect();
       var ym=rt.top+rt.height/2-svgR.top;
-      [y1,y2].forEach(function(y){
+      KO_SOURCES[mid].forEach(function(srcMid){
+        var fromCard=fromCol.querySelector('[data-mid="'+srcMid+'"]');
+        if(!fromCard)return;
+        var rf=fromCard.getBoundingClientRect();
+        var yf=rf.top+rf.height/2-svgR.top;
         var path=document.createElementNS(ns,'path');
-        path.setAttribute('d','M0,'+y.toFixed(1)+' H12 V'+ym.toFixed(1)+' H24');
+        path.setAttribute('d','M0,'+yf.toFixed(1)+' H12 V'+ym.toFixed(1)+' H24');
         path.setAttribute('fill','none');
         path.setAttribute('stroke','rgba(255,255,255,0.1)');
         path.setAttribute('stroke-width','1');
         svg.appendChild(path);
       });
-    }
+    });
   });
   // Connecteur Y depuis Demis → 3e Place (haut) + Finale (bas)
   (function(){
