@@ -605,7 +605,7 @@ function renderKOBracket(container, koMatches){
 
   var bracket=document.createElement('div');
   bracket.id='ko-bracket';
-  bracket.style.cssText='display:flex;align-items:stretch;min-width:760px;gap:0';
+  bracket.style.cssText='display:flex;align-items:stretch;min-width:1100px;gap:0';
   wrap.appendChild(bracket);
   container.appendChild(wrap);
 
@@ -630,7 +630,7 @@ function renderKOBracket(container, koMatches){
       +(phase.key==='Finale'?';padding-top:55px':'');
 
     // Nombre de slots selon la phase
-    var slots=phase.key==='32es'?16:phase.key==='16es'?8:phase.key==='Quarts'?4:phase.key==='Demis'?2:1;
+    var slots=phase.key==='16es'?16:phase.key==='8es'?8:phase.key==='Quarts'?4:phase.key==='Demis'?2:1;
 
     for(var s=0;s<slots;s++){
       var m=matches[s]||null;
@@ -760,8 +760,8 @@ function makeBracketCard(m, phase){
 
 function drawBracketConnectors(){
   var pairs=[
-    {svgId:'ko-conn-32es',   fromId:'ko-col-32es',   toId:'ko-col-16es'},
-    {svgId:'ko-conn-16es',   fromId:'ko-col-16es',   toId:'ko-col-Quarts'},
+    {svgId:'ko-conn-16es',   fromId:'ko-col-16es',   toId:'ko-col-8es'},
+    {svgId:'ko-conn-8es',    fromId:'ko-col-8es',    toId:'ko-col-Quarts'},
     {svgId:'ko-conn-Quarts', fromId:'ko-col-Quarts', toId:'ko-col-Demis'},
   ];
   var ns='http://www.w3.org/2000/svg';
