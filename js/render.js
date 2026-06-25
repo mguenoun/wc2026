@@ -382,6 +382,38 @@ var KO_PHASES=[
 var koBracketView='list'; // 'list' ou 'bracket'
 var _thirdAssign = null;  // Map : "3e X/Y/Z" → team, recalculée à chaque render KO
 
+// Liens statiques du bracket KO : enfant → [source1, source2] remontant vers la Finale.
+// Toute la logique de connexion et d'ordre visuel s'appuie sur cette map.
+var KO_SOURCES={
+  'M89':['M73','M75'],'M90':['M74','M76'],'M91':['M77','M79'],'M92':['M78','M80'],
+  'M93':['M81','M83'],'M94':['M82','M84'],'M95':['M85','M87'],'M96':['M86','M88'],
+  'QF1':['M89','M91'],'QF2':['M90','M92'],'QF3':['M93','M95'],'QF4':['M94','M96'],
+  'SF1':['QF1','QF2'],'SF2':['QF3','QF4'],
+  'FIN':['SF1','SF2'],
+};
+
+// Remonte depuis la Finale pour calculer le slotIndex de chaque match dans sa phase.
+// Garantit que les deux sources d'un match sont toujours aux slots 2i / 2i+1.
+function buildKOSlotMap(){
+  var slotMap={};
+  var phaseKeys=['16es','8es','Quarts','Demis','Finale'];
+  var ordered={Finale:['FIN']};
+  for(var pi=phaseKeys.length-1;pi>=0;pi--){
+    var ph=phaseKeys[pi];
+    (ordered[ph]||[]).forEach(function(mid,i){slotMap[mid]=i;});
+    if(pi>0){
+      var prev=phaseKeys[pi-1];
+      ordered[prev]=[];
+      (ordered[ph]||[]).forEach(function(mid){
+        var s=KO_SOURCES[mid]||[];
+        if(s[0])ordered[prev].push(s[0]);
+        if(s[1])ordered[prev].push(s[1]);
+      });
+    }
+  }
+  return slotMap;
+}
+
 // Collecte et trie les 3e places de tous les groupes ayant joué au moins 1 match
 function getAll3rd() {
   var all3rd = [];
@@ -599,28 +631,10 @@ function renderKOBracket(container, koMatches){
     if(byPhase[m.phase]!==undefined) byPhase[m.phase].push(m);
   });
 
-  // Tri par position de bracket — garantit le bon ordre visuel colonne par colonne.
-  // Règle : les deux 16es qui alimentent le même 8es doivent être aux slots 2i et 2i+1,
-  // et les deux 8es qui alimentent le même QF doivent être aux slots 2j et 2j+1, etc.
-  var KO_SLOT={
-    // 16es : par paire selon le 8e qu'ils alimentent (M89 QF1-haut, M91 QF1-bas, M90 QF2-haut, M92 QF2-bas…)
-    'M73':0,'M75':1,  // → M89
-    'M77':2,'M79':3,  // → M91
-    'M74':4,'M76':5,  // → M90
-    'M78':6,'M80':7,  // → M92
-    'M81':8,'M83':9,  // → M93
-    'M85':10,'M87':11,// → M95
-    'M82':12,'M84':13,// → M94
-    'M86':14,'M88':15,// → M96
-    // 8es : par paire selon le quart qu'ils alimentent
-    'M89':0,'M91':1,  // → QF1
-    'M90':2,'M92':3,  // → QF2
-    'M93':4,'M95':5,  // → QF3
-    'M94':6,'M96':7,  // → QF4
-    'QF1':0,'QF2':1,'QF3':2,'QF4':3,'SF1':0,'SF2':1,'3PL':0,'FIN':0
-  };
+  // Trier chaque phase par slot calculé en remontant depuis la Finale via KO_SOURCES.
+  var slotMap=buildKOSlotMap();
   KO_PHASES.forEach(function(p){
-    byPhase[p.key].sort(function(a,b){return (KO_SLOT[a.id]||0)-(KO_SLOT[b.id]||0);});
+    byPhase[p.key].sort(function(a,b){return (slotMap[a.id]||0)-(slotMap[b.id]||0);});
   });
 
   // Créer le wrapper scrollable
@@ -785,13 +799,6 @@ function makeBracketCard(m, phase){
 
 function drawBracketConnectors(){
   var ns='http://www.w3.org/2000/svg';
-  // Liens statiques basés sur les numéros de match — indépendants de t1/t2 et de l'ordre API.
-  var KO_SOURCES={
-    'M89':['M73','M75'],'M90':['M74','M76'],'M91':['M77','M79'],'M92':['M78','M80'],
-    'M93':['M81','M83'],'M94':['M82','M84'],'M95':['M85','M87'],'M96':['M86','M88'],
-    'QF1':['M89','M91'],'QF2':['M90','M92'],'QF3':['M93','M95'],'QF4':['M94','M96'],
-    'SF1':['QF1','QF2'],'SF2':['QF3','QF4'],
-  };
   var phasePairs=[
     {svgId:'ko-conn-16es',   fromId:'ko-col-16es',   toId:'ko-col-8es'},
     {svgId:'ko-conn-8es',    fromId:'ko-col-8es',    toId:'ko-col-Quarts'},
