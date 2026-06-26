@@ -26,9 +26,7 @@ function switchView(v){
   if(v==='fairplay'){if(!fairplayLoaded)fetchFairPlay();else renderFairPlay();}
   if(v==='stades'){setTimeout(function(){renderStadesMap();},80);}
   if(v==='knockout'&&koBracketView==='bracket'){
-    var c=document.getElementById('knockout-timeline');
-    c.innerHTML='';
-    renderKOBracket(c,allMatches.filter(function(m){return m.ko;}));
+    renderKOTimeline();
   }
 }
 

@@ -606,11 +606,31 @@ function resolveKOTeam(teamStr){
   return null;
 }
 
+// Retourne true si la chaîne est une référence à un match ("V M74", "Vainq. QF1"…)
+// et non un nom d'équipe réel ou un libellé de position de groupe.
+function isMatchRef(s){return /^(V\s+|Vainq\.\s+)\S+/.test(s||'');}
+
+// Reconstruit t1/t2 depuis KO_SOURCES pour tous les matches KO non joués.
+// Immunise l'affichage contre des données KV obsolètes (mauvais numéros de match).
+// Ne remplace que les références de match (ex "V M73"), jamais les vrais noms d'équipes.
+function fixKOTeamRefs(koMatches){
+  return koMatches.map(function(m){
+    if(m.isFT||m.isLive) return m;           // match joué : garder les vrais noms
+    if(m.phase==='Finale'||m.phase==='3e Place') return m; // libellés spéciaux conservés
+    var srcs=KO_SOURCES[m.id];
+    if(!srcs||srcs.length<2) return m;
+    return Object.assign({},m,{
+      t1: isMatchRef(m.t1)?'V '+srcs[0]:m.t1,
+      t2: isMatchRef(m.t2)?'V '+srcs[1]:m.t2,
+    });
+  });
+}
+
 function renderKOTimeline(){
   _thirdAssign = buildThirdAssign();
   var c=document.getElementById('knockout-timeline');
   c.innerHTML='';
-  var koMatches=allMatches.filter(function(m){return m.ko;});
+  var koMatches=fixKOTeamRefs(allMatches.filter(function(m){return m.ko;}));
   if(koBracketView==='list'){
     groupByDate(koMatches).forEach(function(e){renderDayBlock(e[0],e[1],c);});
   } else {
