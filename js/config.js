@@ -73,7 +73,7 @@ const VENUE_COORDS = {
 
 var FLAG = {
   'Mexique':'MX','Afrique du Sud':'ZA','Corée du Sud':'KR','Tchéquie':'CZ',
-  'Canada':'CA','Bosnie-H.':'BA','Qatar':'QA','Suisse':'CH',
+  'Canada':'CA','Bosnie-H.':'BA','Bosnia-H.':'BA','Bosnie':'BA','Qatar':'QA','Suisse':'CH',
   'Brésil':'BR','Maroc':'MA','Haïti':'HT','Écosse':'GB-SCT',
   'USA':'US','Paraguay':'PY','Australie':'AU','Turquie':'TR',
   'Allemagne':'DE','Curaçao':'CW','Côte d’Ivoire':'CI',"Côte d'Ivoire":'CI','Équateur':'EC',
