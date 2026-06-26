@@ -1,4 +1,4 @@
-// ─── LISTE DES MATCHS ────────────────────────────────────────────────────────
+﻿// ─── LISTE DES MATCHS ────────────────────────────────────────────────────────
 
 function renderMatchRow(m){
   var sel=selectedId===m.id;
@@ -681,9 +681,7 @@ function renderThirds() {
       var entry = grpLetter ? all3rd.find(function(t){return t.group===grpLetter;}) : null;
       var opp = allMatches.find(function(m){return m.id===mid;});
       var winnerLabel = MID_TO_WINNER[mid] || '';
-      var oppName = opp ? opp.t1 : '';
-      // oppName est résolu si ce n'est plus un slot ("1er Gr.X") ni une ref de match ("V Mxx")
-      var isResolved = oppName && oppName !== winnerLabel && oppName.indexOf('1er') < 0 && oppName.indexOf('V M') < 0;
+      var oppResolved = resolveKOTeam(winnerLabel);
       var grpColor = GC[grpLetter]||'#64748b';
       html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
         (grpLetter
@@ -692,7 +690,7 @@ function renderThirds() {
         '<span style="font-size:11px;color:#e2e8f0;min-width:130px">' + (entry ? (flagEmoji(entry.team)||'')+' '+entry.team : '—') + '</span>' +
         '<span style="font-size:10px;color:#475569;flex-shrink:0">–</span>' +
         '<span style="font-size:10px;color:#94a3b8">' + winnerLabel +
-          (isResolved ? ' <span style="color:#cbd5e1">('+( flagEmoji(oppName)||'' )+' '+oppName+')</span>' : '') +
+          (oppResolved ? ' <span style="color:#cbd5e1">('+( flagEmoji(oppResolved.split(' / ')[0])||'' )+' '+oppResolved+')</span>' : '') +
         '</span>' +
         '</div>';
     });
