@@ -435,16 +435,96 @@ function getAll3rd() {
   return all3rd;
 }
 
-// Construit l'assignation globale des 3e places via matching bipartite
-// Garantit que chaque équipe va dans un slot dont son groupe fait partie
+// Table Annexe C FIFA : combinaison de 8 groupes → affectation officielle
+// Clé = 8 lettres de groupe triées (ex: 'BEFGHJKL')
+// Valeur = {M74, M77, M79, M80, M81, M82, M85, M87} → lettre du groupe 3e affecté
+var ANNEX_C={
+  'BEFGHJKL':{M79:'E',M85:'J',M81:'B',M74:'F',M82:'H',M77:'G',M87:'L',M80:'K'},
+  'BDEFIJKL':{M79:'E',M85:'J',M81:'B',M74:'D',M82:'I',M77:'F',M87:'L',M80:'K'},
+  'BDEFHJKL':{M79:'E',M85:'J',M81:'B',M74:'D',M82:'H',M77:'F',M87:'L',M80:'K'},
+  'BDEFHIKL':{M79:'E',M85:'I',M81:'B',M74:'D',M82:'H',M77:'F',M87:'L',M80:'K'},
+  'BDEFHIJL':{M79:'E',M85:'J',M81:'B',M74:'D',M82:'H',M77:'F',M87:'L',M80:'I'},
+  'BDEFHIJK':{M79:'E',M85:'J',M81:'B',M74:'D',M82:'H',M77:'F',M87:'I',M80:'K'},
+  'BDEFGJKL':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'J',M77:'F',M87:'L',M80:'K'},
+  'BDEFGIKL':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'I',M77:'F',M87:'L',M80:'K'},
+  'BDEFGIJL':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'J',M77:'F',M87:'L',M80:'I'},
+  'BDEFGIJK':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'J',M77:'F',M87:'I',M80:'K'},
+  'BDEFGHKL':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'H',M77:'F',M87:'L',M80:'K'},
+  'BDEFGHJL':{M79:'H',M85:'G',M81:'B',M74:'D',M82:'J',M77:'F',M87:'L',M80:'E'},
+  'BDEFGHJK':{M79:'H',M85:'G',M81:'B',M74:'D',M82:'J',M77:'F',M87:'E',M80:'K'},
+  'BDEFGHIL':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'H',M77:'F',M87:'L',M80:'I'},
+  'BDEFGHIK':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'H',M77:'F',M87:'I',M80:'K'},
+  'BDEFGHIJ':{M79:'H',M85:'G',M81:'B',M74:'D',M82:'J',M77:'F',M87:'E',M80:'I'},
+  'ABDEFJKL':{M79:'E',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'K'},
+  'ABDEFIKL':{M79:'E',M85:'I',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'K'},
+  'ABDEFIJL':{M79:'E',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'I'},
+  'ABDEFIJK':{M79:'E',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'I',M80:'K'},
+  'ABDEFHKL':{M79:'H',M85:'E',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'K'},
+  'ABDEFHJL':{M79:'H',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'E'},
+  'ABDEFHJK':{M79:'H',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'K'},
+  'ABDEFHIL':{M79:'H',M85:'E',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'I'},
+  'ABDEFHIK':{M79:'H',M85:'E',M81:'B',M74:'D',M82:'A',M77:'F',M87:'I',M80:'K'},
+  'ABDEFHIJ':{M79:'H',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'I'},
+  'ABDEFGKL':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'K'},
+  'ABDEFGJL':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'J'},
+  'ABDEFGJK':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'J',M80:'K'},
+  'ABDEFGIL':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'I'},
+  'ABDEFGIK':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'I',M80:'K'},
+  'ABDEFGIJ':{M79:'E',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'I',M80:'J'},
+  'ABDEFGHL':{M79:'H',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'E'},
+  'ABDEFGHK':{M79:'H',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'K'},
+  'ABDEFGHJ':{M79:'H',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'J'},
+  'ABDEFGHI':{M79:'H',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'I'},
+  'ABCDEFKL':{M79:'C',M85:'E',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'K'},
+  'ABCDEFJL':{M79:'C',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'E'},
+  'ABCDEFJK':{M79:'C',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'K'},
+  'ABCDEFIL':{M79:'C',M85:'E',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'I'},
+  'ABCDEFIK':{M79:'C',M85:'E',M81:'B',M74:'D',M82:'A',M77:'F',M87:'I',M80:'K'},
+  'ABCDEFIJ':{M79:'C',M85:'J',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'I'},
+  'ABCDEFHL':{M79:'H',M85:'F',M81:'B',M74:'C',M82:'A',M77:'D',M87:'L',M80:'E'},
+  'ABCDEFHK':{M79:'H',M85:'E',M81:'B',M74:'C',M82:'A',M77:'F',M87:'D',M80:'K'},
+  'ABCDEFHJ':{M79:'H',M85:'J',M81:'B',M74:'C',M82:'A',M77:'F',M87:'D',M80:'E'},
+  'ABCDEFHI':{M79:'H',M85:'E',M81:'B',M74:'C',M82:'A',M77:'F',M87:'D',M80:'I'},
+  'ABCDEFGL':{M79:'C',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'L',M80:'E'},
+  'ABCDEFGK':{M79:'C',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'K'},
+  'ABCDEFGJ':{M79:'C',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'J'},
+  'ABCDEFGI':{M79:'C',M85:'G',M81:'B',M74:'D',M82:'A',M77:'F',M87:'E',M80:'I'},
+  'ABCDEFGH':{M79:'H',M85:'G',M81:'B',M74:'C',M82:'A',M77:'F',M87:'D',M80:'E'},
+};
+
+// Slot string dans les matchs KO → match ID correspondant
+var MATCH_TO_SLOT={
+  'M74':'3e A/B/C/D/F','M77':'3e C/D/F/G/H','M79':'3e C/E/F/H/I',
+  'M80':'3e E/H/I/J/K','M81':'3e B/E/F/I/J','M82':'3e A/E/H/I/J',
+  'M85':'3e E/F/G/I/J','M87':'3e D/E/I/J/L',
+};
+
+// Construit l'assignation globale des 3e places.
+// Priorité : table Annexe C FIFA officielle (51 combinaisons viables).
+// Fallback : matching bipartite si combinaison absente de la table.
 function buildThirdAssign() {
   var assign = new Map();
   if (!standings || !allMatches) return assign;
   var all3rd = getAll3rd();
-  var top8groups = all3rd.slice(0, 8).map(function(t) { return t.group; });
-  var qualified = all3rd.filter(function(t) { return top8groups.indexOf(t.group) >= 0; });
+  var top8 = all3rd.slice(0, 8);
+  var top8groups = top8.map(function(t) { return t.group; });
 
-  // Collecter tous les slots "3e X/Y/Z..." uniques dans les matchs KO
+  // Tenter la table Annexe C FIFA
+  var key = top8groups.slice().sort().join('');
+  var annexRow = ANNEX_C[key];
+  if (annexRow && top8groups.length === 8) {
+    Object.keys(annexRow).forEach(function(mid) {
+      var slotKey = MATCH_TO_SLOT[mid];
+      var entry = all3rd.find(function(t) { return t.group === annexRow[mid]; });
+      if (slotKey && entry) {
+        assign.set(slotKey, entry.coTeam ? entry.team + ' / ' + entry.coTeam : entry.team);
+      }
+    });
+    return assign;
+  }
+
+  // Fallback : matching bipartite (chemin augmentant)
+  var qualified = all3rd.filter(function(t) { return top8groups.indexOf(t.group) >= 0; });
   var slots = [];
   allMatches.filter(function(m) { return m.ko; }).forEach(function(m) {
     [m.t1, m.t2].forEach(function(ts) {
@@ -454,8 +534,6 @@ function buildThirdAssign() {
         slots.push({ key: ts, groups: rx[1].split('/') });
     });
   });
-
-  // Matching bipartite (chemin augmentant) : slot → groupe qualifié
   var slotToGroup = {}, groupToSlot = {};
   function augment(slotKey, visited) {
     var slot = slots.find(function(s) { return s.key === slotKey; });
@@ -471,8 +549,6 @@ function buildThirdAssign() {
     return false;
   }
   slots.forEach(function(slot) { if (!slotToGroup[slot.key]) augment(slot.key, {}); });
-
-  // Construire la Map finale slot → nom d'équipe (inclut le coTeam si ex æquo)
   Object.keys(slotToGroup).forEach(function(slotKey) {
     var entry = all3rd.find(function(t) { return t.group === slotToGroup[slotKey]; });
     if (entry) assign.set(slotKey, entry.coTeam ? entry.team + ' / ' + entry.coTeam : entry.team);
@@ -557,6 +633,65 @@ function renderThirds() {
   });
 
   html += '</div>';
+
+  // Section Annexe C : affectation des 8 meilleurs 3es aux matchs du 16e
+  // S'affiche dès que 8 groupes ont joué (provisoire ou officiel)
+  if (all3rd.length >= 8) {
+    var top8grps = all3rd.slice(0,8).map(function(t){return t.group;});
+    var annexKey = top8grps.slice().sort().join('');
+    var annexRow = ANNEX_C[annexKey];
+    // midToGrp : mid → lettre du groupe assigné (officiel ou matching bipartite)
+    var midToGrp = {};
+    var midOrder=['M74','M77','M79','M80','M82','M81','M85','M87'];
+    if (annexRow) {
+      midOrder.forEach(function(mid){ midToGrp[mid]=annexRow[mid]||''; });
+    } else {
+      // Matching bipartite directement ici pour éviter la dépendance au slotKey Map
+      var eligible={};
+      var slotElig={
+        M74:['A','B','C','D','F'],M77:['C','D','F','G','H'],M79:['C','E','F','H','I'],
+        M80:['E','H','I','J','K'],M81:['B','E','F','I','J'],M82:['A','E','H','I','J'],
+        M85:['E','F','G','I','J'],M87:['D','E','I','J','L']
+      };
+      var used={}, midToGrpBP={};
+      function bpAugment(mid, visited){
+        var el=slotElig[mid]||[];
+        for(var i=0;i<top8grps.length;i++){
+          var g=top8grps[i];
+          if(el.indexOf(g)<0||visited[g])continue;
+          visited[g]=true;
+          var prev=midToGrpBP[g];
+          if(!prev||bpAugment(prev,visited)){
+            midToGrpBP[g]=mid; return true;
+          }
+        }
+        return false;
+      }
+      midOrder.forEach(function(mid){ bpAugment(mid,{}); });
+      // Inverser midToGrpBP : group→mid en mid→group
+      Object.keys(midToGrpBP).forEach(function(g){ midToGrp[midToGrpBP[g]]=g; });
+    }
+    var isOfficial = !!annexRow;
+    html += '<div style="margin-top:10px;font-size:8px;font-weight:700;letter-spacing:0.5px;margin-bottom:4px;color:' + (isOfficial?'#22c55e':'#f59e0b') + '">' +
+      (isOfficial ? '✓ ANNEXE C — AFFECTATION OFFICIELLE FIFA' : '⏳ ANNEXE C — AFFECTATION PROVISOIRE') + '</div>';
+    html += '<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;padding:4px 12px">';
+    midOrder.forEach(function(mid) {
+      var grpLetter = midToGrp[mid] || '';
+      var entry = grpLetter ? all3rd.find(function(t){return t.group===grpLetter;}) : null;
+      var opp = allMatches.find(function(m){return m.id===mid;});
+      var oppTeam = opp ? opp.t1 : '';
+      var grpColor = GC[grpLetter]||'#64748b';
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+        '<span style="min-width:32px;font-size:8px;font-weight:700;color:#475569">' + mid + '</span>' +
+        '<span style="flex:1;font-size:10px;color:#e2e8f0">' + (entry?(flagEmoji(entry.team)||'')+' '+entry.team:'—') + '</span>' +
+        '<span style="font-size:8px;color:#475569">vs</span>' +
+        '<span style="flex:1;font-size:9px;color:#94a3b8;text-align:right">' + oppTeam + '</span>' +
+        (grpLetter?'<span style="min-width:14px;width:14px;height:14px;border-radius:50%;background:'+grpColor+';display:inline-flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:#fff;margin-left:4px">'+grpLetter+'</span>':'') +
+        '</div>';
+    });
+    html += '</div>';
+  }
+
   c.innerHTML = html;
 }
 
