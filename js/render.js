@@ -385,9 +385,9 @@ var _thirdAssign = null;  // Map : "3e X/Y/Z" → team, recalculée à chaque re
 // Liens statiques du bracket KO : enfant → [source1, source2] remontant vers la Finale.
 // Toute la logique de connexion et d'ordre visuel s'appuie sur cette map.
 var KO_SOURCES={
-  'M89':['M73','M75'],'M90':['M74','M76'],'M91':['M77','M79'],'M92':['M78','M80'],
-  'M93':['M81','M83'],'M94':['M82','M84'],'M95':['M85','M87'],'M96':['M86','M88'],
-  'QF1':['M89','M91'],'QF2':['M90','M92'],'QF3':['M93','M95'],'QF4':['M94','M96'],
+  'M89':['M74','M77'],'M90':['M73','M75'],'M91':['M76','M78'],'M92':['M79','M80'],
+  'M93':['M83','M84'],'M94':['M81','M82'],'M95':['M86','M88'],'M96':['M85','M87'],
+  'QF1':['M89','M90'],'QF2':['M93','M94'],'QF3':['M91','M92'],'QF4':['M95','M96'],
   'SF1':['QF1','QF2'],'SF2':['QF3','QF4'],
   'FIN':['SF1','SF2'],
 };
