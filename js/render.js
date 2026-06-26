@@ -643,6 +643,7 @@ function renderThirds() {
     // midToGrp : mid → lettre du groupe assigné (officiel ou matching bipartite)
     var midToGrp = {};
     var midOrder=['M74','M77','M79','M80','M82','M81','M85','M87'];
+    var MID_TO_WINNER={M74:'1er Gr.E',M77:'1er Gr.I',M79:'1er Gr.A',M80:'1er Gr.L',M82:'1er Gr.G',M81:'1er Gr.D',M85:'1er Gr.B',M87:'1er Gr.K'};
     if (annexRow) {
       midOrder.forEach(function(mid){ midToGrp[mid]=annexRow[mid]||''; });
     } else {
@@ -679,13 +680,19 @@ function renderThirds() {
       var grpLetter = midToGrp[mid] || '';
       var entry = grpLetter ? all3rd.find(function(t){return t.group===grpLetter;}) : null;
       var opp = allMatches.find(function(m){return m.id===mid;});
-      var oppTeam = opp ? opp.t1 : '';
+      var winnerLabel = MID_TO_WINNER[mid] || '';
+      var oppName = opp ? opp.t1 : '';
+      // oppName est résolu si ce n'est plus un slot ("1er Gr.X") ni une ref de match ("V Mxx")
+      var isResolved = oppName && oppName !== winnerLabel && oppName.indexOf('1er') < 0 && oppName.indexOf('V M') < 0;
       var grpColor = GC[grpLetter]||'#64748b';
-      html += '<div style="display:flex;align-items:center;gap:5px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
-        '<span style="min-width:32px;font-size:8px;font-weight:700;color:#475569">' + mid + '</span>' +
-        (grpLetter?'<span style="min-width:14px;width:14px;height:14px;border-radius:50%;background:'+grpColor+';display:inline-flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:#fff;flex-shrink:0">'+grpLetter+'</span>':'') +
-        '<span style="flex:1;font-size:10px;color:#e2e8f0">' + (entry?(flagEmoji(entry.team)||'')+' '+entry.team:'—') +
-          (oppTeam?'<span style="font-size:8px;color:#475569;margin-left:5px">('+oppTeam+')</span>':'') +
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+        (grpLetter
+          ? '<span style="min-width:16px;width:16px;height:16px;border-radius:50%;background:'+grpColor+';display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">'+grpLetter+'</span>'
+          : '<span style="width:16px;flex-shrink:0"></span>') +
+        '<span style="font-size:11px;color:#e2e8f0;min-width:130px">' + (entry ? (flagEmoji(entry.team)||'')+' '+entry.team : '—') + '</span>' +
+        '<span style="font-size:10px;color:#475569;flex-shrink:0">–</span>' +
+        '<span style="font-size:10px;color:#94a3b8">' + winnerLabel +
+          (isResolved ? ' <span style="color:#cbd5e1">('+( flagEmoji(oppName)||'' )+' '+oppName+')</span>' : '') +
         '</span>' +
         '</div>';
     });
