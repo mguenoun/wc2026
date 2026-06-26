@@ -1,8 +1,10 @@
 #!/bin/sh
+# Nettoyer le cache Vite (peut corrompre les workers vitest sur Windows)
+rm -rf node_modules/.vite node_modules/.cache 2>/dev/null
 echo "[pre-push] Running tests..."
 npm test
 if [ $? -ne 0 ]; then
-  echo "[pre-push] First run failed (vitest cold-start glitch), retrying..."
+  echo "[pre-push] First run failed, retrying..."
   npm test
   if [ $? -ne 0 ]; then
     echo "[pre-push] Tests failed — push aborted."

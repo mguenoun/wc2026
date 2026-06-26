@@ -681,12 +681,12 @@ function renderThirds() {
       var opp = allMatches.find(function(m){return m.id===mid;});
       var oppTeam = opp ? opp.t1 : '';
       var grpColor = GC[grpLetter]||'#64748b';
-      html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+      html += '<div style="display:flex;align-items:center;gap:5px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
         '<span style="min-width:32px;font-size:8px;font-weight:700;color:#475569">' + mid + '</span>' +
-        '<span style="flex:1;font-size:10px;color:#e2e8f0">' + (entry?(flagEmoji(entry.team)||'')+' '+entry.team:'—') + '</span>' +
-        '<span style="font-size:8px;color:#475569">vs</span>' +
-        '<span style="flex:1;font-size:9px;color:#94a3b8;text-align:right">' + oppTeam + '</span>' +
-        (grpLetter?'<span style="min-width:14px;width:14px;height:14px;border-radius:50%;background:'+grpColor+';display:inline-flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:#fff;margin-left:4px">'+grpLetter+'</span>':'') +
+        (grpLetter?'<span style="min-width:14px;width:14px;height:14px;border-radius:50%;background:'+grpColor+';display:inline-flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:#fff;flex-shrink:0">'+grpLetter+'</span>':'') +
+        '<span style="flex:1;font-size:10px;color:#e2e8f0">' + (entry?(flagEmoji(entry.team)||'')+' '+entry.team:'—') +
+          (oppTeam?'<span style="font-size:8px;color:#475569;margin-left:5px">('+oppTeam+')</span>':'') +
+        '</span>' +
         '</div>';
     });
     html += '</div>';
