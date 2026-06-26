@@ -98,7 +98,7 @@ const GC = {A:'#0ea5e9',B:'#06b6d4',C:'#10b981',D:'#f59e0b',E:'#ef4444',F:'#f973
 
 const TEAM_MAP = {
   'Mexico':'Mexique','South Africa':'Afrique du Sud','Korea Republic':'Cor\u00e9e du Sud','South Korea':'Cor\u00e9e du Sud','Czechia':'Tch\u00e9quie','Czech Republic':'Tch\u00e9quie',
-  'Canada':'Canada','Bosnia and Herzegovina':'Bosnie-H.','Bosnia & Herzegovina':'Bosnie-H.','Qatar':'Qatar','Switzerland':'Suisse',
+  'Canada':'Canada','Bosnia and Herzegovina':'Bosnie-H.','Bosnia & Herzegovina':'Bosnie-H.','Bosnia-Herzegovina':'Bosnie-H.','Qatar':'Qatar','Switzerland':'Suisse',
   'Brazil':'Br\u00e9sil','Morocco':'Maroc','Haiti':'Ha\u00efti','Scotland':'\u00c9cosse',
   'United States':'USA','USA':'USA','Paraguay':'Paraguay','Australia':'Australie','T\u00fcrkiye':'Turquie','Turkey':'Turquie','Turkiye':'Turquie',
   'Germany':'Allemagne','Curacao':'Cura\u00e7ao','Cura\u00e7ao':'Cura\u00e7ao',"C\u00f4te d'Ivoire":"C\u00f4te d\u2019Ivoire",'Ivory Coast':"C\u00f4te d\u2019Ivoire",'Ecuador':'\u00c9quateur',
