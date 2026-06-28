@@ -167,7 +167,7 @@ function frDate(s){var d=new Date(s);return d.toLocaleDateString('fr-FR',{weekda
 function frTime(s){var d=new Date(s);return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:DISPLAY_TZ});}
 function dayKey(s){var d=new Date(s);return d.toLocaleDateString('en-CA',{timeZone:DISPLAY_TZ});}
 
-var allMatches=[], standings={}, scorers=[], selectedId=null, activeFilter='all', activeView='groups';
+var allMatches=[], standings={}, scorers=[], selectedId=null, activeFilter='all', activeView='knockout';
 
 function groupByDate(arr){
   var map=new Map();
