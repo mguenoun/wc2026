@@ -1,5 +1,7 @@
 ﻿// ─── LISTE DES MATCHS ────────────────────────────────────────────────────────
 
+function rTeam(m,t){ return (m&&m.ko?resolveKOTeam(t):null)||t||'?'; }
+
 function renderMatchRow(m){
   var sel=selectedId===m.id;
   var row=document.createElement('div');
@@ -82,7 +84,7 @@ function renderMatchRow(m){
       actions.appendChild(btnLineup);
     }
     if(m.isFT){
-      var ytQ=m.t1+' '+m.t2+' FIFA World Cup 2026 highlights';
+      var ytQ=rTeam(m,m.t1)+' '+rTeam(m,m.t2)+' FIFA World Cup 2026 highlights';
       var btnYt=document.createElement('a');
       btnYt.href='https://www.youtube.com/results?search_query='+encodeURIComponent(ytQ);
       btnYt.target='_blank';btnYt.rel='noopener';
@@ -210,7 +212,7 @@ function _buildCalCard(m){
   topRight.appendChild(scoreEl);
   if(m.isFT){
     var playA=document.createElement('a');
-    playA.href='https://www.youtube.com/results?search_query='+encodeURIComponent(m.t1+' '+m.t2+' FIFA World Cup 2026 highlights');
+    playA.href='https://www.youtube.com/results?search_query='+encodeURIComponent(rTeam(m,m.t1)+' '+rTeam(m,m.t2)+' FIFA World Cup 2026 highlights');
     playA.target='_blank';playA.rel='noopener';playA.title='Resume YouTube';
     playA.style.cssText='font-size:9px;color:#22c55e;text-decoration:none;line-height:1;display:flex;align-items:center;flex-shrink:0;';
     playA.textContent='▶';
@@ -222,10 +224,10 @@ function _buildCalCard(m){
   var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
   var t1=document.createElement('div');
   t1.style.cssText='font-size:9px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
-  t1.innerHTML=(f1?f1+' ':'')+m.t1;
+  t1.innerHTML=(f1?f1+' ':'')+rTeam(m,m.t1);
   var t2=document.createElement('div');
   t2.style.cssText='font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
-  t2.innerHTML=(f2?f2+' ':'')+m.t2;
+  t2.innerHTML=(f2?f2+' ':'')+rTeam(m,m.t2);
   card.appendChild(t1);card.appendChild(t2);
   if(!m.isLive&&!m.isFT){
     var pred=predictions&&predictions[m.id];
@@ -1170,14 +1172,14 @@ function renderKPIBar(){
         var row=document.createElement('div');
         row.style.cssText='cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);padding:2px 0;display:flex;align-items:center;gap:2px;white-space:nowrap;';
         row.innerHTML=
-          (flagEmoji(m.t1)||'')+
-          '<b style="font-size:7px;color:#e2e8f0">'+_iso(m.t1)+'</b>'+
+          (flagEmoji(rTeam(m,m.t1))||'')+
+          '<b style="font-size:7px;color:#e2e8f0">'+_iso(rTeam(m,m.t1))+'</b>'+
           '<span style="display:inline-flex;flex-direction:column;align-items:center;margin:0 3px">'+
             (m.clockDisplay?'<span style="font-size:6px;color:#64748b;line-height:1.2">'+m.clockDisplay+'</span>':'')+
             '<span style="font-size:8px;font-weight:900;color:#22c55e;line-height:1">'+(m.score||'–')+'</span>'+
           '</span>'+
-          '<b style="font-size:7px;color:#e2e8f0">'+_iso(m.t2)+'</b>'+
-          (flagEmoji(m.t2)||'');
+          '<b style="font-size:7px;color:#e2e8f0">'+_iso(rTeam(m,m.t2))+'</b>'+
+          (flagEmoji(rTeam(m,m.t2))||'');
         row.addEventListener('click',function(e){e.stopPropagation();scrollToMatch(m.id);});
         _lmc.appendChild(row);
       });

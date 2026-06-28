@@ -1,4 +1,4 @@
-function openModal(title,html,refreshFn){
+﻿function openModal(title,html,refreshFn){
   document.getElementById('modal-title').textContent=title;
   document.getElementById('modal-body').innerHTML=html;
   document.getElementById('modal-overlay').className='open';
@@ -73,7 +73,7 @@ function renderESPNStats(m,d,espnId){
   var comps=comp&&comp.competitors||[];
   var home=comps.find(function(c){return c.homeAway==='home';})||{};
   var away=comps.find(function(c){return c.homeAway==='away';})||{};
-  document.getElementById('modal-title').textContent=m.t1+' – '+m.t2;
+  document.getElementById('modal-title').textContent=rTeam(m,m.t1)+' – '+rTeam(m,m.t2);
   var statusStr = status&&status.description||'';
   if(m.isLive && m.clockDisplay){
     statusStr = statusStr ? statusStr + ' · ' + m.clockDisplay : m.clockDisplay;
@@ -248,7 +248,7 @@ function openMatchInfoFD(m){
       var scoreFT=(ft.home!==null&&ft.home!==undefined?ft.home:'-')+' – '+(ft.away!==null&&ft.away!==undefined?ft.away:'-');
       var scoreHT=(ht.home!==null&&ht.home!==undefined?ht.home:'-')+' – '+(ht.away!==null&&ht.away!==undefined?ht.away:'-');
       var refs=(d.referees||[]).map(function(r){return r.name||'';}).filter(Boolean).join(', ')||'Non communique';
-      document.getElementById('modal-title').textContent=m.t1+' – '+m.t2;
+      document.getElementById('modal-title').textContent=rTeam(m,m.t1)+' – '+rTeam(m,m.t2);
       document.getElementById('modal-body').innerHTML=
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+
         infoBlock('Score final','<span style="font-size:22px;font-weight:900;color:#e2e8f0">'+scoreFT+'</span>',m.color)+
