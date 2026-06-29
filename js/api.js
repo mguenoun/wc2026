@@ -39,6 +39,7 @@ function processESPNScores(events){
     var isFT=state==='post';
     var clock=e.status&&e.status.displayClock||'';
     var period=e.status&&e.status.period||0;
+    if(period>=5){var _hs=parseInt(home.shootoutScore)||0,_as=parseInt(away.shootoutScore)||0;if(_hs||_as)newScore+=' (tab '+_hs+'-'+_as+')';}
     var clockDisplay='';
     if(isLive&&clock){
       if(clock.indexOf("'")>=0){clockDisplay=clock;}
@@ -242,6 +243,7 @@ async function fetchESPNLiveScores(){
       var isLive=status==='in',isFT=status==='post';
       var clock=e.status&&e.status.displayClock||'';
       var period=e.status&&e.status.period||0;
+      if(period>=5){var _hs=parseInt(home.shootoutScore)||0,_as=parseInt(away.shootoutScore)||0;if(_hs||_as)newScore+=' (tab '+_hs+'-'+_as+')';}
       var clockDisplay='';
       if(isLive&&clock){
         if(clock.indexOf("'")>=0){clockDisplay=clock;}
