@@ -43,8 +43,8 @@ function processESPNScores(events){
     if(isLive&&clock){
       if(clock.indexOf("'")>=0){clockDisplay=clock;}
       else{var mins=parseInt(clock.split(':')[0])||0;
-        if(period<=2)clockDisplay=mins+"'";
         if(period>=5)clockDisplay='Tirs au but';else if(period>=3)clockDisplay='Prolong. '+mins+"'";else clockDisplay=mins+"'";
+      }
     }
     m.score=newScore;m.isLive=isLive;m.isFT=isFT;m.clockDisplay=clockDisplay;
     if(m.t1&&/^(1er|2e|3e|Vainq\.|V\s)/.test(m.t1)){var _ht=home.team&&(home.team.shortDisplayName||home.team.displayName)||'';if(_ht)m.t1=normTeam(_ht);}if(m.t2&&/^(1er|2e|3e|Vainq\.|V\s)/.test(m.t2)){var _at=away.team&&(away.team.shortDisplayName||away.team.displayName)||'';if(_at)m.t2=normTeam(_at);}
@@ -247,6 +247,7 @@ async function fetchESPNLiveScores(){
         if(clock.indexOf("'")>=0){clockDisplay=clock;}
         else{var mins=parseInt(clock.split(':')[0])||0;
           if(period>=5)clockDisplay='Tirs au but';else clockDisplay=(period>=3?'Prolong. ':'')+mins+"'";
+        }
       }
       if(m.score!==newScore||m.isLive!==isLive||m.isFT!==isFT||m.clockDisplay!==clockDisplay){
         m.score=newScore;m.isLive=isLive;m.isFT=isFT;m.clockDisplay=clockDisplay;
