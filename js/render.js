@@ -1190,11 +1190,13 @@ function renderKPIBar(){
 }
 
 function scrollToMatch(matchId){
-  var needNav=activeView!=='groups';
-  var needList=typeof grpCalView!=='undefined'&&grpCalView==='calendar';
-  if(needNav)switchView('groups');
+  var m=allMatches.find(function(x){return x.id===matchId;});
+  var targetView=m&&m.ko?'knockout':'groups';
+  var needNav=activeView!==targetView;
+  var needList=(!m||!m.ko)&&typeof grpCalView!=='undefined'&&grpCalView==='calendar';
+  if(needNav)switchView(targetView);
   if(needList)grpCalView='list';
-  if(needNav||needList)renderGroupsTimeline();
+  if(needNav||needList)(m&&m.ko?renderKOTimeline():renderGroupsTimeline());
   setTimeout(function(){
     var el=document.querySelector('[data-mid="'+matchId+'"]');
     if(!el)return;

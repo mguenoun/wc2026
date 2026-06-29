@@ -263,7 +263,7 @@ async function fetchESPNLiveScores(){
     });
     if(allMatches.some(function(m){return m.isLive;})){
       if(activeView==='groups'&&typeof grpCalView!=='undefined'&&grpCalView==='calendar'){patchCalendarLive();}else{renderGroupsTimeline();}
-      renderKOTimeline();
+      renderKOTimeline();renderKPIBar();
     }
     if(updated){computeStandingsFromMatches();buildPredictions();renderStandings();}
   }catch(e){console.warn('[WC2026] fetchESPNLiveScores:',e.message);}
