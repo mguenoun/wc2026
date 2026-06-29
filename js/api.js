@@ -44,7 +44,7 @@ function processESPNScores(events){
       if(clock.indexOf("'")>=0){clockDisplay=clock;}
       else{var mins=parseInt(clock.split(':')[0])||0;
         if(period<=2)clockDisplay=mins+"'";
-        else clockDisplay='Prolong. '+mins+"'";}
+        if(period>=5)clockDisplay='Tirs au but';else if(period>=3)clockDisplay='Prolong. '+mins+"'";else clockDisplay=mins+"'";
     }
     m.score=newScore;m.isLive=isLive;m.isFT=isFT;m.clockDisplay=clockDisplay;
     if(m.t1&&/^(1er|2e|3e|Vainq\.|V\s)/.test(m.t1)){var _ht=home.team&&(home.team.shortDisplayName||home.team.displayName)||'';if(_ht)m.t1=normTeam(_ht);}if(m.t2&&/^(1er|2e|3e|Vainq\.|V\s)/.test(m.t2)){var _at=away.team&&(away.team.shortDisplayName||away.team.displayName)||'';if(_at)m.t2=normTeam(_at);}
@@ -168,7 +168,7 @@ function processMatches(matches, inputMatches){
     var isLive=['IN_PLAY','PAUSED'].includes(apiM.status);
     var isFT=apiM.status==='FINISHED';
     var score=null;
-    if(isFT&&apiM.score&&apiM.score.fullTime){var s=apiM.score.fullTime;if(s.home!==null&&s.away!==null)score=s.home+' \u2013 '+s.away;}
+    if(isFT&&apiM.score&&apiM.score.fullTime){var s=apiM.score.fullTime;if(s.home!==null&&s.away!==null){score=s.home+' – '+s.away;var pen=apiM.score.penalties;if(pen&&pen.home!==null&&pen.away!==null)score+=' (tab '+pen.home+'-'+pen.away+')';}}  
     if(isLive){var sl=apiM.score&&apiM.score.fullTime;score=(sl&&sl.home!=null?sl.home:0)+' \u2013 '+(sl&&sl.away!=null?sl.away:0);}
     var t1u=sm.ko?normTeam((apiM.homeTeam&&(apiM.homeTeam.shortName||apiM.homeTeam.name))||sm.t1):sm.t1;
     var t2u=sm.ko?normTeam((apiM.awayTeam&&(apiM.awayTeam.shortName||apiM.awayTeam.name))||sm.t2):sm.t2;
@@ -246,7 +246,7 @@ async function fetchESPNLiveScores(){
       if(isLive&&clock){
         if(clock.indexOf("'")>=0){clockDisplay=clock;}
         else{var mins=parseInt(clock.split(':')[0])||0;
-          clockDisplay=(period>=3?'Prolong. ':'')+mins+"'";}
+          if(period>=5)clockDisplay='Tirs au but';else clockDisplay=(period>=3?'Prolong. ':'')+mins+"'";
       }
       if(m.score!==newScore||m.isLive!==isLive||m.isFT!==isFT||m.clockDisplay!==clockDisplay){
         m.score=newScore;m.isLive=isLive;m.isFT=isFT;m.clockDisplay=clockDisplay;
