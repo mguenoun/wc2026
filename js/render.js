@@ -706,6 +706,7 @@ function renderThirds() {
 function resolveMatchWinner(matchId, wantLoser){
   var m=allMatches.find(function(x){return x.id===matchId;});
   if(!m||!m.isFT||!m.score)return null;
+  if(m.winnerTeam){return wantLoser?(m.winnerTeam===m.t1?m.t2:m.t1):m.winnerTeam;}
   var parts=m.score.split(' – ');
   var s1=parseInt(parts[0])||0,s2=parseInt(parts[1])||0;
   if(s1===s2)return null; // prolongations/tirs au but : score FT à égalité
@@ -893,8 +894,8 @@ function makeBracketCard(m, phase){
   var score=m.score||'';
   var parts=score?score.split(/[–\-]/).map(function(x){return x.trim();}):['',''];
   var s1=parts[0]||'', s2=parts[1]||'';
-  var w1=isFT&&s1!==''&&parseInt(s1)>parseInt(s2);
-  var w2=isFT&&s2!==''&&parseInt(s2)>parseInt(s1);
+  var w1=isFT&&(parseInt(s1)>parseInt(s2)||(m.winnerTeam&&m.winnerTeam===m.t1));
+  var w2=isFT&&(parseInt(s2)>parseInt(s1)||(m.winnerTeam&&m.winnerTeam===m.t2));
   var tbd1=!m.t1||/^(Vainq\.|V\s|Perdant|1er|2e|3e)/.test(m.t1);
   var tbd2=!m.t2||/^(Vainq\.|V\s|Perdant|1er|2e|3e)/.test(m.t2);
 
