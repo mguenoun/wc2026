@@ -234,7 +234,7 @@ function processMatches(matches, inputMatches){
     apiByKey[d+'|'+away]=m;
   });
   // Index par stage+date pour le fallback KO sans nom d'équipe (labels "2e Gr.A"…)
-  var phaseToStage={'16es':'ROUND_OF_32','8es':'ROUND_OF_16','Quarts':'QUARTER_FINALS','Demis':'SEMI_FINALS','3e Place':'THIRD_PLACE','Finale':'FINAL'};
+  var phaseToStage={'16es':'LAST_32','8es':'ROUND_OF_16','Quarts':'QUARTER_FINALS','Demis':'SEMI_FINALS','3e Place':'THIRD_PLACE','Finale':'FINAL'};
   var fdByStageDate={};
   matches.forEach(function(m){
     if(!m.stage||!m.utcDate)return;
