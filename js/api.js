@@ -94,17 +94,13 @@ function restoreKOCache(){
 }
 
 // Fetch ESPN scoreboard J-1 + aujourd'hui directement depuis le browser (pas de KV)
-// + dates des matchs KO passés sans résultat (ex: M73 le 28 juin local, hors fenêtre J-1)
+// ESPN sert uniquement les scores en direct/récents ; l'historique KO vient de FD (processMatches)
 async function fetchESPNEvents(){
   var allEvents=[];
   var today=new Date();
-  var dates=[];
-  for(var i=-1;i<=0;i++){var d=new Date(today);d.setDate(d.getDate()+i);dates.push(d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0'));}
-  // Ajouter les dates locales des matchs KO terminés sans résultat en cache
-  var todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-  allMatches.filter(function(m){return m.ko&&m.dayKey<todayStr&&!m.isFT&&!m.score;}).forEach(function(m){var ds=m.dayKey.replace(/-/g,'');if(dates.indexOf(ds)<0)dates.push(ds);});
-  for(var _i=0;_i<dates.length;_i++){
-    var ds=dates[_i];
+  for(var i=-1;i<=0;i++){
+    var d=new Date(today);d.setDate(d.getDate()+i);
+    var ds=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
     try{
       var r=await fetch(ESPN_BASE+'/scoreboard?dates='+ds);
       if(r.ok){var data=await r.json();if(data.events)allEvents.push.apply(allEvents,data.events);}
@@ -200,6 +196,17 @@ function processMatches(matches, inputMatches){
     apiByKey[d+'|'+home]=m;
     apiByKey[d+'|'+away]=m;
   });
+  // Index secondaire pour matchs KO dont les équipes sont encore des labels (2e Gr.A…)
+  // FD retourne tous les matchs passés : on matche par stage + date UTC (sans fenêtre de temps)
+  var phaseToStage={'16es':'ROUND_OF_32','8es':'ROUND_OF_16','Quarts':'QUARTER_FINALS','Demis':'SEMI_FINALS','3e Place':'THIRD_PLACE','Finale':'FINAL'};
+  var fdByStageDate={};
+  matches.forEach(function(m){
+    if(!m.stage||!m.utcDate)return;
+    var key=m.stage+'|'+m.utcDate.slice(0,10);
+    if(!fdByStageDate[key])fdByStageDate[key]=[];
+    fdByStageDate[key].push(m);
+  });
+  var matchedFdIds={};
   var base=inputMatches||allMatches;
   var result=base.map(function(sm){
     var apiM=apiByKey[sm.dayKey+'|'+sm.t1]||apiByKey[sm.dayKey+'|'+sm.t2];
@@ -208,6 +215,27 @@ function processMatches(matches, inputMatches){
       var prev=new Date(sm.dayKey);prev.setDate(prev.getDate()-1);
       var prevKey=prev.toISOString().slice(0,10);
       apiM=apiByKey[prevKey+'|'+sm.t1]||apiByKey[prevKey+'|'+sm.t2];
+    }
+    // Fallback KO : si slot encore avec labels, matcher par stage FD + date (±1j décalage UTC)
+    if(!apiM&&sm.ko){
+      var fdStage=phaseToStage[sm.phase];
+      if(fdStage){
+        var d0=sm.dayKey;
+        var dPrev=new Date(d0+'T12:00Z');dPrev.setDate(dPrev.getDate()-1);var dPrevStr=dPrev.toISOString().slice(0,10);
+        var dNext=new Date(d0+'T12:00Z');dNext.setDate(dNext.getDate()+1);var dNextStr=dNext.toISOString().slice(0,10);
+        var cands=(fdByStageDate[fdStage+'|'+d0]||[]).concat(fdByStageDate[fdStage+'|'+dPrevStr]||[]).concat(fdByStageDate[fdStage+'|'+dNextStr]||[]);
+        cands=cands.filter(function(c){return !matchedFdIds[c.id];});
+        if(cands.length===1){apiM=cands[0];}
+        else if(cands.length>1){
+          // Plusieurs matchs même jour : trier par utcDate et apparier par position (temps local)
+          cands.sort(function(a,b){return a.utcDate<b.utcDate?-1:1;});
+          var daySlots=base.filter(function(s){return s.ko&&s.phase===sm.phase&&s.dayKey===d0;});
+          daySlots.sort(function(a,b){return a.time<b.time?-1:1;});
+          var pos=daySlots.findIndex(function(s){return s.id===sm.id;});
+          if(pos>=0&&pos<cands.length)apiM=cands[pos];
+        }
+        if(apiM)matchedFdIds[apiM.id]=true;
+      }
     }
     if(!apiM)return sm;
     var isLive=['IN_PLAY','PAUSED'].includes(apiM.status);
