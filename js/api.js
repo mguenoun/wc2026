@@ -146,6 +146,19 @@ async function fetchAll(){
     var espnEvents=await fetchESPNEvents();
     if(espnEvents.length){processESPNScores(espnEvents);espnOk=true;}
   }catch(e){console.warn('[WC2026] ESPN direct:',e.message);}
+
+  // ── 3. FD direct pour tout match KO passé sans résultat (sans fenêtre de temps)
+  // Déclenché seulement si des matchs KO passés restent non résolus après KV + ESPN.
+  // Appelle /fd/competitions/WC/matches qui retourne TOUS les matchs WC.
+  try{
+    var _today2=new Date().toISOString().slice(0,10);
+    var _unresolvedKO=allMatches.some(function(m){return m.ko&&m.dayKey<_today2&&(!m.isFT||!m.score);});
+    if(_unresolvedKO){
+      var r1c=await fetch(PROXY_BASE+'/fd/competitions/WC/matches');
+      if(r1c.ok){var d1c=await r1c.json();if(d1c.matches&&d1c.matches.length)processMatches(d1c.matches);}
+    }
+  }catch(e){console.warn('[WC2026] FD direct KO:',e.message);}
+
   saveKOCache(); // persiste noms réels + résultats KO pour les prochains rechargements
 
   // ── 3. Classements depuis cache KV worker ─────────────────────────────────

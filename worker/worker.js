@@ -198,14 +198,21 @@ async function step0_refreshData(env) {
         const key  = String(m.id);
         const sh   = m.score?.fullTime?.home ?? null;
         const sa   = m.score?.fullTime?.away ?? null;
+        const sw   = m.score?.winner ?? null;
         const prev = cached.byId[key];
-        if (!prev || prev.status !== m.status || prev.sh !== sh || prev.sa !== sa) {
+        if (!prev || prev.status !== m.status || prev.sh !== sh || prev.sa !== sa || prev.sw !== sw) {
           cached.byId[key] = {
             id: m.id, utcDate: m.utcDate, status: m.status, stage: m.stage,
             homeTeam: { name: m.homeTeam?.name, shortName: m.homeTeam?.shortName },
             awayTeam: { name: m.awayTeam?.name, shortName: m.awayTeam?.shortName },
-            score: m.score ? { fullTime: { home: sh, away: sa } } : null,
-            sh, sa,
+            score: m.score ? {
+              winner:      sw,
+              fullTime:    { home: sh, away: sa },
+              regularTime: m.score.regularTime  ?? null,
+              extraTime:   m.score.extraTime    ?? null,
+              penalties:   m.score.penalties    ?? null,
+            } : null,
+            sh, sa, sw,
           };
           changes++;
         }
