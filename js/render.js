@@ -1185,7 +1185,7 @@ function renderKPIBar(){
   var _yc=isNaN(parseInt(String(totalYC)))?0:totalYC;
   var _rc=isNaN(parseInt(String(totalRC)))?0:totalRC;
   var _sub=isKO&&_allPlayed>0;
-  var _totSub=function(v){return _sub?'<div style="font-size:7px;color:#334155;margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.06)">'+v+' tot.</div>':'';};
+  var _totSub=function(v){return _sub?'<div style="font-size:8px;color:#334155;margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.06)">'+v+' tot.</div>':'';};
   el.innerHTML=
     '<div class="kpi-grid">'+
     (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;flex:2;min-width:100px;max-width:120px;padding:8px 10px;"><div style="font-size:14px;font-weight:900;color:#22c55e;animation:pulse 1.5s infinite;line-height:1.1">⚡ '+live+'</div><div style="font-size:7px;font-weight:700;color:#22c55e;letter-spacing:1px;margin-bottom:5px">EN DIRECT</div><div id="kpi-live-matches"></div></div>':'')+
