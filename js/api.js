@@ -56,11 +56,46 @@ function processESPNScores(events){
   return mapped>0;
 }
 
+// Persistance localStorage des matchs KO une fois résolus (noms d'équipes + résultat)
+// Permet à processMatches (FD) de matcher les matchs KO par vrai nom d'équipe
+// sans dépendre de la fenêtre ESPN.
+function saveKOCache(){
+  var cache={};
+  allMatches.forEach(function(m){
+    if(!m.ko)return;
+    var real1=m.t1&&!/^(1er|2e|3e|Vainq\.|V\s|Perdant)/.test(m.t1);
+    var real2=m.t2&&!/^(1er|2e|3e|Vainq\.|V\s|Perdant)/.test(m.t2);
+    if(!real1&&!real2)return;
+    var e={};
+    if(real1)e.t1=m.t1;if(real2)e.t2=m.t2;
+    if(m.score)e.score=m.score;
+    if(m.isFT)e.isFT=true;
+    if(m.winnerTeam)e.winnerTeam=m.winnerTeam;
+    if(m.status)e.status=m.status;
+    cache[m.id]=e;
+  });
+  try{localStorage.setItem('wc2026_ko',JSON.stringify(cache));}catch(_){}
+}
+function restoreKOCache(){
+  try{
+    var cache=JSON.parse(localStorage.getItem('wc2026_ko')||'{}');
+    allMatches.forEach(function(m){
+      if(!m.ko||!cache[m.id])return;
+      var c=cache[m.id];
+      if(c.t1)m.t1=c.t1;if(c.t2)m.t2=c.t2;
+      if(c.score)m.score=c.score;
+      if(c.isFT)m.isFT=c.isFT;
+      if(c.winnerTeam)m.winnerTeam=c.winnerTeam;
+      if(c.status)m.status=c.status;
+    });
+  }catch(_){}
+}
+
 // Fetch ESPN scoreboard J-1 + aujourd'hui directement depuis le browser (pas de KV)
 async function fetchESPNEvents(){
   var allEvents=[];
   var today=new Date();
-  for(var i=-3;i<=0;i++){
+  for(var i=-1;i<=0;i++){
     var d=new Date(today);d.setDate(d.getDate()+i);
     var ds=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
     try{
@@ -80,6 +115,7 @@ async function fetchAll(){
   if(PROXY_BASE.includes('REMPLACER')){setStatus('error','Proxy non configuré');loadFallback();renderAll();document.getElementById('loading').classList.add('hidden');showView(activeView);document.getElementById('refresh-btn').textContent='蘵 Actualiser';return;}
 
   loadFallback(); // base statique : remet tous les matchs à score:null
+  restoreKOCache(); // noms réels + résultats KO déjà résolus (localStorage)
   playersLoaded = false; // forcer un re-fetch des stats joueurs au prochain visit
 
   // ── 1. Données matchs depuis cache KV worker (rapide, pré-agrégé) ──────────
@@ -107,6 +143,7 @@ async function fetchAll(){
     var espnEvents=await fetchESPNEvents();
     if(espnEvents.length){processESPNScores(espnEvents);espnOk=true;}
   }catch(e){console.warn('[WC2026] ESPN direct:',e.message);}
+  saveKOCache(); // persiste noms réels + résultats KO pour les prochains rechargements
 
   // ── 3. Classements depuis cache KV worker ─────────────────────────────────
   var standOk=false;
