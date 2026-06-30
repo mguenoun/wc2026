@@ -1184,23 +1184,17 @@ function renderKPIBar(){
   }
   var _yc=isNaN(parseInt(String(totalYC)))?0:totalYC;
   var _rc=isNaN(parseInt(String(totalRC)))?0:totalRC;
+  var _sub=isKO&&_allPlayed>0;
+  var _totSub=function(v){return _sub?'<div style="font-size:7px;color:#334155;margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.06)">'+v+' tot.</div>':'';};
   el.innerHTML=
     '<div class="kpi-grid">'+
     (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;flex:2;min-width:100px;max-width:120px;padding:8px 10px;"><div style="font-size:14px;font-weight:900;color:#22c55e;animation:pulse 1.5s infinite;line-height:1.1">⚡ '+live+'</div><div style="font-size:7px;font-weight:700;color:#22c55e;letter-spacing:1px;margin-bottom:5px">EN DIRECT</div><div id="kpi-live-matches"></div></div>':'')+
-    '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div></div>'+
-    '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
-    '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24"><span style="display:inline-block;width:0.45em;height:0.75em;background:#fbbf24;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+_yc+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444"><span style="display:inline-block;width:0.45em;height:0.75em;background:#ef4444;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+_rc+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div>'+_totSub(allMatches.length)+'</div>'+
+    '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div>'+_totSub(_allPlayed)+'</div>'+
+    '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div>'+_totSub(_allGoals)+'</div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24"><span style="display:inline-block;width:0.45em;height:0.75em;background:#fbbf24;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+_yc+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div>'+_totSub(allYC)+'</div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444"><span style="display:inline-block;width:0.45em;height:0.75em;background:#ef4444;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+_rc+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div>'+_totSub(allRC)+'</div>'+
     '</div>';
-  // Total général (toutes phases) en gris sous les KPI — vue KO uniquement
-  if(isKO&&_allPlayed>0){
-    var _ic=function(bg){return '<span style="display:inline-block;width:0.4em;height:0.65em;background:'+bg+';border-radius:1px;vertical-align:baseline"></span>';};
-    var _totRow=document.createElement('div');
-    _totRow.style.cssText='text-align:center;font-size:9px;color:#475569;padding:2px 0 3px;margin-top:-4px';
-    _totRow.innerHTML='Total général : '+_allPlayed+' matchs · '+_allGoals+' buts · '+allYC+' '+_ic('#fbbf24')+'  '+allRC+' '+_ic('#ef4444');
-    el.appendChild(_totRow);
-  }
   // Mini-matchs en cours cliquables dans la KPI live
   if(live>0){
     var _liveMs=src.filter(function(m){return m.isLive;});
