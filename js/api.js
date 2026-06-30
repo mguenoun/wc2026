@@ -413,13 +413,14 @@ function fetchScorers(){
 }
 
 
-var fairplayData=[], fairplayLoaded=false;
+var fairplayData=[], fairplayKOCards=null, fairplayLoaded=false;
 function fetchFairPlay(){
   fairplayLoaded=false;
   fetch(PROXY_BASE+'/stats/fairplay')
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(data){
       fairplayData=data.fairplay||[];
+      fairplayKOCards=data.koCards||null;
       fairplayLoaded=true;
       if(activeView==='fairplay')renderFairPlay();
       if(activeView==='groups'||activeView==='knockout')renderKPIBar();

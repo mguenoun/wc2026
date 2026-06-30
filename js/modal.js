@@ -78,8 +78,15 @@ function renderESPNStats(m,d,espnId){
   if(m.isLive && m.clockDisplay){
     statusStr = statusStr ? statusStr + ' · ' + m.clockDisplay : m.clockDisplay;
   }
+  // Score TAB (tirs aux buts) si présent
+  var _tabStr='';
+  if(d.shootout&&d.shootout.length===2){
+    var _sh0=(d.shootout[0].shots||[]).filter(function(s){return s.didScore;}).length;
+    var _sh1=(d.shootout[1].shots||[]).filter(function(s){return s.didScore;}).length;
+    _tabStr=' <span style="font-size:18px;color:#f59e0b;font-weight:700">(TAB '+_sh0+'-'+_sh1+')</span>';
+  }
   var html='<div style="text-align:center;padding:10px 0 8px">'+
-    '<div style="font-size:34px;font-weight:900;color:#e2e8f0;letter-spacing:-1px">'+(home.score||'0')+' – '+(away.score||'0')+'</div>'+
+    '<div style="font-size:34px;font-weight:900;color:#e2e8f0;letter-spacing:-1px">'+(home.score||'0')+' – '+(away.score||'0')+_tabStr+'</div>'+
     '<div style="font-size:10px;color:#64748b;margin-top:2px">'+statusStr+'</div></div>';
   // Stats
   var teams=d.boxscore&&d.boxscore.teams||[];
@@ -229,6 +236,24 @@ function renderESPNStats(m,d,espnId){
           '<span style="flex:1;color:#64748b">'+s.tout+'</span>'+
           '</div>';
       });
+    });
+    html+='</div>';
+  }
+  // Tirs aux buts (si présent)
+  if(d.shootout&&d.shootout.length){
+    html+='<div style="font-size:9px;color:#f59e0b;font-weight:700;letter-spacing:1px;margin-bottom:5px">TIRS AUX BUTS</div>';
+    html+='<div style="background:#080f1e;border-radius:6px;padding:6px 10px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    d.shootout.forEach(function(tm){
+      var _tn=normTeam((typeof tm.team==='string'?tm.team:(tm.team&&tm.team.displayName))||'');
+      var _scored=(tm.shots||[]).filter(function(s){return s.didScore;}).length;
+      var _tcol=_tn===normTeam(m.t1)?m.color:'#94a3b8';
+      html+='<div><div style="font-size:9px;font-weight:700;color:'+_tcol+';margin-bottom:4px">'+_tn+' ('+_scored+')</div>';
+      (tm.shots||[]).forEach(function(shot){
+        html+='<div style="display:flex;align-items:center;gap:4px;padding:2px 0;font-size:9px">'+
+          '<span style="color:'+(shot.didScore?'#22c55e':'#ef4444')+';font-weight:700;min-width:10px">'+(shot.didScore?'✓':'✗')+'</span>'+
+          '<span style="color:#e2e8f0">'+shot.player+'</span></div>';
+      });
+      html+='</div>';
     });
     html+='</div>';
   }
