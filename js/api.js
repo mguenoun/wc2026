@@ -244,7 +244,25 @@ function processMatches(matches, inputMatches){
     var isLive=['IN_PLAY','PAUSED'].includes(apiM.status);
     var isFT=apiM.status==='FINISHED';
     var score=null,penScore=null;
-    if(isFT&&apiM.score&&apiM.score.fullTime){var s=apiM.score.fullTime;if(s.home!==null&&s.away!==null){score=s.home+' – '+s.away;var pen=apiM.score.penalties;if(pen&&pen.home!==null&&pen.away!==null)penScore=pen.home+'-'+pen.away;}}
+    if(isFT&&apiM.score&&apiM.score.fullTime){
+      var s=apiM.score.fullTime;
+      var pen=apiM.score.penalties;
+      if(pen&&pen.home!==null&&pen.away!==null){
+        penScore=pen.home+'-'+pen.away;
+        // FD WC2026 stocke le total (régl + TAB) dans fullTime.
+        // On cherche regularTime ou extraTime pour le score avant TAB.
+        // Sinon on soustrait : si fullTime >= penalties, score régl = fullTime - pen.
+        var preShoot=apiM.score.regularTime||apiM.score.extraTime;
+        if(preShoot&&preShoot.home!==null&&preShoot.away!==null){
+          score=preShoot.home+' – '+preShoot.away;
+        } else if(s.home!==null&&s.away!==null){
+          var rh=s.home-pen.home,ra=s.away-pen.away;
+          score=(rh>=0&&ra>=0?rh+' – '+ra:s.home+' – '+s.away);
+        }
+      } else if(s.home!==null&&s.away!==null){
+        score=s.home+' – '+s.away;
+      }
+    }
     if(isLive){var sl=apiM.score&&apiM.score.fullTime;score=(sl&&sl.home!=null?sl.home:0)+' \u2013 '+(sl&&sl.away!=null?sl.away:0);}
     var t1u=sm.ko?normTeam((apiM.homeTeam&&(apiM.homeTeam.shortName||apiM.homeTeam.name))||sm.t1):sm.t1;
     var t2u=sm.ko?normTeam((apiM.awayTeam&&(apiM.awayTeam.shortName||apiM.awayTeam.name))||sm.t2):sm.t2;
