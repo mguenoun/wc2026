@@ -39,7 +39,7 @@ function processESPNScores(events){
     var isFT=state==='post';
     var clock=e.status&&e.status.displayClock||'';
     var period=e.status&&e.status.period||0;
-    if(period>=5){var _hs=parseInt(home.shootoutScore)||0,_as=parseInt(away.shootoutScore)||0;if(_hs||_as)newScore=(home.score||'0')+'('+_hs+') – '+(away.score||'0')+'('+_as+')';}
+    if(period>=5){var _hs=parseInt(home.shootoutScore)||0,_as=parseInt(away.shootoutScore)||0;if(_hs||_as)m.penScore=_hs+'-'+_as;}
     var clockDisplay='';
     if(isLive&&clock){
       if(clock.indexOf("'")>=0){clockDisplay=clock;}
@@ -71,6 +71,7 @@ function saveKOCache(){
     if(m.score)e.score=m.score;
     if(m.isFT)e.isFT=true;
     if(m.winnerTeam)e.winnerTeam=m.winnerTeam;
+    if(m.penScore)e.penScore=m.penScore;
     if(m.status)e.status=m.status;
     cache[m.id]=e;
   });
@@ -86,6 +87,7 @@ function restoreKOCache(){
       if(c.score)m.score=c.score;
       if(c.isFT)m.isFT=c.isFT;
       if(c.winnerTeam)m.winnerTeam=c.winnerTeam;
+      if(c.penScore)m.penScore=c.penScore;
       if(c.status)m.status=c.status;
     });
   }catch(_){}
@@ -205,14 +207,14 @@ function processMatches(matches, inputMatches){
     if(!apiM)return sm;
     var isLive=['IN_PLAY','PAUSED'].includes(apiM.status);
     var isFT=apiM.status==='FINISHED';
-    var score=null;
-    if(isFT&&apiM.score&&apiM.score.fullTime){var s=apiM.score.fullTime;if(s.home!==null&&s.away!==null){var pen=apiM.score.penalties;if(pen&&pen.home!==null&&pen.away!==null){score=s.home+'('+pen.home+') – '+s.away+'('+pen.away+')';}else{score=s.home+' – '+s.away;}}}
+    var score=null,penScore=null;
+    if(isFT&&apiM.score&&apiM.score.fullTime){var s=apiM.score.fullTime;if(s.home!==null&&s.away!==null){score=s.home+' – '+s.away;var pen=apiM.score.penalties;if(pen&&pen.home!==null&&pen.away!==null)penScore=pen.home+'-'+pen.away;}}
     if(isLive){var sl=apiM.score&&apiM.score.fullTime;score=(sl&&sl.home!=null?sl.home:0)+' \u2013 '+(sl&&sl.away!=null?sl.away:0);}
     var t1u=sm.ko?normTeam((apiM.homeTeam&&(apiM.homeTeam.shortName||apiM.homeTeam.name))||sm.t1):sm.t1;
     var t2u=sm.ko?normTeam((apiM.awayTeam&&(apiM.awayTeam.shortName||apiM.awayTeam.name))||sm.t2):sm.t2;
     var fdWinner=apiM.score&&apiM.score.winner;
     var winnerTeam=(isFT&&fdWinner==='HOME_TEAM')?t1u:(isFT&&fdWinner==='AWAY_TEAM')?t2u:null;
-    return Object.assign({},sm,{t1:t1u,t2:t2u,score:score,status:apiM.status,isLive:isLive,isFT:isFT,apiId:apiM.id,utcDate:apiM.utcDate||null,winnerTeam:winnerTeam||sm.winnerTeam||null});
+    return Object.assign({},sm,{t1:t1u,t2:t2u,score:score,status:apiM.status,isLive:isLive,isFT:isFT,apiId:apiM.id,utcDate:apiM.utcDate||null,winnerTeam:winnerTeam||sm.winnerTeam||null,penScore:penScore||sm.penScore||null});
   });
   if(!inputMatches) allMatches=result;
   return result;
@@ -282,7 +284,7 @@ async function fetchESPNLiveScores(){
       var isLive=status==='in',isFT=status==='post';
       var clock=e.status&&e.status.displayClock||'';
       var period=e.status&&e.status.period||0;
-      if(period>=5){var _hs=parseInt(home.shootoutScore)||0,_as=parseInt(away.shootoutScore)||0;if(_hs||_as)newScore=(home.score||'0')+'('+_hs+') – '+(away.score||'0')+'('+_as+')';}
+      if(period>=5){var _hs=parseInt(home.shootoutScore)||0,_as=parseInt(away.shootoutScore)||0;if(_hs||_as)m.penScore=_hs+'-'+_as;}
       var clockDisplay='';
       if(isLive&&clock){
         if(clock.indexOf("'")>=0){clockDisplay=clock;}

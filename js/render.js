@@ -26,9 +26,10 @@ function renderMatchRow(m){
   var sc=document.createElement('span');sc.className='match-score';sc.style.color=m.color;
   if(m.isLive){
     sc.innerHTML='<span style="font-size:12px;font-weight:900;color:#22c55e;animation:pulse 1.5s infinite">⚡ '+(m.score||'0–0')+'</span>'+
-      (m.clockDisplay?'<span style="font-size:8px;color:#22c55e;display:block;text-align:center;line-height:1.2">'+m.clockDisplay+'</span>':'');
+      (m.clockDisplay?'<span style="font-size:8px;color:#22c55e;display:block;text-align:center;line-height:1.2">'+m.clockDisplay+'</span>':'')+
+      (m.penScore?'<span style="font-size:9px;color:#64748b;display:block;text-align:center;line-height:1.2">('+m.penScore+')</span>':'');
   }
-  else if(m.isFT&&m.score){sc.textContent=m.score;sc.style.color='#e2e8f0';}
+  else if(m.isFT&&m.score){sc.innerHTML='<span>'+m.score+'</span>'+(m.penScore?'<span style="display:block;font-size:9px;color:#64748b;text-align:center;line-height:1.2">('+m.penScore+')</span>':'');sc.style.color='#e2e8f0';}
   else {
     var pred = predictions && predictions[m.id];
     if (pred) {
@@ -175,12 +176,14 @@ function _setCalScore(el,m){
     el.appendChild(bolt);
     el.appendChild(document.createTextNode(m.score));
     if(m.clockDisplay){var clk=document.createElement('span');clk.style.cssText='font-size:6px;color:#64748b;';clk.textContent=m.clockDisplay;el.appendChild(clk);}
+    if(m.penScore){var penL=document.createElement('span');penL.style.cssText='font-size:6px;color:#64748b;';penL.textContent='('+m.penScore+')';el.appendChild(penL);}
   } else if(m.isFT&&m.score){
     el.style.cssText='display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:0;';
     var scS=document.createElement('span');
     scS.style.cssText='font-size:9px;font-weight:900;color:#e2e8f0;';
     scS.textContent=m.score;
     el.appendChild(scS);
+    if(m.penScore){var penS=document.createElement('span');penS.style.cssText='font-size:6px;color:#64748b;text-align:right;';penS.textContent='('+m.penScore+')';el.appendChild(penS);}
     var tS=document.createElement('span');
     tS.style.cssText='font-size:6px;color:#475569;';
     tS.textContent=localTime(m);
@@ -956,7 +959,9 @@ function makeBracketCard(m, phase){
   var venue=document.createElement('span');venue.className='bkt-venue';venue.textContent=venueLabel;
   foot.appendChild(venue);foot.appendChild(iconsDiv);
 
-  card.appendChild(head);card.appendChild(row1);card.appendChild(row2);card.appendChild(foot);
+  card.appendChild(head);card.appendChild(row1);card.appendChild(row2);
+  if((isFT||isLive)&&m.penScore){var _pr=document.createElement('div');_pr.style.cssText='text-align:center;font-size:8px;color:#64748b;padding:1px 0 2px';_pr.textContent='('+m.penScore+')';card.appendChild(_pr);}
+  card.appendChild(foot);
   return card;
 }
 
@@ -1178,6 +1183,7 @@ function renderKPIBar(){
           '<span style="display:inline-flex;flex-direction:column;align-items:center;margin:0 3px">'+
             (m.clockDisplay?'<span style="font-size:6px;color:#64748b;line-height:1.2">'+m.clockDisplay+'</span>':'')+
             '<span style="font-size:8px;font-weight:900;color:#22c55e;line-height:1">'+(m.score||'–')+'</span>'+
+            (m.penScore?'<span style="font-size:6px;color:#64748b;line-height:1.2">('+m.penScore+')</span>':'')+
           '</span>'+
           '<b style="font-size:7px;color:#e2e8f0">'+_iso(rTeam(m,m.t2))+'</b>'+
           (flagEmoji(rTeam(m,m.t2))||'');
