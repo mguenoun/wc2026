@@ -155,10 +155,77 @@ function openLineupESPN(espnId){
         namesByTeam.push({teamName:normTeam(team.team.displayName),map:map});
       });
 
+      // ── Résumé : corners, buts, TAB ────────────────────────────────────
+      var _cH=0,_cA=0;
+      if(d.boxscore&&d.boxscore.teams){
+        d.boxscore.teams.forEach(function(bt,ti){
+          var cs=(bt.statistics||[]).find(function(x){return x.name==='wonCorners';});
+          if(cs){var v=parseInt(cs.displayValue||cs.value||0)||0;if(ti===0)_cH=v;else _cA=v;}
+        });
+      }
+      var _goals=[];
+      (d.keyEvents||[]).forEach(function(e){
+        var etype=e.type&&e.type.type||'';
+        if(etype==='goal'||etype==='own-goal'){
+          var _raw=e.shortText||'';
+          var _isPen=/pen(alty)?/i.test(_raw);
+          var _isOG=etype==='own-goal';
+          var _pname=_raw.replace(/\s+\d+['']\s+.*/,'').trim()||_raw;
+          _goals.push({pname:_pname,time:e.clock&&e.clock.displayValue||'?',team:e.team&&normTeam(e.team.displayName||'')||'',isPen:_isPen,isOG:_isOG});
+        }
+      });
+      var _shootout=d.shootout||null;
+
+      var _recapHtml='<div style="padding:4px 0 8px">';
+      if(_cH+_cA>0){
+        var _cpct=Math.round(_cH/(_cH+_cA)*100);
+        _recapHtml+='<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:8px 10px;margin-bottom:8px">'+
+          '<div style="font-size:8px;font-weight:700;letter-spacing:1px;color:#475569;margin-bottom:5px">CORNERS</div>'+
+          '<div style="display:flex;align-items:center;gap:6px">'+
+          '<span style="color:#e2e8f0;font-size:12px;font-weight:700;min-width:18px;text-align:right">'+_cH+'</span>'+
+          '<div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">'+
+          '<div style="height:100%;width:'+_cpct+'%;background:'+col0+';border-radius:3px"></div></div>'+
+          '<span style="color:#e2e8f0;font-size:12px;font-weight:700;min-width:18px;text-align:left">'+_cA+'</span>'+
+          '</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:8px;color:#64748b;margin-top:3px">'+
+          '<span>'+name0+'</span><span>'+name1+'</span></div></div>';
+      }
+      if(_goals.length){
+        _recapHtml+='<div style="margin-bottom:8px">'+
+          '<div style="font-size:8px;font-weight:700;letter-spacing:1px;color:#475569;margin-bottom:4px">BUTS</div>';
+        _goals.forEach(function(g){
+          var _sc=g.team===name0?col0:'#94a3b8';
+          var _icon=g.isOG?'<span style="font-size:8px;color:#ef4444">[CSC]</span>':g.isPen?'<span style="font-size:8px;color:#f59e0b">[Pen.]</span>':'⚽';
+          _recapHtml+='<div style="display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px">'+
+            '<span style="font-size:9px;color:#475569;min-width:30px">'+g.time+'</span>'+
+            _icon+' <span style="color:'+_sc+';flex:1">'+g.pname+'</span></div>';
+        });
+        _recapHtml+='</div>';
+      }
+      if(_shootout&&_shootout.length){
+        _recapHtml+='<div><div style="font-size:8px;font-weight:700;letter-spacing:1px;color:#475569;margin-bottom:6px">TIRS AUX BUTS</div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+        _shootout.forEach(function(tm){
+          var _tn=normTeam((typeof tm.team==='string'?tm.team:(tm.team&&tm.team.displayName))||'');
+          var _tc=_tn===name0?col0:'#94a3b8';
+          var _scored=(tm.shots||[]).filter(function(s){return s.didScore;}).length;
+          _recapHtml+='<div><div style="font-size:9px;font-weight:700;color:'+_tc+';margin-bottom:4px">'+_tn+' ('+_scored+')</div>';
+          (tm.shots||[]).forEach(function(shot){
+            _recapHtml+='<div style="display:flex;align-items:center;gap:4px;padding:2px 0;font-size:9px">'+
+              '<span style="color:'+(shot.didScore?'#22c55e':'#ef4444')+';font-weight:700">'+(shot.didScore?'✓':'✗')+'</span>'+
+              '<span style="color:#e2e8f0">'+shot.player+'</span></div>';
+          });
+          _recapHtml+='</div>';
+        });
+        _recapHtml+='</div></div>';
+      }
+      _recapHtml+='</div>';
+
       // Onglets
       var html='<div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:10px">'+
         '<button id="tab-pitch" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#0ea5e9;border:none;background:transparent;border-bottom:2px solid #0ea5e9;cursor:pointer">⚽ Terrain</button>'+
         '<button id="tab-list" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#475569;border:none;background:transparent;border-bottom:2px solid transparent;cursor:pointer">☰ Liste</button>'+
+        '<button id="tab-recap" style="flex:1;padding:7px;font-size:10px;font-weight:700;color:#475569;border:none;background:transparent;border-bottom:2px solid transparent;cursor:pointer">📊 Résumé</button>'+
         '</div>';
 
       // Phase 1 : terrain sans ratings
@@ -171,19 +238,28 @@ function openLineupESPN(espnId){
         '<div>'+renderPlayerList(r1,col1,namesByTeam[1],cardMap,null)+'</div>'+
         '</div></div>';
 
+      // Vue résumé (corners, buts, TAB)
+      html+='<div id="view-recap" style="display:none;overflow-y:auto">'+_recapHtml+'</div>';
+
       document.getElementById('modal-title').textContent=name0+' – '+name1;
       document.getElementById('modal-body').innerHTML=html;
 
       // Onglets
+      function _resetModalTabs(){
+        ['tab-pitch','tab-list','tab-recap'].forEach(function(id){var b=document.getElementById(id);if(b){b.style.color='#475569';b.style.borderBottomColor='transparent';}});
+        ['view-pitch','view-list','view-recap'].forEach(function(id){var v=document.getElementById(id);if(v)v.style.display='none';});
+      }
       document.getElementById('tab-pitch').addEventListener('click',function(){
-        document.getElementById('view-pitch').style.display='';document.getElementById('view-list').style.display='none';
+        _resetModalTabs();document.getElementById('view-pitch').style.display='';
         this.style.color='#0ea5e9';this.style.borderBottomColor='#0ea5e9';
-        document.getElementById('tab-list').style.color='#475569';document.getElementById('tab-list').style.borderBottomColor='transparent';
       });
       document.getElementById('tab-list').addEventListener('click',function(){
-        document.getElementById('view-pitch').style.display='none';document.getElementById('view-list').style.display='';
+        _resetModalTabs();document.getElementById('view-list').style.display='';
         this.style.color='#0ea5e9';this.style.borderBottomColor='#0ea5e9';
-        document.getElementById('tab-pitch').style.color='#475569';document.getElementById('tab-pitch').style.borderBottomColor='transparent';
+      });
+      document.getElementById('tab-recap').addEventListener('click',function(){
+        _resetModalTabs();document.getElementById('view-recap').style.display='';
+        this.style.color='#0ea5e9';this.style.borderBottomColor='#0ea5e9';
       });
 
       // Phase 2 : charger ratings en arrière-plan

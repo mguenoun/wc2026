@@ -57,6 +57,16 @@ async function fetchKeepers() {
 
 // ─── BUTEURS ─────────────────────────────────────────────────────────────────
 
+var shootersRanking = null;
+
+async function fetchShooters() {
+  try {
+    var data = await fetch(WORKER_BASE + '/stats/shooters').then(function(r) { return r.json(); });
+    shootersRanking = data.ranking || [];
+    renderScorers();
+  } catch(e) { shootersRanking = []; }
+}
+
 function renderScorers() {
   var c = document.getElementById('scorers-list');
   if (!c) return;
@@ -65,11 +75,24 @@ function renderScorers() {
     c.innerHTML = '<p style="color:#475569;font-size:11px;padding:16px">Aucun buteur enregistré pour l\'instant.</p>';
     return;
   }
+  if (shootersRanking === null) { fetchShooters(); }
+
+  // Table de correspondance TAB par nom de famille
+  var _shootMap = {};
+  (shootersRanking || []).forEach(function(p) {
+    var parts = (p.name || '').trim().split(' ');
+    var last = parts[parts.length - 1].toLowerCase();
+    _shootMap[last] = (_shootMap[last] || 0) + p.goals;
+  });
+  var _hasTab = shootersRanking && shootersRanking.length > 0;
+
   var html = '<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;padding:4px 12px;">';
   html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:8px;color:#475569;font-weight:700">' +
     '<span style="min-width:20px">#</span><span style="flex:1">Joueur</span>' +
     '<span style="min-width:36px;text-align:center;color:#22c55e">⚽ Buts</span>' +
-    '<span style="min-width:36px;text-align:center;color:#0ea5e9">→ Ast.</span></div>';
+    '<span style="min-width:36px;text-align:center;color:#0ea5e9">→ Ast.</span>' +
+    (_hasTab ? '<span style="min-width:28px;text-align:center;color:#f59e0b" title="Tirs aux buts">TAB</span>' : '') +
+    '</div>';
   for (var i = 0; i < scorers.length; i++) {
     var s = scorers[i];
     var player = s.player || {};
@@ -80,6 +103,9 @@ function renderScorers() {
     var rank = i + 1;
     var rankColor = rank === 1 ? '#fbbf24' : rank === 2 ? '#94a3b8' : rank === 3 ? '#cd7f32' : '#475569';
     var _tName = normTeam(team.shortName || team.name || '');
+    var _pParts = (player.name || '').trim().split(' ');
+    var _pLast  = _pParts[_pParts.length - 1].toLowerCase();
+    var _tabGoals = _hasTab ? (_shootMap[_pLast] || 0) : 0;
     html += '<div class="scorer-row">' +
       '<span class="scorer-rank" style="color:' + rankColor + '">' + rank + '</span>' +
       '<span class="scorer-name">' + (flagEmoji(_tName)||'') + ' ' + (player.name || '?') +
@@ -88,6 +114,7 @@ function renderScorers() {
       '</span>' +
       '<span style="font-size:12px;font-weight:800;color:#22c55e;min-width:36px;text-align:center">⚽ ' + goals + '</span>' +
       (assists ? '<span style="font-size:11px;font-weight:700;color:#0ea5e9;min-width:36px;text-align:center">→ ' + assists + '</span>' : '<span style="min-width:36px"></span>') +
+      (_hasTab ? '<span style="font-size:11px;font-weight:700;color:#f59e0b;min-width:28px;text-align:center">'+(_tabGoals||'–')+'</span>' : '') +
       '</div>';
   }
   html += '</div>';

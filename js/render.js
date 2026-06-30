@@ -1168,6 +1168,16 @@ function renderKPIBar(){
       });
     }
   }
+  // Vue KO : cartons spécifiques phase KO = total ESPN - phase groupe (FD standings)
+  var allYC=totalYC,allRC=totalRC;
+  if(isKO&&fairplayData&&fairplayData.length){
+    var _grpYC=0,_grpRC=0;
+    Object.values(standings).forEach(function(tbl){
+      tbl.forEach(function(r){_grpYC+=r.yc||0;_grpRC+=r.rc||0;});
+    });
+    totalYC=Math.max(0,allYC-_grpYC);
+    totalRC=Math.max(0,allRC-_grpRC);
+  }
   var avgYC=played>0&&totalYC>0?(totalYC/played).toFixed(1):'–';
   var avgRC=played>0&&totalRC>0?(totalRC/played).toFixed(2):'–';
   var noCardData=played>0&&totalYC===0&&totalRC===0;
@@ -1182,6 +1192,13 @@ function renderKPIBar(){
     '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24"><span style="display:inline-block;width:0.45em;height:0.75em;background:#fbbf24;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
     '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444"><span style="display:inline-block;width:0.45em;height:0.75em;background:#ef4444;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+totalRC+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
     '</div>';
+  // Total général (toutes phases) en gris sous les KPI — vue KO uniquement
+  if(isKO&&played>0&&allYC>0){
+    var _totRow=document.createElement('div');
+    _totRow.style.cssText='text-align:center;font-size:9px;color:#475569;padding:2px 0 3px;margin-top:-4px';
+    _totRow.innerHTML='Total général : '+allYC+' <span style="display:inline-block;width:0.4em;height:0.65em;background:#fbbf24;border-radius:1px;vertical-align:baseline"></span>  '+allRC+' <span style="display:inline-block;width:0.4em;height:0.65em;background:#ef4444;border-radius:1px;vertical-align:baseline"></span>';
+    el.appendChild(_totRow);
+  }
   // Mini-matchs en cours cliquables dans la KPI live
   if(live>0){
     var _liveMs=src.filter(function(m){return m.isLive;});

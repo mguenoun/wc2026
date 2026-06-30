@@ -336,6 +336,7 @@ async function step2_fetchUrls(env) {
   try {
     const summary = await fetch(`${ESPN_BASE}/summary?event=${espnId}`).then(r => r.json());
     if (!summary.rosters?.length) return { step: 2, espnId, error: 'No rosters' };
+    const _shootoutData = summary.shootout || null;
 
     const namesByTeam = summary.rosters.map(team => {
       const map = {};
@@ -379,6 +380,7 @@ async function step2_fetchUrls(env) {
       away:       normTeam(matchInfo.t2 || ''),
       score:      matchInfo.score || '',
       players,
+      shootout:   _shootoutData,
       groupsDone: [],
     });
 
@@ -494,6 +496,7 @@ async function assemble(env, espnId, urlData, queue, totalGroups) {
     home: urlData.home,
     away: urlData.away,
     score: urlData.score,
+    shootout: urlData.shootout || null,
     cachedAt: Date.now(),
   });
 
@@ -689,6 +692,26 @@ async function handleFairPlay(env, ctx, cors) {
   return jsonResp({ fairplay, cachedAt: Date.now() }, cors);
 }
 
+async function handleShooters(env, ctx, cors) {
+  const list = await env.STATS_KV.list({ prefix: 'match:' });
+  const players = {};
+  for (const key of list.keys) {
+    const data = await kv.get(env, key.name);
+    if (!data?.shootout) continue;
+    for (const team of data.shootout) {
+      const teamName = normTeam((typeof team.team === 'string' ? team.team : (team.team?.displayName || '')) || '');
+      for (const shot of (team.shots || [])) {
+        if (!shot.didScore || !shot.player) continue;
+        const name = shot.player;
+        if (!players[name]) players[name] = { name, team: teamName, goals: 0 };
+        players[name].goals++;
+      }
+    }
+  }
+  const ranking = Object.values(players).sort((a, b) => b.goals - a.goals);
+  return jsonResp({ ranking, cachedAt: Date.now() }, cors);
+}
+
 async function handleStatus(env, cors) {
   const queue   = await kv.get(env, 'pipeline_queue') || { pending: [], processing: [], done: [] };
   const espnMap = await kv.get(env, 'espn_map') || {};
@@ -774,6 +797,7 @@ export default {
     if (path === '/stats/players')   return handlePlayers(env, ctx, cors);
     if (path === '/stats/keepers')   return handleKeepers(env, ctx, cors);
     if (path === '/stats/fairplay')  return handleFairPlay(env, ctx, cors);
+    if (path === '/stats/shooters')  return handleShooters(env, ctx, cors);
     if (path === '/stats/status')    return handleStatus(env, cors);
     if (path === '/stats/step1')   return jsonResp(await step1_discover(env),   cors);
     if (path === '/stats/step2')   return jsonResp(await step2_fetchUrls(env),  cors);
