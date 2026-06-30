@@ -1154,49 +1154,51 @@ function renderKPIBar(){
     var p=m.score.split(/[–\-]/);if(p.length===2){totalGoals+=(parseInt(p[0])||0)+(parseInt(p[1])||0);}
   });
   var avgGoals=played>0?(totalGoals/played).toFixed(2):'–';
-  // Cartons : cumulatif tournoi (fairplayData couvre group + KO via ESPN stats agrégées)
-  var totalYC=0,totalRC=0;
-  if(played>0){
-    var _fpCards=0;
-    if(fairplayData&&fairplayData.length){
-      fairplayData.forEach(function(t){_fpCards+=(t.yc||0)+(t.rc||0);totalYC+=t.yc||0;totalRC+=t.rc||0;});
-    }
-    if(_fpCards===0){
-      totalYC=0;totalRC=0;
-      Object.values(standings).forEach(function(tbl){
-        tbl.forEach(function(r){totalYC+=r.yc||0;totalRC+=r.rc||0;});
-      });
-    }
-  }
-  // Vue KO : cartons spécifiques phase KO = total ESPN - phase groupe (FD standings)
-  var allYC=totalYC,allRC=totalRC;
-  if(isKO&&fairplayData&&fairplayData.length){
-    var _grpYC=0,_grpRC=0;
+  // Cartons : total tournoi depuis fairplayData (ESPN agrégé)
+  var allYC=0,allRC=0;
+  if(fairplayData&&fairplayData.length){
+    fairplayData.forEach(function(t){allYC+=t.yc||0;allRC+=t.rc||0;});
+  } else {
     Object.values(standings).forEach(function(tbl){
-      tbl.forEach(function(r){_grpYC+=r.yc||0;_grpRC+=r.rc||0;});
+      tbl.forEach(function(r){allYC+=r.yc||0;allRC+=r.rc||0;});
     });
-    totalYC=Math.max(0,allYC-_grpYC);
-    totalRC=Math.max(0,allRC-_grpRC);
+  }
+  // Vue KO : cartons spécifiques phase KO depuis worker (koCards), sinon total
+  var totalYC=allYC,totalRC=allRC;
+  if(isKO&&fairplayKOCards&&(fairplayKOCards.yc>0||fairplayKOCards.rc>0)){
+    totalYC=fairplayKOCards.yc;
+    totalRC=fairplayKOCards.rc;
   }
   var avgYC=played>0&&totalYC>0?(totalYC/played).toFixed(1):'–';
   var avgRC=played>0&&totalRC>0?(totalRC/played).toFixed(2):'–';
   var noCardData=played>0&&totalYC===0&&totalRC===0;
   var cardSubYC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgYC+'/m</span>';
   var cardSubRC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgRC+'/m</span>';
+  // Total général (toutes phases) : buts + cartons
+  var _allGoals=0,_allPlayed=0;
+  if(isKO){
+    allMatches.filter(function(m){return m.isFT&&m.score;}).forEach(function(m){
+      var p=m.score.split(/[–\-]/);if(p.length===2){_allGoals+=(parseInt(p[0])||0)+(parseInt(p[1])||0);}
+    });
+    _allPlayed=allMatches.filter(function(m){return m.isFT;}).length;
+  }
+  var _yc=isNaN(parseInt(String(totalYC)))?0:totalYC;
+  var _rc=isNaN(parseInt(String(totalRC)))?0:totalRC;
   el.innerHTML=
     '<div class="kpi-grid">'+
     (live>0?'<div class="kpi-card kpi-live" id="kpi-live-card" style="cursor:pointer;flex:2;min-width:100px;max-width:120px;padding:8px 10px;"><div style="font-size:14px;font-weight:900;color:#22c55e;animation:pulse 1.5s infinite;line-height:1.1">⚡ '+live+'</div><div style="font-size:7px;font-weight:700;color:#22c55e;letter-spacing:1px;margin-bottom:5px">EN DIRECT</div><div id="kpi-live-matches"></div></div>':'')+
     '<div class="kpi-card"><div class="kpi-val">'+total+'</div><div class="kpi-lbl">MATCHS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-green">'+played+'</div><div class="kpi-lbl">JOUÉS</div></div>'+
     '<div class="kpi-card"><div class="kpi-val kpi-yellow">'+totalGoals+'</div><div class="kpi-lbl">BUTS <span class="kpi-sub">moy. '+avgGoals+'/m</span></div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24"><span style="display:inline-block;width:0.45em;height:0.75em;background:#fbbf24;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+totalYC+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
-    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444"><span style="display:inline-block;width:0.45em;height:0.75em;background:#ef4444;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+totalRC+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#fbbf24"><span style="display:inline-block;width:0.45em;height:0.75em;background:#fbbf24;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+_yc+'</div><div class="kpi-lbl">JAUNES '+cardSubYC+'</div></div>'+
+    '<div class="kpi-card"><div class="kpi-val" style="color:#ef4444"><span style="display:inline-block;width:0.45em;height:0.75em;background:#ef4444;border-radius:2px;vertical-align:baseline;margin-right:3px"></span>'+_rc+'</div><div class="kpi-lbl">ROUGES '+cardSubRC+'</div></div>'+
     '</div>';
   // Total général (toutes phases) en gris sous les KPI — vue KO uniquement
-  if(isKO&&played>0&&allYC>0){
+  if(isKO&&_allPlayed>0){
+    var _ic=function(bg){return '<span style="display:inline-block;width:0.4em;height:0.65em;background:'+bg+';border-radius:1px;vertical-align:baseline"></span>';};
     var _totRow=document.createElement('div');
     _totRow.style.cssText='text-align:center;font-size:9px;color:#475569;padding:2px 0 3px;margin-top:-4px';
-    _totRow.innerHTML='Total général : '+allYC+' <span style="display:inline-block;width:0.4em;height:0.65em;background:#fbbf24;border-radius:1px;vertical-align:baseline"></span>  '+allRC+' <span style="display:inline-block;width:0.4em;height:0.65em;background:#ef4444;border-radius:1px;vertical-align:baseline"></span>';
+    _totRow.innerHTML='Total général : '+_allPlayed+' matchs · '+_allGoals+' buts · '+allYC+' '+_ic('#fbbf24')+'  '+allRC+' '+_ic('#ef4444');
     el.appendChild(_totRow);
   }
   // Mini-matchs en cours cliquables dans la KPI live

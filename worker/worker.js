@@ -674,22 +674,37 @@ async function handleKeepers(env, ctx, cors) {
 async function handleFairPlay(env, ctx, cors) {
   const list = await env.STATS_KV.list({ prefix: 'match:' });
   await _triggerMissing(env, ctx, list);
+
+  // Identifier les matchs KO : dayKey >= '2026-06-28' (Round of 32 onwards)
+  const espnMapData = await kv.get(env, 'espn_map') || {};
+  const koEspnIds = new Set(
+    Object.values(espnMapData)
+      .filter(m => (m.dayKey || '') >= '2026-06-28')
+      .map(m => String(m.espnId))
+  );
+
   const teams = {};
   for (const key of list.keys) {
+    const espnId = key.name.replace('match:', '');
+    const isKO = koEspnIds.has(espnId);
     const data = await kv.get(env, key.name);
     if (!data?.stats) continue;
     for (const [, s] of Object.entries(data.stats)) {
       if (!s.team) continue;
       const t = normTeam(s.team);
-      if (!teams[t]) teams[t] = { team: t, yc: 0, rc: 0 };
+      if (!teams[t]) teams[t] = { team: t, yc: 0, rc: 0, koYC: 0, koRC: 0 };
       teams[t].yc += s.yellow || 0;
       teams[t].rc += s.red    || 0;
+      if (isKO) { teams[t].koYC += s.yellow || 0; teams[t].koRC += s.red || 0; }
     }
   }
   const fairplay = Object.values(teams).sort((a, b) =>
     (a.yc + 3 * a.rc) - (b.yc + 3 * b.rc) || a.yc - b.yc
   );
-  return jsonResp({ fairplay, cachedAt: Date.now() }, cors);
+  const koCards = fairplay.reduce((acc, t) => {
+    acc.yc += t.koYC || 0; acc.rc += t.koRC || 0; return acc;
+  }, { yc: 0, rc: 0 });
+  return jsonResp({ fairplay, koCards, cachedAt: Date.now() }, cors);
 }
 
 async function handleShooters(env, ctx, cors) {
