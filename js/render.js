@@ -17,9 +17,20 @@ function renderMatchRow(m){
   var _t1=m.t1||'?',_t2=m.t2||'?';
   var _f1=flagEmoji(m.t1),_f2=flagEmoji(m.t2);
   if(m.ko){
-    var _r1=resolveKOTeam(m.t1),_r2=resolveKOTeam(m.t2);
-    if(_r1){var _rf1=flagEmoji(_r1.split(' / ')[0])||'';_f1=_rf1;_t1=_r1+' <span class="ko-res">('+m.t1+')</span>';}
-    if(_r2){var _rf2=flagEmoji(_r2.split(' / ')[0])||'';_f2=_rf2;_t2=_r2+' <span class="ko-res">('+m.t2+')</span>';}
+    // slot1/slot2 = étiquette permanente ; t1/t2 = nom réel (hardcodé ou résolu dynamiquement)
+    if(m.slot1&&m.slot1!==m.t1){
+      // nom hardcodé → montrer l'étiquette en parenthèses
+      _t1=m.t1+' <span class="ko-res">('+m.slot1+')</span>';
+    } else {
+      var _r1=resolveKOTeam(m.t1);
+      if(_r1){var _rf1=flagEmoji(_r1.split(' / ')[0])||'';_f1=_rf1;_t1=_r1+' <span class="ko-res">('+m.t1+')</span>';}
+    }
+    if(m.slot2&&m.slot2!==m.t2){
+      _t2=m.t2+' <span class="ko-res">('+m.slot2+')</span>';
+    } else {
+      var _r2=resolveKOTeam(m.t2);
+      if(_r2){var _rf2=flagEmoji(_r2.split(' / ')[0])||'';_f2=_rf2;_t2=_r2+' <span class="ko-res">('+m.t2+')</span>';}
+    }
   }
   teams.innerHTML=(_f1?_f1+' ':'')+_t1+'<span class="vs">–</span>'+(_f2?_f2+' ':'')+_t2;
 
@@ -227,10 +238,14 @@ function _buildCalCard(m){
   var f1=flagEmoji(m.t1),f2=flagEmoji(m.t2);
   var t1=document.createElement('div');
   t1.style.cssText='font-size:9px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
-  t1.innerHTML=(f1?f1+' ':'')+rTeam(m,m.t1);
+  var _bc1=(f1?f1+' ':'')+rTeam(m,m.t1);
+  if(m.slot1&&m.slot1!==m.t1)_bc1+=' <span style="font-size:7px;color:#64748b">('+m.slot1+')</span>';
+  t1.innerHTML=_bc1;
   var t2=document.createElement('div');
   t2.style.cssText='font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;';
-  t2.innerHTML=(f2?f2+' ':'')+rTeam(m,m.t2);
+  var _bc2=(f2?f2+' ':'')+rTeam(m,m.t2);
+  if(m.slot2&&m.slot2!==m.t2)_bc2+=' <span style="font-size:7px;color:#64748b">('+m.slot2+')</span>';
+  t2.innerHTML=_bc2;
   card.appendChild(t1);card.appendChild(t2);
   if(!m.isLive&&!m.isFT){
     var pred=predictions&&predictions[m.id];
@@ -1139,10 +1154,9 @@ function renderKPIBar(){
     var p=m.score.split(/[–\-]/);if(p.length===2){totalGoals+=(parseInt(p[0])||0)+(parseInt(p[1])||0);}
   });
   var avgGoals=played>0?(totalGoals/played).toFixed(2):'–';
-  // Cartons : uniquement pour les matchs joués dans la phase affichée
-  // fairplayData couvre les matchs de groupe (ESPN stats) ; KO = 0 jusqu'à première phase jouée
+  // Cartons : cumulatif tournoi (fairplayData couvre group + KO via ESPN stats agrégées)
   var totalYC=0,totalRC=0;
-  if(played>0&&!isKO){
+  if(played>0){
     var _fpCards=0;
     if(fairplayData&&fairplayData.length){
       fairplayData.forEach(function(t){_fpCards+=(t.yc||0)+(t.rc||0);totalYC+=t.yc||0;totalRC+=t.rc||0;});
@@ -1156,7 +1170,7 @@ function renderKPIBar(){
   }
   var avgYC=played>0&&totalYC>0?(totalYC/played).toFixed(1):'–';
   var avgRC=played>0&&totalRC>0?(totalRC/played).toFixed(2):'–';
-  var noCardData=played>0&&!isKO&&totalYC===0&&totalRC===0;
+  var noCardData=played>0&&totalYC===0&&totalRC===0;
   var cardSubYC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgYC+'/m</span>';
   var cardSubRC=noCardData?'<span class="kpi-sub">en attente</span>':'<span class="kpi-sub">moy. '+avgRC+'/m</span>';
   el.innerHTML=
