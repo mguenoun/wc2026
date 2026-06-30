@@ -94,12 +94,17 @@ function restoreKOCache(){
 }
 
 // Fetch ESPN scoreboard J-1 + aujourd'hui directement depuis le browser (pas de KV)
+// + dates des matchs KO passés sans résultat (ex: M73 le 28 juin local, hors fenêtre J-1)
 async function fetchESPNEvents(){
   var allEvents=[];
   var today=new Date();
-  for(var i=-1;i<=0;i++){
-    var d=new Date(today);d.setDate(d.getDate()+i);
-    var ds=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  var dates=[];
+  for(var i=-1;i<=0;i++){var d=new Date(today);d.setDate(d.getDate()+i);dates.push(d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0'));}
+  // Ajouter les dates locales des matchs KO terminés sans résultat en cache
+  var todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  allMatches.filter(function(m){return m.ko&&m.dayKey<todayStr&&!m.isFT&&!m.score;}).forEach(function(m){var ds=m.dayKey.replace(/-/g,'');if(dates.indexOf(ds)<0)dates.push(ds);});
+  for(var _i=0;_i<dates.length;_i++){
+    var ds=dates[_i];
     try{
       var r=await fetch(ESPN_BASE+'/scoreboard?dates='+ds);
       if(r.ok){var data=await r.json();if(data.events)allEvents.push.apply(allEvents,data.events);}
