@@ -28,8 +28,8 @@ function processESPNScores(events){
     if(state==='in'&&m.utcDate){
       if(Date.now()<new Date(m.utcDate).getTime()-30*60*1000)return;
     }
-    // Ne jamais écraser un score FT déjà acquis par une entrée sans score (ex: match hors fenêtre)
-    if(m.isFT&&state==='post'&&m.score)return;
+    // Ne pas rétrograder un FT+score avec données live (état transitoire)
+    if(m.isFT&&m.score&&state==='in')return;
     var comp=e.competitions&&e.competitions[0];
     var comps=comp&&comp.competitors||[];
     var home=comps.find(function(c){return c.homeAway==='home';})||{};
@@ -93,18 +93,34 @@ function restoreKOCache(){
   }catch(_){}
 }
 
-// Fetch ESPN scoreboard J-1 + aujourd'hui directement depuis le browser (pas de KV)
-// ESPN sert uniquement les scores en direct/récents ; l'historique KO vient de FD (processMatches)
-async function fetchESPNEvents(){
+// Fetch ESPN scoreboard J-1 + aujourd'hui + dates ciblées des matchs KO non résolus
+// extraDates : tableau de strings "YYYYMMDD" (dates locales des matchs KO sans résultat)
+async function fetchESPNEvents(extraDates){
   var allEvents=[];
+  var fetched={};
   var today=new Date();
   for(var i=-1;i<=0;i++){
     var d=new Date(today);d.setDate(d.getDate()+i);
     var ds=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
-    try{
-      var r=await fetch(ESPN_BASE+'/scoreboard?dates='+ds);
-      if(r.ok){var data=await r.json();if(data.events)allEvents.push.apply(allEvents,data.events);}
-    }catch(_){}
+    if(!fetched[ds]){
+      fetched[ds]=true;
+      try{
+        var r=await fetch(ESPN_BASE+'/scoreboard?dates='+ds);
+        if(r.ok){var data=await r.json();if(data.events)allEvents.push.apply(allEvents,data.events);}
+      }catch(_){}
+    }
+  }
+  // Dates ciblées : matchs KO passés sans résultat confirmé (lookup fixe, pas de fenêtre glissante)
+  if(extraDates&&extraDates.length){
+    for(var _ei=0;_ei<extraDates.length;_ei++){
+      if(!fetched[extraDates[_ei]]){
+        fetched[extraDates[_ei]]=true;
+        try{
+          var _r=await fetch(ESPN_BASE+'/scoreboard?dates='+extraDates[_ei]);
+          if(_r.ok){var _d=await _r.json();if(_d.events)allEvents.push.apply(allEvents,_d.events);}
+        }catch(_){}
+      }
+    }
   }
   return allEvents;
 }
@@ -140,10 +156,18 @@ async function fetchAll(){
     }catch(e){console.warn('[WC2026] FD matches fallback:',e.message);}
   }
 
-  // ── 2. ESPN direct depuis le browser (J-1 + aujourd'hui, pas de KV) ─────────
+  // ── 2. ESPN direct depuis le browser (J-1 + aujourd'hui + dates KO non résolus) ────
   var espnOk=false;
   try{
-    var espnEvents=await fetchESPNEvents();
+    // Dates locales des matchs KO passés sans résultat confirmé (lookup ciblé, pas de fenêtre)
+    var _todayE=new Date().toISOString().slice(0,10);
+    var _xtra={};
+    allMatches.forEach(function(m){
+      if(!m.ko||m.dayKey>=_todayE)return;
+      var needsFetch=!m.isFT||!m.score||/^(1er|2e|3e|Vainq\.|V\s|Perdant)/.test(m.t1||'')||/^(1er|2e|3e|Vainq\.|V\s|Perdant)/.test(m.t2||'');
+      if(needsFetch){var _ds=m.dayKey.replace(/-/g,'');_xtra[_ds]=true;}
+    });
+    var espnEvents=await fetchESPNEvents(Object.keys(_xtra));
     if(espnEvents.length){processESPNScores(espnEvents);espnOk=true;}
   }catch(e){console.warn('[WC2026] ESPN direct:',e.message);}
 
@@ -152,7 +176,7 @@ async function fetchAll(){
   // Appelle /fd/competitions/WC/matches qui retourne TOUS les matchs WC.
   try{
     var _today2=new Date().toISOString().slice(0,10);
-    var _unresolvedKO=allMatches.some(function(m){return m.ko&&m.dayKey<_today2&&(!m.isFT||!m.score);});
+    var _unresolvedKO=allMatches.some(function(m){return m.ko&&m.dayKey<_today2&&(!m.isFT||!m.score||/^(1er|2e|3e|Vainq\.|V\s|Perdant)/.test(m.t1||'')||/^(1er|2e|3e|Vainq\.|V\s|Perdant)/.test(m.t2||''));});
     if(_unresolvedKO){
       var r1c=await fetch(PROXY_BASE+'/fd/competitions/WC/matches');
       if(r1c.ok){var d1c=await r1c.json();if(d1c.matches&&d1c.matches.length)processMatches(d1c.matches);}
