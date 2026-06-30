@@ -196,8 +196,7 @@ function processMatches(matches, inputMatches){
     apiByKey[d+'|'+home]=m;
     apiByKey[d+'|'+away]=m;
   });
-  // Index secondaire pour matchs KO dont les équipes sont encore des labels (2e Gr.A…)
-  // FD retourne tous les matchs passés : on matche par stage + date UTC (sans fenêtre de temps)
+  // Index par stage+date pour le fallback KO sans nom d'équipe (labels "2e Gr.A"…)
   var phaseToStage={'16es':'ROUND_OF_32','8es':'ROUND_OF_16','Quarts':'QUARTER_FINALS','Demis':'SEMI_FINALS','3e Place':'THIRD_PLACE','Finale':'FINAL'};
   var fdByStageDate={};
   matches.forEach(function(m){
@@ -209,30 +208,34 @@ function processMatches(matches, inputMatches){
   var matchedFdIds={};
   var base=inputMatches||allMatches;
   var result=base.map(function(sm){
-    var apiM=apiByKey[sm.dayKey+'|'+sm.t1]||apiByKey[sm.dayKey+'|'+sm.t2];
-    // Fallback J-1 : matchs "00h00 heure locale" dont utcDate FD est la veille
-    if(!apiM){
-      var prev=new Date(sm.dayKey);prev.setDate(prev.getDate()-1);
-      var prevKey=prev.toISOString().slice(0,10);
-      apiM=apiByKey[prevKey+'|'+sm.t1]||apiByKey[prevKey+'|'+sm.t2];
-    }
-    // Fallback KO : si slot encore avec labels, matcher par stage FD + date (±1j décalage UTC)
+    // Recherche par nom : dayKey, J-1 (UTC minuit), J+1 (UTC lendemain pour soirée tardive)
+    var _dP=new Date(sm.dayKey+'T12:00Z');_dP.setUTCDate(_dP.getUTCDate()-1);var _dPStr=_dP.toISOString().slice(0,10);
+    var _dN=new Date(sm.dayKey+'T12:00Z');_dN.setUTCDate(_dN.getUTCDate()+1);var _dNStr=_dN.toISOString().slice(0,10);
+    var apiM=apiByKey[sm.dayKey+'|'+sm.t1]||apiByKey[sm.dayKey+'|'+sm.t2]
+            ||apiByKey[_dPStr+'|'+sm.t1]||apiByKey[_dPStr+'|'+sm.t2]
+            ||apiByKey[_dNStr+'|'+sm.t1]||apiByKey[_dNStr+'|'+sm.t2];
+    if(apiM&&sm.ko)matchedFdIds[apiM.id]=true; // réserver ce match FD pour ce slot
+    // Fallback KO : uniquement si labels encore présents (pas de nom réel connu)
+    // FD retourne tout l'historique sans fenêtre ; on cherche par stage+date UTC (±1j)
     if(!apiM&&sm.ko){
       var fdStage=phaseToStage[sm.phase];
       if(fdStage){
         var d0=sm.dayKey;
-        var dPrev=new Date(d0+'T12:00Z');dPrev.setDate(dPrev.getDate()-1);var dPrevStr=dPrev.toISOString().slice(0,10);
-        var dNext=new Date(d0+'T12:00Z');dNext.setDate(dNext.getDate()+1);var dNextStr=dNext.toISOString().slice(0,10);
-        var cands=(fdByStageDate[fdStage+'|'+d0]||[]).concat(fdByStageDate[fdStage+'|'+dPrevStr]||[]).concat(fdByStageDate[fdStage+'|'+dNextStr]||[]);
-        cands=cands.filter(function(c){return !matchedFdIds[c.id];});
-        if(cands.length===1){apiM=cands[0];}
-        else if(cands.length>1){
-          // Plusieurs matchs même jour : trier par utcDate et apparier par position (temps local)
-          cands.sort(function(a,b){return a.utcDate<b.utcDate?-1:1;});
-          var daySlots=base.filter(function(s){return s.ko&&s.phase===sm.phase&&s.dayKey===d0;});
-          daySlots.sort(function(a,b){return a.time<b.time?-1:1;});
-          var pos=daySlots.findIndex(function(s){return s.id===sm.id;});
-          if(pos>=0&&pos<cands.length)apiM=cands[pos];
+        var dPN=new Date(d0+'T12:00Z');dPN.setUTCDate(dPN.getUTCDate()-1);var dPNStr=dPN.toISOString().slice(0,10);
+        var dNN=new Date(d0+'T12:00Z');dNN.setUTCDate(dNN.getUTCDate()+1);var dNNStr=dNN.toISOString().slice(0,10);
+        var tryDates=[d0,dNNStr,dPNStr]; // dayKey d'abord, puis J+1 (soirée→UTC lendemain), puis J-1
+        for(var _di=0;_di<tryDates.length&&!apiM;_di++){
+          var cands=(fdByStageDate[fdStage+'|'+tryDates[_di]]||[]).filter(function(c){return !matchedFdIds[c.id];});
+          if(!cands.length)continue;
+          if(cands.length===1){apiM=cands[0];}
+          else{
+            // Plusieurs dans le même bucket UTC : trier par heure et apparier par position locale
+            cands.sort(function(a,b){return a.utcDate<b.utcDate?-1:1;});
+            var daySlots=base.filter(function(s){return s.ko&&s.phase===sm.phase&&s.dayKey===d0;});
+            daySlots.sort(function(a,b){return a.time<b.time?-1:1;});
+            var pos=daySlots.findIndex(function(s){return s.id===sm.id;});
+            if(pos>=0&&pos<cands.length)apiM=cands[pos];
+          }
         }
         if(apiM)matchedFdIds[apiM.id]=true;
       }
