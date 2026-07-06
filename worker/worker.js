@@ -254,18 +254,23 @@ async function step0_refreshData(env) {
 
 // ─── PIPELINE ─────────────────────────────────────────────────────────────────
 
-async function step1_discover(env) {
+async function step1_discover(env, specificDate = null) {
   const queue   = await kv.get(env, 'pipeline_queue') || { pending: [], processing: [], done: [] };
   const espnMap = await kv.get(env, 'espn_map') || {};
   let added = 0, newIds = 0;
 
-  // Scanner les 7 derniers jours pour détecter automatiquement les matchs terminés
+  // Si date précise fournie (YYYYMMDD), ne scanner que ce jour
+  // Sinon scanner les 7 derniers jours
   const today = new Date();
   const dates = [];
-  for (let i = 0; i <= 7; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
+  if (specificDate) {
+    dates.push(specificDate);
+  } else {
+    for (let i = 0; i <= 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().slice(0,10).replace(/-/g,''));
+    }
   }
 
   for (const dateStr of dates) {
@@ -457,11 +462,12 @@ async function step3_fetchStats(env) {
           clearances: gs('defensive','effectiveClearance'),
           ballRecovery: gs('defensive','ballRecovery'),
           yellow: gs('general','yellowCards'), red: gs('general','redCards'),
+          fouls: gs('defensive','foulsCommitted'),
         };
         partial[p.fullName] = {
           rating: calcRating(raw, role, minutes),
           minutes, goals: raw.goals, assists: raw.assists,
-          saves: raw.saves, yellow: raw.yellow, red: raw.red,
+          saves: raw.saves, yellow: raw.yellow, red: raw.red, fouls: raw.fouls,
           starter: p.starter, subbedIn: p.subbedIn, subbedOut: p.subbedOut,
           team: p.team, pos: p.pos, role,
         };
@@ -580,11 +586,12 @@ async function computeOnDemand(env, espnId) {
         clearances: gs('defensive','effectiveClearance'),
         ballRecovery: gs('defensive','ballRecovery'),
         yellow: gs('general','yellowCards'), red: gs('general','redCards'),
+        fouls: gs('defensive','foulsCommitted'),
       };
       stats[p.fullName] = {
         rating: calcRating(raw, role, minutes),
         minutes, goals: raw.goals, assists: raw.assists,
-        saves: raw.saves, yellow: raw.yellow, red: raw.red,
+        saves: raw.saves, yellow: raw.yellow, red: raw.red, fouls: raw.fouls,
         starter: p.starter, subbedIn: p.subbedIn, subbedOut: p.subbedOut,
         team: p.team, pos: p.pos, role,
       };
@@ -692,14 +699,16 @@ async function handleFairPlay(env, ctx, cors) {
     for (const [, s] of Object.entries(data.stats)) {
       if (!s.team) continue;
       const t = normTeam(s.team);
-      if (!teams[t]) teams[t] = { team: t, yc: 0, rc: 0, koYC: 0, koRC: 0 };
-      teams[t].yc += s.yellow || 0;
-      teams[t].rc += s.red    || 0;
+      if (!teams[t]) teams[t] = { team: t, yc: 0, rc: 0, fouls: 0, koYC: 0, koRC: 0 };
+      teams[t].yc    += s.yellow || 0;
+      teams[t].rc    += s.red    || 0;
+      teams[t].fouls += s.fouls  || 0;
       if (isKO) { teams[t].koYC += s.yellow || 0; teams[t].koRC += s.red || 0; }
     }
   }
+  const fp = t => t.yc + 3 * t.rc + 0.1 * t.fouls;
   const fairplay = Object.values(teams).sort((a, b) =>
-    (a.yc + 3 * a.rc) - (b.yc + 3 * b.rc) || a.yc - b.yc
+    fp(a) - fp(b) || a.yc - b.yc || a.fouls - b.fouls
   );
   const koCards = fairplay.reduce((acc, t) => {
     acc.yc += t.koYC || 0; acc.rc += t.koRC || 0; return acc;
@@ -814,7 +823,7 @@ export default {
     if (path === '/stats/fairplay')  return handleFairPlay(env, ctx, cors);
     if (path === '/stats/shooters')  return handleShooters(env, ctx, cors);
     if (path === '/stats/status')    return handleStatus(env, cors);
-    if (path === '/stats/step1')   return jsonResp(await step1_discover(env),   cors);
+    if (path === '/stats/step1')   return jsonResp(await step1_discover(env, url.searchParams.get('date') || null), cors);
     if (path === '/stats/step2')   return jsonResp(await step2_fetchUrls(env),  cors);
     if (path === '/stats/step3')   return jsonResp(await step3_fetchStats(env), cors);
 
@@ -848,7 +857,7 @@ export default {
         const data = await r.json();
         const state = data?.header?.competitions?.[0]?.status?.type?.state || 'pre';
         if (state === 'post' || state === 'in') {
-          await kv.put(env, 'cache:summary:' + espnId, { data, state, lastUpdate: Date.now() });
+          try { await kv.put(env, 'cache:summary:' + espnId, { data, state, lastUpdate: Date.now() }); } catch (_) {}
         }
         return jsonResp(data, cors);
       } catch (e) { return new Response('Fetch error', { status: 502, headers: cors }); }
