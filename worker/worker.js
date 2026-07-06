@@ -826,6 +826,21 @@ export default {
     if (path === '/stats/step1')   return jsonResp(await step1_discover(env, url.searchParams.get('date') || null), cors);
     if (path === '/stats/step2')   return jsonResp(await step2_fetchUrls(env),  cors);
     if (path === '/stats/step3')   return jsonResp(await step3_fetchStats(env), cors);
+    if (path === '/stats/reset-fouls') {
+      // Supprime tous les match:* et remet les IDs en pending pour retraitement avec fouls
+      const list = await env.STATS_KV.list({ prefix: 'match:' });
+      const queue = await kv.get(env, 'pipeline_queue') || { pending: [], processing: [], done: [] };
+      let deleted = 0;
+      for (const key of list.keys) {
+        await kv.delete(env, key.name);
+        deleted++;
+      }
+      queue.pending = [...queue.done, ...queue.processing, ...queue.pending];
+      queue.done = [];
+      queue.processing = [];
+      await kv.put(env, 'pipeline_queue', queue);
+      return jsonResp({ ok: true, deleted, requeued: queue.pending.length }, cors);
+    }
 
     // ── Cache KV côté worker (données pré-agrégées pour le frontend) ──────────
     if (path === '/data/matches') {
