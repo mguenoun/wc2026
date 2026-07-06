@@ -706,7 +706,7 @@ async function handleFairPlay(env, ctx, cors) {
       if (isKO) { teams[t].koYC += s.yellow || 0; teams[t].koRC += s.red || 0; }
     }
   }
-  const fp = t => t.yc + 3 * t.rc + 0.1 * t.fouls;
+  const fp = t => t.yc + 3 * t.rc + 0.5 * t.fouls;
   const fairplay = Object.values(teams).sort((a, b) =>
     fp(a) - fp(b) || a.yc - b.yc || a.fouls - b.fouls
   );

@@ -1258,7 +1258,7 @@ function renderFairPlay(){
     c.innerHTML='<p style="color:#475569;font-size:11px;padding:12px">Données non encore disponibles (stats ESPN requises).</p>';
     return;
   }
-  var teams=fairplayData.map(function(t){var yc=t.yc||0,rc=t.rc||0,fo=t.fouls||0;return{team:t.team,yc:yc,rc:rc,fouls:fo,fp:yc+3*rc+0.1*fo};});
+  var teams=fairplayData.map(function(t){var yc=t.yc||0,rc=t.rc||0,fo=t.fouls||0;return{team:t.team,yc:yc,rc:rc,fouls:fo,fp:yc+3*rc+0.5*fo};});
   teams.sort(function(a,b){return(a.fp-b.fp)||(a.yc-b.yc)||(a.fouls-b.fouls)||a.team.localeCompare(b.team);});
   var rows=[];
   rows.push('<div style="background:#080f1e;border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;padding:4px 12px">');
@@ -1283,6 +1283,6 @@ function renderFairPlay(){
       '</div>');
   });
   rows.push('</div>');
-  rows.push('<p style="font-size:9px;color:#475569;margin-top:10px;text-align:center">Score Fair Play = Jaunes + 3×Rouges + 0.1×Fautes · Plus bas = plus fair · Source : stats ESPN par joueur</p>');
+  rows.push('<p style="font-size:9px;color:#475569;margin-top:10px;text-align:center">Score Fair Play = Jaunes + 3×Rouges + 0.5×Fautes · Plus bas = plus fair · Source : stats ESPN par joueur</p>');
   c.innerHTML=rows.join('');
 }
