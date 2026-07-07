@@ -266,12 +266,22 @@ function processMatches(matches, inputMatches){
           if(!cands.length)continue;
           if(cands.length===1){apiM=cands[0];}
           else{
-            // Plusieurs dans le même bucket UTC : trier par heure et apparier par position locale
+            // Plusieurs dans le même bucket : apparier par heure UTC (time Casablanca = UTC+1)
             cands.sort(function(a,b){return a.utcDate<b.utcDate?-1:1;});
-            var daySlots=base.filter(function(s){return s.ko&&s.phase===sm.phase&&s.dayKey===d0;});
-            daySlots.sort(function(a,b){return a.time<b.time?-1:1;});
-            var pos=daySlots.findIndex(function(s){return s.id===sm.id;});
-            if(pos>=0&&pos<cands.length)apiM=cands[pos];
+            var tm=sm.time&&sm.time.match(/(\d+)h(\d+)/);
+            if(tm){
+              var slotH=(parseInt(tm[1])-1+24)%24;
+              apiM=cands.reduce(function(best,c){
+                var ch=new Date(c.utcDate).getUTCHours();
+                var bh=new Date(best.utcDate).getUTCHours();
+                return Math.abs(ch-slotH)<Math.abs(bh-slotH)?c:best;
+              });
+            } else {
+              var daySlots=base.filter(function(s){return s.ko&&s.phase===sm.phase&&s.dayKey===d0;});
+              daySlots.sort(function(a,b){return a.time<b.time?-1:1;});
+              var pos=daySlots.findIndex(function(s){return s.id===sm.id;});
+              if(pos>=0&&pos<cands.length)apiM=cands[pos];
+            }
           }
         }
         if(apiM)matchedFdIds[apiM.id]=true;
