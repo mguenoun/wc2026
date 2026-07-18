@@ -53,6 +53,8 @@ const ESPN_ID_MAP = {
   'M95':'760509','M96':'760508',
   // Quarts de finale
   'QF1':'760510','QF2':'760511','QF3':'760512','QF4':'760513',
+  // Demies, 3e place, finale
+  'SF1':'760514','SF2':'760515','3PL':'760516','FIN':'760517',
 };
 
 const VENUE_COORDS = {
